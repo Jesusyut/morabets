@@ -858,6 +858,9 @@ def get_props():
             "status": "error",
             "matchups": {}
         }), 503
+@app.route("/player_props_cached")
+def player_props_cached():
+    return get_enhanced_mlb_props()
 
 
 
