@@ -11,6 +11,8 @@ from flask_cors import CORS
 from redis import Redis
 from apscheduler.schedulers.background import BackgroundScheduler
 from werkzeug.middleware.proxy_fix import ProxyFix
+import pytz
+from collections import Counter
 
 from odds_api import fetch_player_props, parse_game_data, enrich_player_props
 from enrichment import load_props_from_file
@@ -26,6 +28,45 @@ from nfl_contextual import add_nfl_context
 
 # MLB game context enrichment
 from mlb_game_enrichment import enrich_mlb_props_with_context, filter_positive_environment_props
+
+# Environment configuration
+SPORT_TZ = os.getenv("SPORT_TZ", "America/New_York")
+
+# Team code normalization - handles inconsistencies like ARZ vs ARI, WSH vs WSN
+TEAM_NORM = {"ARZ":"ARI","WSH":"WSN","CHW":"CWS","KCR":"KC","TBR":"TB","SDP":"SD","SFG":"SF"}
+
+def norm_code(t: str) -> str:
+    """Normalize team codes to handle inconsistencies"""
+    t = (t or "").upper()
+    return TEAM_NORM.get(t, t)
+
+def to_sport_date(dt_str: str) -> str:
+    """Robustly parse ISO or date-only and return YYYY-MM-DD in SPORT_TZ"""
+    if not dt_str:
+        return ""
+    
+    try:
+        # Try parsing as ISO format first
+        if 'T' in dt_str or 'Z' in dt_str or '+' in dt_str:
+            dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+        else:
+            # Try parsing as date-only format
+            dt = datetime.strptime(dt_str, "%Y-%m-%d")
+        
+        # Convert to sport timezone
+        sport_tz = pytz.timezone(SPORT_TZ)
+        if dt.tzinfo is None:
+            dt = pytz.utc.localize(dt)
+        
+        dt_sport = dt.astimezone(sport_tz)
+        return dt_sport.strftime("%Y-%m-%d")
+    except Exception as e:
+        logger.warning(f"Could not parse date {dt_str}: {e}")
+        return dt_str[:10] if len(dt_str) >= 10 else dt_str
+
+# Recommended environment and deployment settings:
+# SPORT_TZ=America/New_York
+# gunicorn app:app --workers=1 --timeout=120 --bind 0.0.0.0:$PORT
 
 # Configure logging - reduce external API noise
 logging.basicConfig(level=logging.INFO)
@@ -556,26 +597,21 @@ def logout():
 # Removed extract_team_abbreviation function - now using team_abbreviations.py module
 
 def group_props_by_matchup(props_data):
-    """Group player props by actual team matchups using real MLB data"""
+    """Group player props by actual team matchups using real MLB data with enhanced reliability"""
     try:
         from team_abbreviations import TEAM_ABBREVIATIONS
         from enrichment import get_player_team_mapping
         
-        # DEBUG: Log input data structure
-        print(f"[DEBUG] group_props_by_matchup called with {len(props_data)} props")
-        if props_data:
-            print(f"[DEBUG] Sample prop keys (first 3 props):")
-            for i, prop in enumerate(props_data[:3]):
-                if isinstance(prop, dict):
-                    print(f"  Prop {i+1}: {list(prop.keys())}")
-                    print(f"  Prop {i+1} values: {dict(list(prop.items())[:5])}")  # First 5 key-value pairs
-                else:
-                    print(f"  Prop {i+1}: Not a dict, type: {type(prop)}")
+        # Initialize diagnostics
+        reasons = Counter()
+        prop_teams = set()
+        context_teams = set()
         
         # Load current games/odds data to get real matchups
         games_data = cache_get("mlb_odds")
         real_matchups = []
         team_to_matchup = {}
+        context_keys = set()
         
         if games_data:
             # Handle bytes, string, or dict data types
@@ -586,63 +622,51 @@ def group_props_by_matchup(props_data):
             else:
                 games = games_data
             
-            # DEBUG: Log games data structure
-            print(f"[DEBUG] Games data type: {type(games)}")
-            if isinstance(games, list):
-                print(f"[DEBUG] Found {len(games)} games")
-                if games:
-                    print(f"[DEBUG] Sample game keys: {list(games[0].keys()) if isinstance(games[0], dict) else 'Not a dict'}")
-            
-            # Build matchup mapping from real game data
+            # Build matchup mapping from real game data with normalization
             if isinstance(games, list):
                 for game in games:
                     if isinstance(game, dict):
                         home_team = game.get("home_team", "")
                         away_team = game.get("away_team", "")
+                        game_date = game.get("date") or game.get("game_date")
                         
-                        # DEBUG: Log team names being processed
-                        print(f"[DEBUG] Processing game: {away_team} @ {home_team}")
-                        
-                        if home_team and away_team:
+                        if home_team and away_team and game_date:
+                            # Normalize team codes and date
+                            norm_home = norm_code(home_team)
+                            norm_away = norm_code(away_team)
+                            norm_date = to_sport_date(game_date)
+                            
+                            # Create context key
+                            context_key = f"{norm_date}:{norm_away}:{norm_home}"
+                            context_keys.add(context_key)
+                            
+                            # Track teams for diagnostics
+                            context_teams.add(norm_home)
+                            context_teams.add(norm_away)
+                            
                             # Create matchup key using team abbreviations
                             matchup_key = format_matchup(away_team, home_team)
                             real_matchups.append({
                                 "matchup": matchup_key,
                                 "home_team": home_team,
                                 "away_team": away_team,
-                                "home_abbr": TEAM_ABBREVIATIONS.get(home_team, home_team[:3].upper()),
-                                "away_abbr": TEAM_ABBREVIATIONS.get(away_team, away_team[:3].upper())
+                                "home_abbr": norm_home,
+                                "away_abbr": norm_away,
+                                "date": norm_date,
+                                "context_key": context_key,
+                                "game_data": game  # Preserve original game data for UI features
                             })
                             
                             # Map both teams to this matchup
                             team_to_matchup[home_team] = matchup_key
                             team_to_matchup[away_team] = matchup_key
-                            
-                            print(f"[DEBUG] Created matchup: {matchup_key} (Home: {home_team}, Away: {away_team})")
-        
-        # DEBUG: Log available matchups
-        print(f"[DEBUG] Available real matchups: {list(team_to_matchup.keys())}")
-        print(f"[DEBUG] Team normalization mapping: {TEAM_NORMALIZE}")
         
         # Get player-to-team mapping with caching
         try:
             player_team_map = get_player_team_mapping()
-            print(f"[INFO] Loaded player-team mapping with {len(player_team_map)} players")
-            
-            # DEBUG: Log sample player-team mappings
-            if player_team_map:
-                sample_players = list(player_team_map.items())[:5]
-                print(f"[DEBUG] Sample player-team mappings:")
-                for player, team in sample_players:
-                    print(f"  {player} -> {team}")
         except Exception as e:
-            print(f"[ERROR] Could not load player-team mapping: {e}")
+            logger.error(f"Could not load player-team mapping: {e}")
             player_team_map = {}
-        
-        # Create reverse mapping: team abbreviation -> full team name
-        team_abbr_to_full = {}
-        for full_name, abbr in TEAM_ABBREVIATIONS.items():
-            team_abbr_to_full[abbr] = full_name
         
         # Build matchup team sets for fast lookup
         matchup_teams = {}
@@ -652,29 +676,26 @@ def group_props_by_matchup(props_data):
             away_team = matchup_info['away_team']
             matchup_teams[matchup_key] = {home_team, away_team}
         
-        # Group props by STRICT player-team validation
+        # Group props by STRICT player-team validation with normalization
         grouped = {}
         matched_count = 0
         skipped_count = 0
-        ungrouped_props = []  # Track props that can't be grouped
+        ungrouped_props = []
         
-        print(f"[DEBUG] Starting strict matchup filtering for {len(props_data)} props")
-        print(f"[DEBUG] Available matchups: {list(matchup_teams.keys())}")
+        # Sample prop keys for diagnostics
+        prop_keys_sample = []
         
         for prop in props_data:
             if not isinstance(prop, dict):
-                print(f"[DEBUG] Skipping non-dict prop: {type(prop)}")
+                reasons['invalid_prop'] += 1
                 skipped_count += 1
                 continue
                 
             player_name = prop.get('player', '')
             if not player_name:
-                print(f"[DEBUG] Skipping prop with no player name: {prop.get('stat', 'unknown')}")
+                reasons['missing_player'] += 1
                 skipped_count += 1
                 continue
-            
-            # DEBUG: Log player being processed
-            print(f"[DEBUG] Processing player: {player_name}")
             
             # Find player's team using exact or fuzzy matching
             player_team = None
@@ -682,7 +703,6 @@ def group_props_by_matchup(props_data):
             # Exact match first
             if player_name in player_team_map:
                 player_team = player_team_map[player_name]
-                print(f"[DEBUG] Exact match found: {player_name} -> {player_team}")
             else:
                 # Fuzzy matching for name variations (last name + first initial)
                 for mapped_name, team in player_team_map.items():
@@ -696,33 +716,35 @@ def group_props_by_matchup(props_data):
                             prop_first_initial == mapped_first_initial and 
                             len(prop_last) > 3):
                             player_team = team
-                            print(f"[FUZZY] {player_name} -> {mapped_name} ({team})")
                             break
             
             if not player_team:
-                print(f"[DEBUG] No team found for player: {player_name}")
+                reasons['missing_team'] += 1
                 ungrouped_props.append(prop)
                 skipped_count += 1
                 continue
             
+            # Normalize player's team
+            norm_player_team = norm_code(player_team)
+            prop_teams.add(norm_player_team)
+            
             # Find which matchup this player's team belongs to
             matched_matchup = None
-            for matchup_key, teams_in_matchup in matchup_teams.items():
+            for matchup_info in real_matchups:
+                matchup_key = matchup_info['matchup']
+                home_team = matchup_info['home_team']
+                away_team = matchup_info['away_team']
+                
                 # Try exact match first
-                if player_team in teams_in_matchup:
+                if player_team in {home_team, away_team}:
                     matched_matchup = matchup_key
-                    print(f"[DEBUG] Found matchup for {player_name} ({player_team}): {matched_matchup}")
                     break
                 else:
                     # Try normalized team name matching
-                    normalized_player_team = _norm(player_team)
-                    for team_in_matchup in teams_in_matchup:
-                        normalized_matchup_team = _norm(team_in_matchup)
-                        if normalized_player_team == normalized_matchup_team:
-                            matched_matchup = matchup_key
-                            print(f"[DEBUG] Found matchup via normalization: {player_name} ({player_team} -> {normalized_player_team}) matches {team_in_matchup} -> {normalized_matchup_team}: {matched_matchup}")
-                            break
-                    if matched_matchup:
+                    norm_home = norm_code(home_team)
+                    norm_away = norm_code(away_team)
+                    if norm_player_team in {norm_home, norm_away}:
+                        matched_matchup = matchup_key
                         break
             
             # Only include prop if player's team is in a real matchup
@@ -732,33 +754,87 @@ def group_props_by_matchup(props_data):
                 grouped[matched_matchup].append(prop)
                 matched_count += 1
             else:
-                print(f"[DEBUG] No matchup found for {player_name} ({player_team})")
+                reasons['key_miss'] += 1
                 ungrouped_props.append(prop)
                 skipped_count += 1
         
-        # FALLBACK: If no props were grouped but we have props, create UNGROUPED category
+        # FALLBACK: If no props were grouped but we have props, create relaxed groups
         if not grouped and props_data:
-            print(f"[WARNING] No props were grouped into matchups, creating UNGROUPED category with {len(ungrouped_props)} props")
-            grouped["UNGROUPED"] = ungrouped_props
-            matched_count = len(ungrouped_props)
-            skipped_count = 0
+            logger.warning(f"No props were grouped into matchups, creating relaxed groups with {len(ungrouped_props)} props")
+            
+            # Build relaxed groups using schedule of games for the day
+            relaxed_grouped = {}
+            
+            for prop in ungrouped_props:
+                if not isinstance(prop, dict):
+                    continue
+                    
+                player_name = prop.get('player', '')
+                if not player_name:
+                    continue
+                
+                # Find player's team
+                player_team = None
+                if player_name in player_team_map:
+                    player_team = player_team_map[player_name]
+                else:
+                    # Fuzzy matching
+                    for mapped_name, team in player_team_map.items():
+                        if len(player_name.split()) >= 2 and len(mapped_name.split()) >= 2:
+                            prop_last = player_name.split()[-1].lower()
+                            prop_first_initial = player_name.split()[0][0].lower()
+                            mapped_last = mapped_name.split()[-1].lower()
+                            mapped_first_initial = mapped_name.split()[0][0].lower()
+                            
+                            if (prop_last == mapped_last and 
+                                prop_first_initial == mapped_first_initial and 
+                                len(prop_last) > 3):
+                                player_team = team
+                                break
+                
+                if not player_team:
+                    continue
+                
+                # Find a game for this player's team
+                for matchup_info in real_matchups:
+                    home_team = matchup_info['home_team']
+                    away_team = matchup_info['away_team']
+                    
+                    if player_team in {home_team, away_team}:
+                        # Create relaxed group key
+                        norm_home = norm_code(home_team)
+                        norm_away = norm_code(away_team)
+                        norm_date = matchup_info['date']
+                        relaxed_key = f"{norm_date} — {norm_away} @ {norm_home}"
+                        
+                        if relaxed_key not in relaxed_grouped:
+                            relaxed_grouped[relaxed_key] = []
+                        
+                        # Add match_type for tracking
+                        relaxed_prop = prop.copy()
+                        relaxed_prop['match_type'] = 'relaxed'
+                        relaxed_grouped[relaxed_key].append(relaxed_prop)
+                        break
+            
+            if relaxed_grouped:
+                grouped = relaxed_grouped
+                matched_count = sum(len(props) for props in grouped.values())
+                skipped_count = 0
         
         # Get game environment classifications with favored team info
         try:
             from odds_api import get_mlb_game_environment_map
             game_environments = get_mlb_game_environment_map()
-            print(f"[DEBUG] Loaded {len(game_environments)} game environment classifications")
         except Exception as e:
-            print(f"[WARNING] Could not load game environments: {e}")
+            logger.warning(f"Could not load game environments: {e}")
             game_environments = {}
         
         # Add game environment labels and team status to props
         enhanced_grouped = {}
         for matchup_key, props in grouped.items():
-            # Skip environment enhancement for UNGROUPED props
-            if matchup_key == "UNGROUPED":
+            # Skip environment enhancement for relaxed groups
+            if " — " in matchup_key:  # Relaxed group format
                 enhanced_grouped[matchup_key] = props
-                print(f"[DEBUG] UNGROUPED: {len(props)} props")
                 continue
                 
             env_data = game_environments.get(matchup_key, {})
@@ -814,11 +890,14 @@ def group_props_by_matchup(props_data):
                 enhanced_props.append(enhanced_prop)
                 
             enhanced_grouped[enhanced_key] = enhanced_props
-            print(f"[DEBUG] {enhanced_key}: {len(enhanced_props)} props")
         
-        print(f"[DEBUG] Strict filtering results: {matched_count} props matched, {skipped_count} skipped")
-        print(f"[DEBUG] Final enhanced matchups: {list(enhanced_grouped.keys())}")
-        print(f"[DEBUG] Grouped {len(props_data)} props into {len(enhanced_grouped)} matchups")
+        # Final diagnostics
+        teams_only_in_props = list(prop_teams - context_teams)
+        teams_only_in_ctx = list(context_teams - prop_teams)
+        
+        logger.info(f"[GATE DIAG] matched={matched_count} skipped={skipped_count} reasons={dict(reasons)}")
+        if teams_only_in_props or teams_only_in_ctx:
+            logger.info(f"[GATE DIAG] teams_only_in_props={teams_only_in_props} teams_only_in_ctx={teams_only_in_ctx}")
         
         return enhanced_grouped
         
@@ -1467,3 +1546,4 @@ init_thread.start()
 # Flask app startup
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
+
