@@ -561,6 +561,17 @@ def group_props_by_matchup(props_data):
         from team_abbreviations import TEAM_ABBREVIATIONS
         from enrichment import get_player_team_mapping
         
+        # DEBUG: Log input data structure
+        print(f"[DEBUG] group_props_by_matchup called with {len(props_data)} props")
+        if props_data:
+            print(f"[DEBUG] Sample prop keys (first 3 props):")
+            for i, prop in enumerate(props_data[:3]):
+                if isinstance(prop, dict):
+                    print(f"  Prop {i+1}: {list(prop.keys())}")
+                    print(f"  Prop {i+1} values: {dict(list(prop.items())[:5])}")  # First 5 key-value pairs
+                else:
+                    print(f"  Prop {i+1}: Not a dict, type: {type(prop)}")
+        
         # Load current games/odds data to get real matchups
         games_data = cache_get("mlb_odds")
         real_matchups = []
@@ -575,12 +586,22 @@ def group_props_by_matchup(props_data):
             else:
                 games = games_data
             
+            # DEBUG: Log games data structure
+            print(f"[DEBUG] Games data type: {type(games)}")
+            if isinstance(games, list):
+                print(f"[DEBUG] Found {len(games)} games")
+                if games:
+                    print(f"[DEBUG] Sample game keys: {list(games[0].keys()) if isinstance(games[0], dict) else 'Not a dict'}")
+            
             # Build matchup mapping from real game data
             if isinstance(games, list):
                 for game in games:
                     if isinstance(game, dict):
                         home_team = game.get("home_team", "")
                         away_team = game.get("away_team", "")
+                        
+                        # DEBUG: Log team names being processed
+                        print(f"[DEBUG] Processing game: {away_team} @ {home_team}")
                         
                         if home_team and away_team:
                             # Create matchup key using team abbreviations
@@ -596,11 +617,24 @@ def group_props_by_matchup(props_data):
                             # Map both teams to this matchup
                             team_to_matchup[home_team] = matchup_key
                             team_to_matchup[away_team] = matchup_key
+                            
+                            print(f"[DEBUG] Created matchup: {matchup_key} (Home: {home_team}, Away: {away_team})")
+        
+        # DEBUG: Log available matchups
+        print(f"[DEBUG] Available real matchups: {list(team_to_matchup.keys())}")
+        print(f"[DEBUG] Team normalization mapping: {TEAM_NORMALIZE}")
         
         # Get player-to-team mapping with caching
         try:
             player_team_map = get_player_team_mapping()
             print(f"[INFO] Loaded player-team mapping with {len(player_team_map)} players")
+            
+            # DEBUG: Log sample player-team mappings
+            if player_team_map:
+                sample_players = list(player_team_map.items())[:5]
+                print(f"[DEBUG] Sample player-team mappings:")
+                for player, team in sample_players:
+                    print(f"  {player} -> {team}")
         except Exception as e:
             print(f"[ERROR] Could not load player-team mapping: {e}")
             player_team_map = {}
@@ -622,17 +656,25 @@ def group_props_by_matchup(props_data):
         grouped = {}
         matched_count = 0
         skipped_count = 0
+        ungrouped_props = []  # Track props that can't be grouped
         
         print(f"[DEBUG] Starting strict matchup filtering for {len(props_data)} props")
         print(f"[DEBUG] Available matchups: {list(matchup_teams.keys())}")
         
         for prop in props_data:
             if not isinstance(prop, dict):
+                print(f"[DEBUG] Skipping non-dict prop: {type(prop)}")
+                skipped_count += 1
                 continue
                 
             player_name = prop.get('player', '')
             if not player_name:
+                print(f"[DEBUG] Skipping prop with no player name: {prop.get('stat', 'unknown')}")
+                skipped_count += 1
                 continue
+            
+            # DEBUG: Log player being processed
+            print(f"[DEBUG] Processing player: {player_name}")
             
             # Find player's team using exact or fuzzy matching
             player_team = None
@@ -640,6 +682,7 @@ def group_props_by_matchup(props_data):
             # Exact match first
             if player_name in player_team_map:
                 player_team = player_team_map[player_name]
+                print(f"[DEBUG] Exact match found: {player_name} -> {player_team}")
             else:
                 # Fuzzy matching for name variations (last name + first initial)
                 for mapped_name, team in player_team_map.items():
@@ -657,15 +700,30 @@ def group_props_by_matchup(props_data):
                             break
             
             if not player_team:
+                print(f"[DEBUG] No team found for player: {player_name}")
+                ungrouped_props.append(prop)
                 skipped_count += 1
                 continue
             
             # Find which matchup this player's team belongs to
             matched_matchup = None
             for matchup_key, teams_in_matchup in matchup_teams.items():
+                # Try exact match first
                 if player_team in teams_in_matchup:
                     matched_matchup = matchup_key
+                    print(f"[DEBUG] Found matchup for {player_name} ({player_team}): {matched_matchup}")
                     break
+                else:
+                    # Try normalized team name matching
+                    normalized_player_team = _norm(player_team)
+                    for team_in_matchup in teams_in_matchup:
+                        normalized_matchup_team = _norm(team_in_matchup)
+                        if normalized_player_team == normalized_matchup_team:
+                            matched_matchup = matchup_key
+                            print(f"[DEBUG] Found matchup via normalization: {player_name} ({player_team} -> {normalized_player_team}) matches {team_in_matchup} -> {normalized_matchup_team}: {matched_matchup}")
+                            break
+                    if matched_matchup:
+                        break
             
             # Only include prop if player's team is in a real matchup
             if matched_matchup:
@@ -674,7 +732,16 @@ def group_props_by_matchup(props_data):
                 grouped[matched_matchup].append(prop)
                 matched_count += 1
             else:
+                print(f"[DEBUG] No matchup found for {player_name} ({player_team})")
+                ungrouped_props.append(prop)
                 skipped_count += 1
+        
+        # FALLBACK: If no props were grouped but we have props, create UNGROUPED category
+        if not grouped and props_data:
+            print(f"[WARNING] No props were grouped into matchups, creating UNGROUPED category with {len(ungrouped_props)} props")
+            grouped["UNGROUPED"] = ungrouped_props
+            matched_count = len(ungrouped_props)
+            skipped_count = 0
         
         # Get game environment classifications with favored team info
         try:
@@ -688,6 +755,12 @@ def group_props_by_matchup(props_data):
         # Add game environment labels and team status to props
         enhanced_grouped = {}
         for matchup_key, props in grouped.items():
+            # Skip environment enhancement for UNGROUPED props
+            if matchup_key == "UNGROUPED":
+                enhanced_grouped[matchup_key] = props
+                print(f"[DEBUG] UNGROUPED: {len(props)} props")
+                continue
+                
             env_data = game_environments.get(matchup_key, {})
             environment_label = env_data.get('environment', 'Neutral')
             favored_team_abbr = env_data.get('favored_team', '')
