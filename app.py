@@ -66,6 +66,20 @@ memory_cache = {}  # In-memory fallback cache
 redis_healthy = False
 redis_last_check = 0
 
+TEAM_NORMALIZE = {"ARI":"ARZ","WSN":"WSH","CWS":"CHW","KC":"KCR","TB":"TBR","SF":"SFG","SD":"SDP"}
+def _norm(t): 
+    t = (t or "").upper()
+    return TEAM_NORMALIZE.get(t, t)
+
+def _relaxed_group(enhanced):
+    out = {}
+    for p in enhanced:
+        date = p.get("game_date") or p.get("date")
+        team = _norm(p.get("team") or p.get("team_abbr"))
+        key = f"{date}:{team}"
+        out.setdefault(key, []).append({**p, "match_type": "relaxed"})
+    return out
+
 def init_redis():
     """Initialize Redis connection with proper ping validation"""
     global redis, redis_healthy
