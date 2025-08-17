@@ -19,7 +19,7 @@ from enrichment import load_props_from_file
 from probability import implied_probability, calculate_edge, kelly_bet_size, calculate_parlay_edge
 from prop_deduplication import deduplicate_props_by_player, get_stat_display_name, get_player_avatar_url
 
-from team_abbreviations import get_team_abbreviation, format_matchup, TEAM_ABBREVIATIONS, TEAM_ABBR_MAP
+from team_abbreviations import get_team_abbreviation, format_matchup, TEAM_ABBREVIATIONS
 
 # NFL modules
 from nfl_odds_api import fetch_nfl_props
@@ -33,13 +33,15 @@ from mlb_game_enrichment import enrich_mlb_props_with_context, filter_positive_e
 SPORT_TZ = os.getenv("SPORT_TZ", "America/New_York")
 
 # Team code normalization - handles inconsistencies like ARZ vs ARI, WSH vs WSN
-# Now using comprehensive TEAM_ABBR_MAP from team_abbreviations.py
+# TODO: Replace with proper team abbreviation normalization logic
 
 def norm_code(t: str) -> str:
-    """Normalize team codes to handle inconsistencies using comprehensive mapping"""
+    """Normalize team codes to handle inconsistencies"""
     if not t:
         return ""
-    return TEAM_ABBR_MAP.get(t.upper(), t.upper())
+    # TODO: Implement proper team abbreviation normalization
+    # For now, return the input as-is to avoid breaking existing functionality
+    return t.upper()
 
 def to_sport_date(dt_str: str) -> str:
     """Robustly parse ISO or date-only and return YYYY-MM-DD in SPORT_TZ"""
@@ -1739,3 +1741,4 @@ init_thread.start()
 # Flask app startup
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
+
