@@ -19,7 +19,7 @@ from enrichment import load_props_from_file
 from probability import implied_probability, calculate_edge, kelly_bet_size, calculate_parlay_edge
 from prop_deduplication import deduplicate_props_by_player, get_stat_display_name, get_player_avatar_url
 
-from team_abbreviations import get_team_abbreviation, format_matchup, TEAM_ABBREVIATIONS
+from team_abbreviations import get_team_abbreviation, format_matchup, TEAM_ABBREVIATIONS, normalize_team_abbr, TEAM_ABBR_MAP
 
 # NFL modules
 from nfl_odds_api import fetch_nfl_props
@@ -33,12 +33,11 @@ from mlb_game_enrichment import enrich_mlb_props_with_context, filter_positive_e
 SPORT_TZ = os.getenv("SPORT_TZ", "America/New_York")
 
 # Team code normalization - handles inconsistencies like ARZ vs ARI, WSH vs WSN
-TEAM_NORM = {"ARZ":"ARI","WSH":"WSN","CHW":"CWS","KCR":"KC","TBR":"TB","SDP":"SD","SFG":"SF"}
+# Now using comprehensive TEAM_ABBR_MAP from team_abbreviations.py
 
 def norm_code(t: str) -> str:
-    """Normalize team codes to handle inconsistencies"""
-    t = (t or "").upper()
-    return TEAM_NORM.get(t, t)
+    """Normalize team codes to handle inconsistencies using comprehensive mapping"""
+    return normalize_team_abbr(t)
 
 def to_sport_date(dt_str: str) -> str:
     """Robustly parse ISO or date-only and return YYYY-MM-DD in SPORT_TZ"""
@@ -720,13 +719,17 @@ def group_props_by_matchup(props_data):
             logger.error(f"Could not load player-team mapping: {e}")
             player_team_map = {}
         
-        # Build matchup team sets for fast lookup
+        # Build matchup team sets for fast lookup with normalized team codes
         matchup_teams = {}
         for matchup_info in real_matchups:
             matchup_key = matchup_info['matchup']
             home_team = matchup_info['home_team']  
             away_team = matchup_info['away_team']
-            matchup_teams[matchup_key] = {home_team, away_team}
+            # Store both original and normalized team names for flexible matching
+            matchup_teams[matchup_key] = {
+                home_team, away_team,
+                norm_code(home_team), norm_code(away_team)
+            }
         
         # Group props by STRICT player-team validation with normalization
         grouped = {}
@@ -782,22 +785,11 @@ def group_props_by_matchup(props_data):
             
             # Find which matchup this player's team belongs to
             matched_matchup = None
-            for matchup_info in real_matchups:
-                matchup_key = matchup_info['matchup']
-                home_team = matchup_info['home_team']
-                away_team = matchup_info['away_team']
-                
-                # Try exact match first
-                if player_team in {home_team, away_team}:
+            for matchup_key, teams_in_matchup in matchup_teams.items():
+                # Try both exact and normalized matching
+                if player_team in teams_in_matchup or norm_player_team in teams_in_matchup:
                     matched_matchup = matchup_key
                     break
-                else:
-                    # Try normalized team name matching
-                    norm_home = norm_code(home_team)
-                    norm_away = norm_code(away_team)
-                    if norm_player_team in {norm_home, norm_away}:
-                        matched_matchup = matchup_key
-                        break
             
             # Only include prop if player's team is in a real matchup
             if matched_matchup:
@@ -915,7 +907,7 @@ def group_props_by_matchup(props_data):
                 # Get player's team from mapping
                 player_name = prop.get('player', '')
                 player_team_full = player_team_map.get(player_name, '')
-                player_team_abbr = TEAM_ABBREVIATIONS.get(player_team_full, player_team_full[:3].upper() if player_team_full else '')
+                player_team_abbr = norm_code(TEAM_ABBREVIATIONS.get(player_team_full, player_team_full[:3].upper() if player_team_full else ''))
                 
                 # Determine if player's team is favored
                 is_favored = False
@@ -950,6 +942,8 @@ def group_props_by_matchup(props_data):
         logger.debug("[GATE DIAG] matched=%s skipped=%s reasons=%s", matched_count, skipped_count, dict(reasons))
         logger.debug("[GATE DIAG] teams_only_in_props=%s teams_only_in_ctx=%s", 
                      sorted(teams_only_in_props), sorted(teams_only_in_ctx))
+        logger.debug("[GATE DIAG] total_props=%s total_contexts=%s", len(props_data), len(context_keys))
+        logger.debug("[GATE DIAG] available_matchups=%s", list(matchup_teams.keys()))
         
         return enhanced_grouped
         
