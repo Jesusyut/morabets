@@ -300,17 +300,17 @@
             noPropsMsg.style.display = 'none';
 
             try {
-                const response = await fetch('/player_props')
+                const response = await fetch('/player_props?league=mlb&tz=ET')
                     .catch(err => {
                         console.error('Failed to fetch props:', err);
                         throw err;
                     });
-                const props = await response.json();
+                const data = await response.json();
                 
-                console.log(`[DEBUG] Loaded ${props.length} props from API`);
+                console.log(`[DEBUG] Loaded ${data.count} props from API`);
                 
-                allProps = props;
-                filteredProps = props;
+                allProps = data.props || [];
+                filteredProps = data.props || [];
                 
                 populateFilters();
                 displayProps();

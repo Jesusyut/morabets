@@ -51,6 +51,7 @@
     
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .stats-card {
             background: var(--bs-dark);
@@ -131,69 +132,7 @@
         .confidence-medium { color: #f59e0b; }
         .confidence-low { color: #ef4444; }
 
-        /* New flat props styling */
-        .prop-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            margin-bottom: 0.5rem;
-            background: var(--bs-dark);
-            border: 1px solid var(--bs-border-color);
-            border-radius: 0.5rem;
-            transition: all 0.3s ease;
-        }
-        .prop-row:hover {
-            transform: translateY(-1px);
-            border-color: var(--bs-primary);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-        .prop-row .left {
-            flex: 1;
-        }
-        .prop-row .right {
-            text-align: right;
-            min-width: 200px;
-        }
-        .prop-row .player {
-            font-weight: bold;
-            color: var(--bs-primary);
-        }
-        .prop-row .meta {
-            font-size: 0.9rem;
-            color: var(--bs-muted);
-        }
-        .prop-row .tier {
-            font-weight: bold;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-        }
-        .prop-row .tier.green {
-            background: #22c55e;
-            color: white;
-        }
-        .prop-row .tier.blue {
-            background: #3b82f6;
-            color: white;
-        }
-        .prop-row .badges {
-            margin: 0.25rem 0;
-        }
-        .prop-row .chip {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--bs-light);
-            padding: 0.125rem 0.375rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            margin-right: 0.25rem;
-        }
-        .prop-row .ctx {
-            font-size: 0.8rem;
-            color: var(--bs-muted);
-        }
+
 
         .status-indicator {
             width: 8px;
@@ -502,8 +441,8 @@
             // No additional content loading needed
         });
 
-        async function fetchFlatProps(league, isoDate) {
-            const res = await fetch(`/player_props?league=${league}&date=${isoDate}`, { cache: "no-store" });
+        async function fetchFlatProps(league, tz = "ET") {
+            const res = await fetch(`/player_props?league=${league}&tz=${tz}`, { cache: "no-store" });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             // defensive: normalize
@@ -522,8 +461,7 @@
                 // Update total props count using new flat endpoint
                 try {
                     const league = currentSport || "mlb";
-                    const isoDate = new Date().toISOString().slice(0,10);
-                    const { count } = await fetchFlatProps(league, isoDate);
+                    const { count } = await fetchFlatProps(league, "ET");
                     document.getElementById('total-props').textContent = count.toLocaleString();
                 } catch (e) {
                     document.getElementById('total-props').textContent = '--';
@@ -543,30 +481,61 @@
                 container.innerHTML = `<div class="empty">No props available.</div>`;
                 return;
             }
-            container.innerHTML = props.map(p => {
+            
+            function pct(v, fallback = "—") {
+                if (typeof v !== "number" || isNaN(v)) return fallback;
+                return `${Math.round(v * 100)}%`;
+            }
+            
+            function tierClass(tier) {
+                const t = (tier || "").toLowerCase();
+                if (t === "green") return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+                if (t === "blue") return "bg-blue-50 text-blue-700 ring-1 ring-blue-200";
+                return "bg-slate-50 text-slate-600 ring-1 ring-slate-200";
+            }
+            
+            container.innerHTML = props.map((p, i) => {
+                const ctx = p.position_context || {};
+                const badges = (p.badges || []).filter(Boolean);
                 const tier = p.position_tier || "";
-                const ctx  = p.position_context || {};
-                const badges = (p.badges || []).filter(Boolean).map(b => `<span class="chip">${b}</span>`).join(" ");
+                const market = (p.market || "").replaceAll("_", " ");
+                
                 return `
-                    <div class="prop-row">
-                        <div class="left">
-                            <div class="player">${p.player || ""}</div>
-                            <div class="meta">${p.market || ""} • ${p.line ?? ""}</div>
+                    <div class="flex items-start justify-between rounded-2xl p-4 ring-1 ring-slate-200 bg-white hover:shadow-sm transition">
+                        <div class="flex flex-col gap-1">
+                            <div class="text-slate-900 font-medium">${p.player ?? ""}</div>
+                            <div class="text-slate-500 text-sm">
+                                ${market}${p.line != null ? ` • ${p.line}` : ""}
+                            </div>
+                            <div class="mt-1 flex flex-wrap gap-1">
+                                ${badges.map(b => `
+                                    <span class="px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-700 ring-1 ring-slate-200">
+                                        ${b}
+                                    </span>
+                                `).join("")}
+                            </div>
                         </div>
-                        <div class="right">
-                            <div class="tier ${tier.toLowerCase()}">${tier}</div>
-                            <div class="badges">${badges}</div>
-                            <div class="ctx">Win%: ${(ctx.team_true_win ?? 0) * 100 | 0} • Over%: ${(ctx.true_prob_over ?? 0) * 100 | 0}</div>
+
+                        <div class="flex flex-col items-end gap-1">
+                            <div class="px-2 py-0.5 text-xs rounded-full ${tierClass(tier)}">
+                                ${tier || "—"}
+                            </div>
+                            <div class="text-xs text-slate-500">
+                                Win% ${pct(ctx.team_true_win)} • Over% ${pct(ctx.true_prob_over)}
+                            </div>
+                            ${typeof p.position_score === "number" ? `
+                                <div class="text-[11px] text-slate-400">Score ${p.position_score.toFixed(3)}</div>
+                            ` : ""}
                         </div>
-                    </div>`;
+                    </div>
+                `;
             }).join("");
         }
 
         async function loadPlayerProps() {
             try {
                 const league = currentSport || "mlb";
-                const isoDate = new Date().toISOString().slice(0,10);
-                const { count, props } = await fetchFlatProps(league, isoDate);
+                const { count, props } = await fetchFlatProps(league, "ET");
 
                 // Update top-right "Total MLB Props" badge:
                 const totalBadge = document.querySelector("[data-props-total]");
@@ -705,88 +674,8 @@
                 return;
             }
             
-            const propCards = propsToShow.map(prop => {
-                // Handle different hit rate formats from backend
-                let hitRate = 0;
-                if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
-                    hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
-                } else {
-                    hitRate = parseFloat(prop.contextual_hit_rate) || 0;
-                }
-                
-                const confidenceClass = hitRate >= 0.7 ? 'confidence-high' : 
-                                       hitRate >= 0.5 ? 'confidence-medium' : 'confidence-low';
-                const confidenceText = hitRate >= 0.7 ? 'High' : 
-                                      hitRate >= 0.5 ? 'Medium' : 'Low';
-                
-                // Map backend fields to display values
-                const playerName = prop.player || prop.player_name || 'Unknown Player';
-                const statType = prop.stat || prop.stat_type || '';
-                const line = prop.line || prop.point || 'N/A';
-                const bookmaker = prop.bookmaker || prop.sportsbook || 'Multiple Books';
-                const team = prop.team || '';
-                
-                // Team status badge
-                let teamStatusBadge = '';
-                const teamStatus = prop.team_status || 'unknown';
-                const teamAbbr = prop.team_abbr || '';
-                
-                if (teamStatus === 'favored' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-success ms-2" style="font-size: 0.7em;">
-                        <i class="fas fa-crown me-1"></i>${teamAbbr} FAV
-                    </span>`;
-                } else if (teamStatus === 'underdog' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-warning ms-2" style="font-size: 0.7em;">
-                        <i class="fas fa-dog me-1"></i>${teamAbbr} DOG
-                    </span>`;
-                }
-                
-                return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="prop-card card bg-dark border-secondary">
-                            <div class="card-body">
-                                <div class="mb-2 d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <h6 class="mb-0">${playerName}</h6>
-                                        <small class="text-muted">${team}</small>
-                                    </div>
-                                    ${teamStatusBadge}
-                                </div>
-                                
-                                <div class="mb-2">
-                                    <strong>${getHumanStatName(statType)}</strong>
-                                    <span class="float-end">
-                                        <span class="badge bg-primary">${line}</span>
-                                    </span>
-                                </div>
-                                
-                                <div class="row mb-2">
-                                    <div class="col-6">
-                                        <small class="text-muted">Hit Rate</small><br>
-                                        <span class="${confidenceClass}">${(hitRate * 100).toFixed(1)}%</span>
-                                    </div>
-                                    <div class="col-6 text-end">
-                                        <small class="text-muted">Confidence</small><br>
-                                        <span class="${confidenceClass}">${confidenceText}</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="text-center">
-                                    <small class="text-warning">
-                                        <i class="fas fa-building me-1"></i>${bookmaker}
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="row">
-                    ${propCards}
-                </div>
-            `;
+            // Use the new renderPropsList function for flat display
+            renderPropsList(propsToShow);
             
             // Show/hide load more button
             const loadMoreBtn = document.getElementById('load-more-props');
@@ -797,161 +686,9 @@
             }
         }
 
-        function displayTodaysGames() {
-            if (!matchupData) {
-                // Fallback to regular display if no matchup data
-                displayRegularProps();
-                return;
-            }
-            
-            // Reset filter controls when returning to games view
-            document.getElementById('confidence-filter').value = '';
-            document.getElementById('player-search').value = '';
-            
-            // Reset header back to main view
-            document.getElementById('games-header').innerHTML = `
-                <i class="fas fa-users text-primary me-2"></i>Today's Games
-                <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${currentSport === 'mlb' ? 'MLB' : 'NFL'} player props</small>
-            `;
-            
-            const matchupCards = Object.entries(matchupData).map(([matchup, props]) => {
-                const propCount = Array.isArray(props) ? props.length : 0;
-                const sportIcon = currentSport === 'mlb' ? 'fas fa-baseball' : 'fas fa-football-ball';
-                
-                // Parse matchup and environment label
-                let displayMatchup = matchup;
-                let environmentLabel = '';
-                let environmentClass = '';
-                
-                if (matchup.includes(' — ')) {
-                    const parts = matchup.split(' — ');
-                    displayMatchup = parts[0];
-                    environmentLabel = parts[1];
-                    
-                    // Set environment styling
-                    if (environmentLabel === 'High Scoring') {
-                        environmentClass = 'bg-success';
-                    } else if (environmentLabel === 'Low Scoring') {
-                        environmentClass = 'bg-danger';
-                    } else {
-                        environmentClass = 'bg-secondary';
-                    }
-                }
-                
-                // Parse team names and apply favored highlighting
-                const teamParts = displayMatchup.split(' @ ');
-                let awayTeam = teamParts[0] || '';
-                let homeTeam = teamParts[1] || '';
-                
-                // Get favored team from environment data
-                let favoredTeam = null;
-                if (environmentData && environmentData[displayMatchup]) {
-                    favoredTeam = environmentData[displayMatchup].favored_team;
-                }
-                
-                // Apply favored styling
-                const awayClass = favoredTeam === awayTeam ? 'favored' : '';
-                const homeClass = favoredTeam === homeTeam ? 'favored' : '';
-                
-                const environmentBadge = environmentLabel ? 
-                    `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>` : '';
-                
-                return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card bg-dark border-secondary matchup-card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title text-primary">
-                                    <i class="${sportIcon} me-2"></i><span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${environmentBadge}
-                                </h5>
-                                <p class="card-text text-muted mb-3">
-                                    ${propCount} props available
-                                </p>
-                                <button class="btn btn-outline-primary w-100" onclick="showMatchupProps('${matchup}')">
-                                    View Props
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            const totalProps = allProps.length;
-            document.getElementById('prop-count-display').textContent = `${totalProps} props`;
-            
-            const sportLabel = currentSport === 'mlb' ? 'MLB' : 'NFL';
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="mb-4">
-                    <h4 class="text-center text-muted">Today's ${sportLabel} Games</h4>
-                    <p class="text-center text-muted">Click on any matchup to view player props</p>
-                </div>
-                <div class="row">
-                    ${matchupCards}
-                </div>
-            `;
-        }
+
         
-        function showMatchupProps(matchup) {
-            if (!matchupData || !matchupData[matchup]) return;
-            
-            const matchupProps = matchupData[matchup];
-            
-            // Apply filtering to matchup props to preserve hits filtering
-            allProps = matchupProps;
-            
-            // Apply default High Confidence filter
-            document.getElementById('confidence-filter').value = 'high';
-            applyFilters();
-            
-            currentPropsDisplayed = 50;
-            
-            displayProps();
-            updatePropCount();
-            
-            // Parse matchup for display in header
-            let displayMatchup = matchup;
-            let environmentLabel = '';
-            let environmentClass = '';
-            
-            if (matchup.includes(' — ')) {
-                const parts = matchup.split(' — ');
-                displayMatchup = parts[0];
-                environmentLabel = parts[1];
-                
-                // Set environment styling
-                if (environmentLabel === 'High Scoring') {
-                    environmentClass = 'bg-success';
-                } else if (environmentLabel === 'Low Scoring') {
-                    environmentClass = 'bg-danger';
-                } else {
-                    environmentClass = 'bg-secondary';
-                }
-            }
-            
-            // Parse teams and apply favored highlighting
-            const teamParts = displayMatchup.split(' @ ');
-            let awayTeam = teamParts[0] || '';
-            let homeTeam = teamParts[1] || '';
-            
-            // Get favored team from environment data
-            let favoredTeam = null;
-            if (environmentData && environmentData[displayMatchup]) {
-                favoredTeam = environmentData[displayMatchup].favored_team;
-            }
-            
-            // Apply favored styling
-            const awayClass = favoredTeam === awayTeam ? 'favored' : '';
-            const homeClass = favoredTeam === homeTeam ? 'favored' : '';
-            
-            const environmentBadge = environmentLabel ? 
-                `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>` : '';
-            
-            // Update header with back arrow
-            document.getElementById('games-header').innerHTML = `
-                <i class="fas fa-arrow-left text-primary me-2" style="cursor: pointer;" onclick="resetToSportHome()"></i>
-                <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${environmentBadge}
-                <small class="text-muted d-block fs-6 mt-1">${currentSport === 'mlb' ? 'MLB' : 'NFL'} Player Props</small>
-            `;
-        }
+
         
         function displayRegularProps() {
             allFilteredProps = allProps.slice(0, currentPropsDisplayed);
