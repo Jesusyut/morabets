@@ -132,6 +132,29 @@
         .confidence-medium { color: #f59e0b; }
         .confidence-low { color: #ef4444; }
 
+        /* New props panel styles */
+        .props-panel { margin-top: 1.25rem; }
+        .tabs-and-controls{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:space-between}
+        .tabs{display:flex;gap:.5rem}
+        .tab{padding:.5rem .9rem;border:1px solid #2c3e50;border-radius:.6rem;background:#0f172a;color:#e2e8f0;cursor:pointer}
+        .tab.active{background:#1e293b;color:#fff;border-color:#334155}
+        .controls{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+        .ctrl{padding:.5rem .6rem;border:1px solid #334155;border-radius:.5rem;background:#0b1220;color:#e2e8f0}
+        .count-badge{padding:.35rem .6rem;border:1px solid #334155;border-radius:999px;color:#94a3b8}
+        .props-list{display:flex;flex-direction:column;gap:.6rem;margin-top:1rem}
+        .prop-card{display:flex;justify-content:space-between;align-items:flex-start;padding:.85rem 1rem;border:1px solid #334155;border-radius:1rem;background:#0b1220}
+        .prop-left{display:flex;flex-direction:column;gap:.25rem}
+        .prop-player{color:#f8fafc;font-weight:600}
+        .prop-meta{color:#cbd5e1;font-size:.9rem}
+        .prop-badges{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem}
+        .badge{font-size:.7rem;padding:.2rem .45rem;border:1px solid #334155;border-radius:999px;color:#cbd5e1}
+        .prop-right{display:flex;flex-direction:column;align-items:flex-end;gap:.25rem}
+        .label{font-size:.75rem;padding:.2rem .5rem;border:1px solid #334155;border-radius:999px;color:#e2e8f0}
+        .label.best{border-color:#14b8a6;color:#14b8a6}
+        .label.neutral{border-color:#94a3b8;color:#94a3b8}
+        .small{color:#94a3b8;font-size:.75rem}
+        .empty-state{padding:1rem;border:1px dashed #334155;border-radius:.8rem;color:#94a3b8;text-align:center}
+
 
 
         .status-indicator {
@@ -301,55 +324,33 @@
                                 </ul>
                             </div>
                             
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h2 id="games-header" style="cursor: pointer;" onclick="resetToSportHome()">
-                                    <i class="fas fa-users text-primary me-2"></i>Today's Games
-                                    <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">Player props</small>
-                                </h2>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-primary" id="prop-count-display">Loading...</span>
-                                    <button id="load-more-props" class="btn btn-outline-primary" style="display: none;">
-                                        Load More Props
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Search and Filter Controls -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-5">
-                                    <input type="text" 
-                                           id="player-search" 
-                                           class="form-control" 
-                                           placeholder="Search players or stats..." 
-                                           onkeyup="applyFilters()">
-                                </div>
-                                <div class="col-md-4">
-                                    <select id="confidence-filter" class="form-select" onchange="applyFilters()">
-                                        <option value="">All Confidence Levels</option>
-                                        <option value="high">High Confidence (≥70%)</option>
-                                        <option value="medium">Medium Confidence (50-69%)</option>
-                                        <option value="low">Low Confidence (<50%)</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="text-muted small text-center">
-                                        <div id="prop-count-display">-- props</div>
+                            <section id="props-panel" class="props-panel">
+                                <div class="tabs-and-controls">
+                                    <div class="tabs">
+                                        <button class="tab active" data-league="mlb">MLB Props</button>
+                                        <button class="tab" data-league="nfl">NFL Props</button>
+                                    </div>
+
+                                    <div class="controls">
+                                        <input id="search-input" class="ctrl" type="text" placeholder="Search players or stats…" />
+                                        <select id="confidence-select" class="ctrl">
+                                            <option value="0">All confidence</option>
+                                            <option value="0.70">High (≥70%)</option>
+                                            <option value="0.60">Medium (≥60%)</option>
+                                            <option value="0.50">Any (≥50%)</option>
+                                        </select>
+                                        <select id="matchup-select" class="ctrl" hidden>
+                                            <option value="">All matchups</option>
+                                        </select>
+                                        <span class="count-badge"><span data-props-total>0</span> props</span>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-12">
-                            <div id="props-container" class="loading">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading props...</span>
+
+                                <div id="props-lists">
+                                    <div id="list-mlb" class="props-list"></div>
+                                    <div id="list-nfl" class="props-list" style="display:none"></div>
                                 </div>
-                                <p class="mt-3">Loading player props...</p>
-                            </div>
-                        </div>
-                    </div>
+                            </section>
                 </div>
             </div>
 
@@ -441,373 +442,234 @@
             // No additional content loading needed
         });
 
-        async function fetchFlatProps(league, tz = "ET") {
-            const res = await fetch(`/player_props?league=${league}&tz=${tz}`, { cache: "no-store" });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            console.log("API response:", data);
-            // defensive: normalize
-            const props = Array.isArray(data.props) ? data.props : [];
-            return { count: data.count ?? props.length, props };
-        }
-
-        async function updatePlatformStatus() {
-            try {
-                const statusResponse = await fetch('/api/status');
-                const statusData = await statusResponse.json();
-                
-                // Update last updated time
-                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
-                
-                // Update total props count using new flat endpoint
-                try {
-                    const league = currentSport || "mlb";
-                    const { count } = await fetchFlatProps(league, "ET");
-                    document.getElementById('total-props').textContent = count.toLocaleString();
-                } catch (e) {
-                    document.getElementById('total-props').textContent = '--';
-                }
-                
-            } catch (error) {
-                console.error('Error updating platform status:', error);
-            }
-        }
 
 
+        // New vanilla JS for props panel
+        (function(){
+            const API = (league) => `/player_props?league=${league}&tz=ET`;
 
-        function renderPropsList(props) {
-            const container = document.querySelector("#props-container");
-            if (!container) return;
-            if (!props.length) {
-                container.innerHTML = `<div class="empty">No props available.</div>`;
-                return;
+            const state = {
+                activeLeague: 'mlb',
+                cache: { mlb: { loaded:false, items:[] }, nfl: { loaded:false, items:[] } },
+                search: '',
+                minConf: 0,
+                matchup: ''
+            };
+
+            const els = {
+                tabs: document.querySelectorAll('.tab'),
+                mlb: document.getElementById('list-mlb'),
+                nfl: document.getElementById('list-nfl'),
+                search: document.getElementById('search-input'),
+                conf: document.getElementById('confidence-select'),
+                matchup: document.getElementById('matchup-select'),
+                total: document.querySelector('[data-props-total]')
+            };
+
+            // ----- Utilities -----
+            function safeNum(x, d=0){ return (typeof x==='number' && !isNaN(x)) ? x : d; }
+            function edgeScore(p){
+                // primary: position_score
+                const ps = safeNum(p.position_score, NaN);
+                if (!isNaN(ps)) return ps;
+                // fallback: engine_prob - prop_implied
+                const eg = safeNum(p?.position_context?.engine_prob, NaN);
+                const ip = safeNum(p?.position_context?.prop_implied, NaN);
+                if (!isNaN(eg) && !isNaN(ip)) return eg - ip;
+                // fallback: engine_prob
+                if (!isNaN(eg)) return eg;
+                return 0;
             }
-            
-            function pct(v, fallback = "—") {
-                if (typeof v !== "number" || isNaN(v)) return fallback;
-                return `${Math.round(v * 100)}%`;
-            }
-            
-            function tierClass(tier) {
-                const t = (tier || "").toLowerCase();
-                if (t === "green") return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
-                if (t === "blue") return "bg-blue-50 text-blue-700 ring-1 ring-blue-200";
-                return "bg-slate-50 text-slate-600 ring-1 ring-slate-200";
-            }
-            
-            container.innerHTML = props.map((p, i) => {
+            function strongContext(p){
                 const ctx = p.position_context || {};
-                const badges = (p.badges || []).filter(Boolean);
-                const tier = p.position_tier || "";
-                const market = (p.market || "").replaceAll("_", " ");
-                
-                return `
-                    <div class="flex items-start justify-between rounded-2xl p-4 ring-1 ring-slate-200 bg-white hover:shadow-sm transition">
-                        <div class="flex flex-col gap-1">
-                            <div class="text-slate-900 font-medium">${p.player ?? ""}</div>
-                            <div class="text-slate-500 text-sm">
-                                ${market}${p.line != null ? ` • ${p.line}` : ""}
-                            </div>
-                            <div class="mt-1 flex flex-wrap gap-1">
-                                ${badges.map(b => `
-                                    <span class="px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-700 ring-1 ring-slate-200">
-                                        ${b}
-                                    </span>
-                                `).join("")}
-                            </div>
-                        </div>
+                return (safeNum(ctx.team_true_win) >= 0.58) || (safeNum(ctx.true_prob_over) >= 0.58);
+            }
+            function labelFor(p){
+                return strongContext(p) ? {txt:"Best position", cls:"best"} : {txt:"Neutral—Player Edge", cls:"neutral"};
+            }
+            function confFrom(p){
+                // confidence as a probability proxy: prefer engine_prob, else position_score (clamped), else 0
+                const eg = safeNum(p?.position_context?.engine_prob, NaN);
+                if (!isNaN(eg)) return eg;
+                const ps = safeNum(p.position_score, NaN);
+                if (!isNaN(ps)) return Math.max(0, Math.min(1, ps));
+                return 0;
+            }
+            function matchupLabel(p){
+                if (p.matchup) return p.matchup;
+                const g = p.game || p.game_label;
+                if (g) return g;
+                const ctx = p.position_context || {};
+                const fav = ctx.favored_team;
+                const home = ctx.home_team || p.home_team;
+                const away = ctx.away_team || p.away_team;
+                if (home && away) return `${away} @ ${home}`;
+                if (fav) return `${fav} (fav)`;
+                return '';
+            }
 
-                        <div class="flex flex-col items-end gap-1">
-                            <div class="px-2 py-0.5 text-xs rounded-full ${tierClass(tier)}">
-                                ${tier || "—"}
-                            </div>
-                            <div class="text-xs text-slate-500">
-                                Win% ${pct(ctx.team_true_win)} • Over% ${pct(ctx.true_prob_over)}
-                            </div>
-                            ${typeof p.position_score === "number" ? `
-                                <div class="text-[11px] text-slate-400">Score ${p.position_score.toFixed(3)}</div>
-                            ` : ""}
-                        </div>
-                    </div>
-                `;
-            }).join("");
-        }
+            function sortItems(items){
+                // Sort by: best position first, then edgeScore desc, then player asc
+                return [...items].sort((a,b)=>{
+                    const aBest = strongContext(a) ? 0 : 1;
+                    const bBest = strongContext(b) ? 0 : 1;
+                    if (aBest !== bBest) return aBest - bBest;
+                    const ea = edgeScore(a), eb = edgeScore(b);
+                    if (eb !== ea) return eb - ea;
+                    return String(a.player||'').localeCompare(String(b.player||''));
+                });
+            }
 
-        async function loadPlayerProps() {
-            try {
-                const league = currentSport || "mlb";
-                const { count, props } = await fetchFlatProps(league, "ET");
+            function buildMatchups(items){
+                const set = new Set();
+                items.forEach(p => {
+                    const m = matchupLabel(p);
+                    if (m) set.add(m);
+                });
+                return [...set].sort();
+            }
 
-                // Update top-right "Total MLB Props" badge:
-                const totalBadge = document.querySelector("[data-props-total]");
-                if (totalBadge) totalBadge.textContent = String(count);
+            // ----- Fetch & cache -----
+            async function loadLeague(league){
+                const bucket = state.cache[league];
+                if (bucket.loaded) return bucket.items;
+                const res = await fetch(API(league), { cache:"no-store" });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const items = Array.isArray(data.props) ? data.props : [];
+                bucket.items = sortItems(items);
+                bucket.loaded = true;
+                return bucket.items;
+            }
 
-                // Store props for filtering
-                allProps = props;
-                matchupData = null; // No longer using grouped data
-                
-                // Apply Hits line filtering immediately after loading data
-                allProps = allProps.filter(prop => {
-                    const statType = prop.stat || prop.stat_type || '';
-                    const line = parseFloat(prop.line || prop.point || 0);
-                    
-                    // Filter out irrelevant Hits lines (keep only 0.5 and 1.5)
-                    if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) {
-                        return false;
+            // ----- Filters -----
+            function applyFilters(items){
+                const q = state.search.trim().toLowerCase();
+                const min = state.minConf;
+                const m = state.matchup;
+
+                return items.filter(p=>{
+                    if (q){
+                        const hay = `${p.player||''} ${p.market||''} ${p.stat||''}`.toLowerCase();
+                        if (!hay.includes(q)) return false;
+                    }
+                    if (min > 0 && confFrom(p) < min) return false;
+                    if (m){
+                        const ml = matchupLabel(p);
+                        if (ml !== m) return false;
                     }
                     return true;
                 });
-                
-                // Update matchupData with filtered props
-                if (matchupData) {
-                    const filteredMatchupData = {};
-                    Object.entries(matchupData).forEach(([matchup, props]) => {
-                        if (Array.isArray(props)) {
-                            filteredMatchupData[matchup] = props.filter(prop => {
-                                const statType = prop.stat || prop.stat_type || '';
-                                const line = parseFloat(prop.line || prop.point || 0);
-                                
-                                // Filter out irrelevant Hits lines (keep only 0.5 and 1.5)
-                                if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) {
-                                    return false;
-                                }
-                                return true;
-                            });
-                        }
-                    });
-                    matchupData = filteredMatchupData;
-                }
-                
-                if (allProps.length === 0) {
-                    document.getElementById('props-container').innerHTML = `
-                        <div class="alert alert-info text-center">
-                            <h5><i class="fas fa-info-circle me-2"></i>No Props Available</h5>
-                            <p class="mb-0">No player props currently available. Check back later.</p>
-                            <p class="mt-2 text-muted small">Want a custom breakdown? (Coming soon: Mora Assist)</p>
+            }
+
+            // ----- Render -----
+            function badgesHTML(p){
+                const badges = Array.isArray(p.badges) ? p.badges.filter(Boolean) : [];
+                if (!badges.length) return '';
+                return `<div class="prop-badges">${badges.map(b=>`<span class="badge">${b}</span>`).join('')}</div>`;
+            }
+
+            function cardHTML(p){
+                const ctx = p.position_context || {};
+                const label = labelFor(p);
+                const line = (p.line != null) ? String(p.line) : '';
+                const stat = (p.market || '').replaceAll('_', ' ');
+
+                const win = safeNum(ctx.team_true_win) ? `${Math.round(safeNum(ctx.team_true_win)*100)}%` : '—';
+                const over = safeNum(ctx.true_prob_over) ? `${Math.round(safeNum(ctx.true_prob_over)*100)}%` : '—';
+
+                return `
+                    <div class="prop-card">
+                        <div class="prop-left">
+                            <div class="prop-player">${p.player || ''}</div>
+                            <div class="prop-meta">${stat}${line ? ` • ${line}` : ''}</div>
+                            ${badgesHTML(p)}
                         </div>
-                    `;
+                        <div class="prop-right">
+                            <div class="label ${label.cls}">${label.txt}</div>
+                            <div class="small">Win% ${win} • Over% ${over}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderList(league, items){
+                const listEl = (league==='mlb') ? els.mlb : els.nfl;
+                const filtered = applyFilters(items);
+                els.total.textContent = String(filtered.length);
+
+                if (!filtered.length){
+                    listEl.innerHTML = `<div class="empty-state">No props match your filters.</div>`;
                     return;
                 }
-                
-                // Set default High Confidence filter for Player Props
-                document.getElementById('confidence-filter').value = 'high';
-                
-                // Render flat list (no matchup grouping)
-                renderPropsList(allProps);
-                
-            } catch (error) {
-                console.error('Error loading player props:', error);
-                document.getElementById('props-container').innerHTML = `
-                    <div class="alert alert-danger">
-                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Error Loading Props</h5>
-                        <p class="mb-0">Unable to load player props. Please try again later.</p>
-                    </div>
-                `;
+                listEl.innerHTML = filtered.map(cardHTML).join('');
             }
-        }
 
-        function applyFilters() {
-            const searchTerm = document.getElementById('player-search').value.toLowerCase().trim();
-            const confidenceFilter = document.getElementById('confidence-filter').value;
-            
-            if (!allProps || allProps.length === 0) {
-                return;
-            }
-            
-            // Filter the props data directly
-            allFilteredProps = allProps.filter(prop => {
-                let shouldShow = true;
-                
-                // Search filter
-                if (searchTerm) {
-                    const playerName = (prop.player || prop.player_name || '').toLowerCase();
-                    const statType = (prop.stat || prop.stat_type || '').toLowerCase();
-                    const humanStat = getHumanStatName(prop.stat || prop.stat_type).toLowerCase();
-                    
-                    shouldShow = shouldShow && (
-                        playerName.includes(searchTerm) ||
-                        statType.includes(searchTerm) ||
-                        humanStat.includes(searchTerm)
-                    );
+            function populateMatchups(items){
+                const opts = buildMatchups(items);
+                if (opts.length <= 1){
+                    els.matchup.hidden = true;
+                    els.matchup.value = '';
+                    state.matchup = '';
+                    return;
                 }
-                
-                // Filter out irrelevant Hits lines (keep only 0.5 and 1.5)
-                const statType = prop.stat || prop.stat_type || '';
-                const line = parseFloat(prop.line || prop.point || 0);
-                if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) {
-                    shouldShow = false;
+                // keep prior selection if still present
+                const prev = state.matchup;
+                els.matchup.innerHTML = `<option value="">All matchups</option>` + opts.map(o=>`<option value="${o}">${o}</option>`).join('');
+                els.matchup.hidden = false;
+                if (prev && opts.includes(prev)) {
+                    els.matchup.value = prev;
+                } else {
+                    els.matchup.value = '';
+                    state.matchup = '';
                 }
-                
-                // Confidence filter
-                if (confidenceFilter) {
-                    let hitRate = 0;
-                    if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
-                        hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
-                    } else {
-                        hitRate = parseFloat(prop.contextual_hit_rate) || 0;
-                    }
-                    if (confidenceFilter === 'high') {
-                        shouldShow = shouldShow && hitRate >= 0.7;
-                    } else if (confidenceFilter === 'medium') {
-                        shouldShow = shouldShow && hitRate >= 0.5 && hitRate < 0.7;
-                    } else if (confidenceFilter === 'low') {
-                        shouldShow = shouldShow && hitRate < 0.5;
-                    }
-                }
-                
-                return shouldShow;
-            });
-            
-            displayProps();
-            updatePropCount();
-        }
-
-        function displayProps() {
-            const propsToShow = allFilteredProps.slice(0, currentPropsDisplayed);
-            
-            if (propsToShow.length === 0) {
-                document.getElementById('props-container').innerHTML = `
-                    <div class="alert alert-info text-center">
-                        <h5><i class="fas fa-search me-2"></i>No Props Match Your Filters</h5>
-                        <p class="mb-0">Try adjusting your search or filter criteria.</p>
-                    </div>
-                `;
-                return;
             }
-            
-            // Use the new renderPropsList function for flat display
-            renderPropsList(propsToShow);
-            
-            // Show/hide load more button
-            const loadMoreBtn = document.getElementById('load-more-props');
-            if (allFilteredProps.length > currentPropsDisplayed) {
-                loadMoreBtn.style.display = 'block';
-            } else {
-                loadMoreBtn.style.display = 'none';
-            }
-        }
 
+            // ----- Events -----
+            els.tabs.forEach(btn=>{
+                btn.addEventListener('click', async ()=>{
+                    els.tabs.forEach(b=>b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.activeLeague = btn.dataset.league;
 
-        
+                    // toggle lists
+                    els.mlb.style.display = (state.activeLeague==='mlb') ? '' : 'none';
+                    els.nfl.style.display = (state.activeLeague==='nfl') ? '' : 'none';
 
-        
-        function displayRegularProps() {
-            allFilteredProps = allProps.slice(0, currentPropsDisplayed);
-            displayProps();
-            updatePropCount();
-        }
-        
-        function updatePropCount() {
-            document.getElementById('prop-count-display').textContent = `${allFilteredProps.length} props`;
-        }
-
-        function getHumanStatName(statType) {
-            const statMap = {
-                'batter_hits': 'Hits',
-                'batter_total_bases': 'Total Bases', 
-                'batter_home_runs': 'Home Runs',
-                'batter_rbis': 'RBIs',
-                'pitcher_strikeouts': 'Strikeouts',
-                'pitcher_earned_runs': 'Earned Runs',
-                'pitcher_outs': 'Pitching Outs',
-                'pitcher_hits_allowed': 'Hits Allowed',
-                'hits': 'Hits',
-                'total_bases': 'Total Bases', 
-                'home_runs': 'Home Runs',
-                'rbis': 'RBIs',
-                'strikeouts': 'Strikeouts',
-                'earned_runs': 'Earned Runs',
-                'outs': 'Pitching Outs',
-                'hits_allowed': 'Hits Allowed'
-            };
-            return statMap[statType] || statType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        }
-
-        // Load more props functionality
-        document.getElementById('load-more-props').addEventListener('click', function() {
-            currentPropsDisplayed += 50;
-            displayProps();
-        });
-
-
-        // Refresh picks functionality
-
-        // Dashboard loaded successfully - key verification handled server-side
-        console.log('Dashboard loaded successfully');
-
-        // Global variables for sport management
-        let currentSport = 'mlb';
-        let mlbProps = [];
-        let nflProps = [];
-        let currentMatchupData = null;
-
-        // Sport tab functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const sportTabs = document.querySelectorAll('#sport-tabs button');
-            sportTabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const sport = this.getAttribute('data-sport');
-                    switchSport(sport);
+                    const items = await loadLeague(state.activeLeague);
+                    populateMatchups(items);
+                    renderList(state.activeLeague, items);
                 });
             });
-        });
 
-        function switchSport(sport) {
-            if (currentSport === sport) return;
-            
-            currentSport = sport;
-            
-            // Update tab appearance
-            document.querySelectorAll('#sport-tabs button').forEach(tab => {
-                tab.classList.remove('active');
+            els.search.addEventListener('input', ()=>{
+                state.search = els.search.value || '';
+                const items = state.cache[state.activeLeague].items || [];
+                renderList(state.activeLeague, items);
             });
-            document.getElementById(`${sport}-tab`).classList.add('active');
-            
-            // Update header labels
-            const propsLabel = document.getElementById('total-props-label');
-            const gamesSubtitle = document.getElementById('games-subtitle');
-            
-            if (sport === 'mlb') {
-                propsLabel.textContent = 'Total MLB Props';
-                                    gamesSubtitle.textContent = 'MLB player props';
-                loadMLBProps();
-            } else {
-                propsLabel.textContent = 'Total NFL Props';
-                                    gamesSubtitle.textContent = 'NFL player props';
-                loadNFLProps();
-            }
-        }
 
-        function resetToSportHome() {
-            // Reset to the current sport's home view
-            currentMatchupData = null;
-            document.getElementById('player-search').value = '';
-            document.getElementById('confidence-filter').value = '';
-            
-            if (currentSport === 'mlb') {
-                loadMLBProps();
-            } else {
-                loadNFLProps();
-            }
-        }
+            els.conf.addEventListener('change', ()=>{
+                state.minConf = parseFloat(els.conf.value || '0') || 0;
+                const items = state.cache[state.activeLeague].items || [];
+                renderList(state.activeLeague, items);
+            });
 
-        function loadMLBProps() {
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="loading text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading MLB props...</span>
-                    </div>
-                    <p class="mt-3">Loading MLB player props...</p>
-                </div>
-            `;
-            
-            loadPlayerProps(); // Use existing MLB loading function
-        }
+            els.matchup.addEventListener('change', ()=>{
+                state.matchup = els.matchup.value || '';
+                const items = state.cache[state.activeLeague].items || [];
+                renderList(state.activeLeague, items);
+            });
 
-        function loadNFLProps() {
-            // Use the same flat props loading as MLB
-            loadPlayerProps();
-        }
+            // ----- Init: load MLB first (odds-positioned list by default) -----
+            (async function init(){
+                const items = await loadLeague('mlb');
+                // show lists
+                els.mlb.style.display = '';
+                els.nfl.style.display = 'none';
+                populateMatchups(items);
+                renderList('mlb', items);
+            })();
+        })();
 
 
 
