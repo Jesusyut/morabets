@@ -1113,26 +1113,36 @@ def get_mlb_props():
             "matchups": {}
         }), 503
 
+def _pick_dates(base: str):
+    # Try base, then +1, then -1 (to handle UTC flips)
+    d = datetime.fromisoformat(base)
+    return [base, (d + timedelta(days=1)).date().isoformat(), (d - timedelta(days=1)).date().isoformat()]
+
 @app.route("/player_props", methods=["GET"])
 def player_props():
-    """
-    NEW: Return a flat, odds-context-filtered list (no matchup grouping).
-    Keeps same URL so the frontend doesn't change.
-    """
-    try:
-        league = request.args.get("league", "mlb")
-        target_date = request.args.get("date", date.today().isoformat())
+    league = request.args.get("league", "mlb")
+    tz = request.args.get("tz")
+    debug_mode = request.args.get("debug") in ("1", "true", "True")
 
-        # 1) Get event-level odds from cache and compute context
+    # pick requested date, or fall back to ET "today" without importing new helpers
+    req_date = request.args.get("date")
+    if not req_date:
+        # derive "today" using server local date; FE can pass tz=ET to shift on its side if needed
+        req_date = date.today().isoformat()
+
+    # --- Try multiple dates to avoid UTC/day boundary misses ---
+    tried = []
+    raw_props = []
+    final_ctx = {}
+    chosen_date = None
+
+    for candidate in _pick_dates(req_date):
+        tried.append(candidate)
+        
+        # Get event-level odds from cache and compute context
         events_odds_data = cache_get("mlb_odds")
         if not events_odds_data:
-            return jsonify({
-                "date": target_date,
-                "league": league,
-                "count": 0,
-                "props": [],
-                "message": "No odds data available"
-            })
+            continue
         
         # Handle bytes, string, or dict data types
         if isinstance(events_odds_data, bytes):
@@ -1142,45 +1152,133 @@ def player_props():
         else:
             events_odds = events_odds_data
         
-        event_ctx = {}
+        # Filter events by date if they have date info
+        filtered_events = []
         for ev in events_odds:
+            if isinstance(ev, dict):
+                # Check if event has date info and matches candidate
+                event_date = ev.get("commence_time", "")[:10] if ev.get("commence_time") else ""
+                if not event_date or event_date == candidate:
+                    filtered_events.append(ev)
+        
+        ctx_map = {}
+        for ev in filtered_events:
             ctx = compute_event_context(ev)
             if ctx and ctx.get("event_id"):
-                event_ctx[ctx["event_id"]] = ctx
+                ctx_map[ctx["event_id"]] = ctx
 
-        # 2) Get player props from cache
+        # Get player props from cache
         props_data = cache_get("mlb_props_cache")
         if not props_data:
-            return jsonify({
-                "date": target_date,
-                "league": league,
-                "count": 0,
-                "props": [],
-                "message": "No props data available"
-            })
+            continue
         
         # Handle bytes, string, or dict data types
         if isinstance(props_data, bytes):
             props = json.loads(props_data.decode('utf-8'))
-        elif isinstance(props_data, str):
-            props = json.loads(props_data)
         else:
             props = props_data
-
-        # 3) Positioning filter (GREEN strong, BLUE neutral-with-player-edge)
-        positioned = filter_positioned_props(props, event_ctx)
-
-        # 4) Return flat list
-        return jsonify({
-            "date": target_date,
-            "league": league,
-            "count": len(positioned),
-            "props": positioned
-        })
         
+        # Filter props by date if they have date info
+        filtered_props = []
+        for prop in props:
+            if isinstance(prop, dict):
+                # Check if prop has date info and matches candidate
+                prop_date = prop.get("game_date", "")[:10] if prop.get("game_date") else ""
+                if not prop_date or prop_date == candidate:
+                    filtered_props.append(prop)
+        
+        if filtered_props:
+            raw_props = filtered_props
+            final_ctx = ctx_map
+            chosen_date = candidate
+            break
+        # If no props but we at least have context and later the cache is primed, loop to next candidate
+
+    # If still nothing, last resort: keep the original date and whatever context we have
+    if chosen_date is None:
+        chosen_date = req_date
+        # Get all props without date filtering as fallback
+        props_data = cache_get("mlb_props_cache")
+        if props_data:
+            if isinstance(props_data, bytes):
+                raw_props = json.loads(props_data.decode('utf-8'))
+            else:
+                raw_props = props_data
+            
+            # Get all context as fallback
+            events_odds_data = cache_get("mlb_odds")
+            if events_odds_data:
+                if isinstance(events_odds_data, bytes):
+                    events_odds = json.loads(events_odds_data.decode('utf-8'))
+                elif isinstance(events_odds_data, str):
+                    events_odds = json.loads(events_odds_data)
+                else:
+                    events_odds = events_odds_data
+                
+                for ev in events_odds:
+                    ctx = compute_event_context(ev)
+                    if ctx and ctx.get("event_id"):
+                        final_ctx[ctx["event_id"]] = ctx
+
+    # --- Apply positioned filter ---
+    positioned = []
+    debug_drops = {}
+    try:
+        positioned = filter_positioned_props(raw_props, final_ctx)
     except Exception as e:
-        logger.error(f"Error in player_props: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.warning(f"Positioning filter failed: {e}")
+        positioned = []
+
+    # --- Never return empty if raw props exist: use engine-driven fallback ---
+    used_fallback = False
+    if not positioned and raw_props:
+        candidates = sorted(raw_props, key=lambda x: x.get("engine_prob") or 0.0, reverse=True)[:50]
+        fallback = []
+        for p in candidates:
+            ctx = final_ctx.get(p.get("event_id"), {})
+            team_true = None
+            if p.get("team") == ctx.get("home_team"):
+                team_true = ctx.get("home_true_win")
+            elif p.get("team") == ctx.get("away_team"):
+                team_true = ctx.get("away_true_win")
+            fallback.append({
+                **p,
+                "position_tier": "BLUE",
+                "position_reason": "Fallback (engine-driven)",
+                "position_context": {
+                    "team_true_win": team_true,
+                    "true_prob_over": ctx.get("true_prob_over"),
+                    "total_point": ctx.get("total_point"),
+                },
+                "position_score": p.get("engine_prob") or 0.0,
+                "badges": ["Neutral—Player Edge"]
+            })
+        positioned = fallback
+        used_fallback = True
+
+    payload = {
+        "date": chosen_date,
+        "league": league,
+        "count": len(positioned),
+        "props": positioned,
+    }
+
+    if debug_mode:
+        payload["debug"] = {
+            "tried_dates": tried,
+            "raw_props_count": len(raw_props),
+            "used_fallback": used_fallback,
+            "drops": debug_drops,
+        }
+
+    # One-line log so we can see what's happening in Render
+    try:
+        app.logger.info("[/player_props] league=%s tried=%s chosen=%s raw=%d kept=%d fallback=%s",
+                        league, ",".join(tried), chosen_date, len(raw_props), len(positioned), used_fallback)
+    except Exception:
+        pass
+
+    return jsonify(payload)
 @app.route("/player_props_cached")
 def player_props_cached():
     return get_enhanced_mlb_props()
