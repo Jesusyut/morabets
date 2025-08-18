@@ -1754,6 +1754,35 @@ def background_initializer():
 
 
 
+@app.route("/props-debug")
+def props_debug():
+    from datetime import date
+    league = request.args.get("league", "mlb")
+    the_date = request.args.get("date", date.today().isoformat())
+    data = {}
+    try:
+        # Use the same source the FE should use
+        resp = app.test_client().get(f"/player_props?league={league}&date={the_date}")
+        data = resp.get_json() or {}
+    except Exception as e:
+        data = {"error": str(e)}
+    # Minimal HTML so we can eyeball in prod
+    props = data.get("props") or []
+    rows = "".join(
+        f"<tr><td>{p.get('player')}</td><td>{p.get('market')}</td>"
+        f"<td>{p.get('line')}</td><td>{(p.get('position_tier') or '')}</td>"
+        f"<td>{(p.get('position_context') or {}).get('team_true_win')}</td>"
+        f"<td>{(p.get('position_context') or {}).get('true_prob_over')}</td></tr>"
+        for p in props[:50]
+    )
+    return (
+        f"<h3>/player_props check</h3>"
+        f"<p>count={data.get('count')}</p>"
+        f"<table border=1 cellpadding=4>"
+        f"<tr><th>Player</th><th>Market</th><th>Line</th><th>Tier</th><th>TeamWin%</th><th>Over%</th></tr>"
+        f"{rows}</table>"
+    )
+
 @app.route("/api/nfl/props/debug")
 def nfl_props_debug():
     from nfl_odds_api import _detect_nfl_sport_key, fetch_nfl_props
