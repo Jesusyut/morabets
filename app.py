@@ -34,6 +34,9 @@ from datetime import date
 from context_from_odds import compute_event_context
 from positioned_props import filter_positioned_props
 
+# Timezone handling for API responses
+from zoneinfo import ZoneInfo
+
 # Environment configuration
 SPORT_TZ = os.getenv("SPORT_TZ", "America/New_York")
 
@@ -71,6 +74,48 @@ def to_sport_date(dt_str: str) -> str:
     except Exception as e:
         logger.warning(f"Could not parse date {dt_str}: {e}")
         return dt_str[:10] if len(dt_str) >= 10 else dt_str
+
+def _today_str(tz):
+    """Return today's date as YYYY-MM-DD in the specified timezone"""
+    return datetime.now(ZoneInfo("America/New_York") if tz=='ET' else ZoneInfo("UTC")).strftime("%Y-%m-%d")
+
+def _load_cached(league):
+    """Load cached props from Redis first, then fallback to file cache"""
+    try:
+        # Try Redis first
+        redis_key = f"props:{league}:enriched"
+        cached_data = cache_get(redis_key)
+        if cached_data:
+            if isinstance(cached_data, bytes):
+                return json.loads(cached_data.decode('utf-8'))
+            elif isinstance(cached_data, str):
+                return json.loads(cached_data)
+            else:
+                return cached_data
+        
+        # Fallback to file cache
+        filename = f"{league}_props_cache.json"
+        try:
+            with open(filename, 'r') as f:
+                file_data = json.load(f)
+                # Handle both {"props": [...]} and raw list formats
+                if isinstance(file_data, dict) and "props" in file_data:
+                    return file_data["props"]
+                elif isinstance(file_data, list):
+                    return file_data
+                else:
+                    logger.warning(f"Unexpected file cache format in {filename}")
+                    return []
+        except FileNotFoundError:
+            logger.warning(f"Cache file {filename} not found")
+            return []
+        except Exception as e:
+            logger.warning(f"Error reading cache file {filename}: {e}")
+            return []
+            
+    except Exception as e:
+        logger.warning(f"Error loading cached props for {league}: {e}")
+        return []
 
 # Recommended environment and deployment settings:
 # SPORT_TZ=America/New_York
@@ -1303,6 +1348,35 @@ def player_props():
         pass
 
     return jsonify(payload)
+
+@app.route("/player_props", methods=["GET"])
+def player_props():
+    """Lightweight read API for enriched props from cache"""
+    league = request.args.get("league", "mlb")
+    tz = request.args.get("tz", "ET")
+    
+    # Get today's date in the specified timezone
+    today = _today_str(tz)
+    
+    # Load cached props
+    props = _load_cached(league)
+    
+    if not props:
+        logger.warning(f"No cached props found for {league}")
+        return jsonify({
+            "date": today,
+            "league": league,
+            "count": 0,
+            "props": []
+        })
+    
+    return jsonify({
+        "date": today,
+        "league": league,
+        "count": len(props),
+        "props": props
+    })
+
 @app.route("/player_props_cached")
 def player_props_cached():
     return get_enhanced_mlb_props()

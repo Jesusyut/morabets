@@ -556,8 +556,15 @@
             function render(items){
                 const filtered = filterItems(items);
                 if (totalBadge) totalBadge.textContent = String(filtered.length);
-                list.innerHTML = filtered.length ? filtered.map(cardHTML).join('') :
-                    `<div class="empty-state" style="padding:1rem;border:1px dashed #334155;border-radius:.8rem;color:#94a3b8;text-align:center">No props match your filters.</div>`;
+                
+                // Hide loading spinner and show content
+                list.className = ''; // Remove 'loading' class
+                
+                if (filtered.length) {
+                    list.innerHTML = filtered.map(cardHTML).join('');
+                } else {
+                    list.innerHTML = `<div class="empty-state" style="padding:1rem;border:1px dashed #334155;border-radius:.8rem;color:#94a3b8;text-align:center">No props match your filters.</div>`;
+                }
             }
 
             async function loadLeague(league){
