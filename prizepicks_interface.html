@@ -306,6 +306,7 @@
                         throw err;
                     });
                 const data = await response.json();
+                console.log("API response:", data);
                 
                 console.log(`[DEBUG] Loaded ${data.count} props from API`);
                 
