@@ -569,12 +569,19 @@
 
             async function loadLeague(league){
                 if (state.cache[league]?.length) return state.cache[league];
-                const res = await fetch(`/player_props?league=${league}&tz=ET`, { cache:'no-store' });
-                if (!res.ok) throw new Error('HTTP '+res.status);
-                const data = await res.json();
-                const items = Array.isArray(data.props) ? data.props : [];
-                state.cache[league] = sortItems(items);
-                return state.cache[league];
+                
+                try {
+                    const res = await fetch(`/player_props?league=${league}&tz=ET`, { cache:'no-store' });
+                    if (!res.ok) throw new Error('HTTP '+res.status);
+                    const data = await res.json();
+                    const items = Array.isArray(data.props) ? data.props : [];
+                    state.cache[league] = sortItems(items);
+                    return state.cache[league];
+                } catch (error) {
+                    console.error('loadLeague error:', error);
+                    state.cache[league] = [];
+                    return [];
+                }
             }
 
             async function switchLeague(league){

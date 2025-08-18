@@ -1183,17 +1183,63 @@ def _pick_dates(base: str):
 
 @app.route("/player_props", methods=["GET"])
 def player_props():
-    league = request.args.get("league", "mlb")
-    tz = request.args.get("tz")
-    debug_mode = request.args.get("debug") in ("1", "true", "True")
+    import json, os
+    from datetime import datetime, timezone
+    try:
+        from zoneinfo import ZoneInfo
+    except Exception:
+        ZoneInfo = None
 
-    # pick requested date, or fall back to ET "today" without importing new helpers
-    req_date = request.args.get("date")
-    if not req_date:
-        # derive "today" using server local date; FE can pass tz=ET to shift on its side if needed
-        req_date = date.today().isoformat()
+    # --- helpers ---
+    def today_str(tz_param: str) -> str:
+        if tz_param and tz_param.upper() in ("ET", "EST", "EDT") and ZoneInfo:
+            return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    app.logger.info("[ROUTE] /player_props start league=%s date=%s", league, req_date)
+    def load_cached_props(league: str):
+        # 1) Redis (props:{league}:enriched)
+        try:
+            r = globals().get("redis_client") or globals().get("redis")
+            if r:
+                key = f"props:{league}:enriched"
+                blob = r.get(key)
+                if blob:
+                    try:
+                        data = json.loads(blob)
+                    except Exception:
+                        data = None
+                    if isinstance(data, dict) and "props" in data:
+                        return data["props"]
+                    if isinstance(data, list):
+                        return data
+        except Exception as e:
+            app.logger.warning(f"[player_props] Redis read error: {e}")
+
+        # 2) File fallback (writer logs show these filenames)
+        cache_file = f"{league.lower()}_props_cache.json"  # e.g. mlb_props_cache.json / nfl_props_cache.json
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and "props" in data:
+                    return data["props"]
+                if isinstance(data, list):
+                    return data
+            except Exception as e:
+                app.logger.warning(f"[player_props] File cache read error '{cache_file}': {e}")
+
+        return []
+
+    league = (request.args.get("league") or "mlb").lower()
+    tz = request.args.get("tz") or "UTC"
+
+    items = load_cached_props(league)
+    return jsonify({
+        "date": today_str(tz),
+        "league": league,
+        "count": len(items),
+        "props": items
+    })
 
     # --- Try multiple dates to avoid UTC/day boundary misses ---
     tried = []
@@ -1349,33 +1395,7 @@ def player_props():
 
     return jsonify(payload)
 
-@app.route("/player_props", methods=["GET"])
-def player_props():
-    """Lightweight read API for enriched props from cache"""
-    league = request.args.get("league", "mlb")
-    tz = request.args.get("tz", "ET")
-    
-    # Get today's date in the specified timezone
-    today = _today_str(tz)
-    
-    # Load cached props
-    props = _load_cached(league)
-    
-    if not props:
-        logger.warning(f"No cached props found for {league}")
-        return jsonify({
-            "date": today,
-            "league": league,
-            "count": 0,
-            "props": []
-        })
-    
-    return jsonify({
-        "date": today,
-        "league": league,
-        "count": len(props),
-        "props": props
-    })
+
 
 @app.route("/player_props_cached")
 def player_props_cached():
