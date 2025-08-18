@@ -251,6 +251,14 @@ def cache_set(key, value, timeout=3):
     # Check Redis health periodically
     check_redis_health()
     
+    # Special handling for mlb_props_cache - also write to file
+    if key == "mlb_props_cache":
+        try:
+            from enrichment import cache_props_to_file
+            cache_props_to_file(value, "mlb_props_cache.json")
+        except Exception as e:
+            logger.warning(f"Failed to write props cache to file: {e}")
+    
     if redis and redis_healthy:
         try:
             # Use pipeline for better performance and atomicity
@@ -272,6 +280,16 @@ def cache_get(key, timeout=3):
     """Get cache value with Redis or memory fallback - non-blocking"""
     # Check Redis health periodically
     check_redis_health()
+    
+    # Special handling for mlb_props_cache - also try file
+    if key == "mlb_props_cache":
+        try:
+            from enrichment import load_props_from_file
+            file_props = load_props_from_file("mlb_props_cache.json")
+            if file_props:
+                return file_props
+        except Exception as e:
+            logger.warning(f"Failed to read props cache from file: {e}")
     
     if redis and redis_healthy:
         try:
@@ -1130,6 +1148,8 @@ def player_props():
         # derive "today" using server local date; FE can pass tz=ET to shift on its side if needed
         req_date = date.today().isoformat()
 
+    app.logger.info("[ROUTE] /player_props start league=%s date=%s", league, req_date)
+
     # --- Try multiple dates to avoid UTC/day boundary misses ---
     tried = []
     raw_props = []
@@ -1220,6 +1240,8 @@ def player_props():
                     if ctx and ctx.get("event_id"):
                         final_ctx[ctx["event_id"]] = ctx
 
+    app.logger.info("[ROUTE] raw_props_count=%d ctx_count=%d", len(raw_props), len(final_ctx))
+
     # --- Apply positioned filter ---
     positioned = []
     debug_drops = {}
@@ -1270,6 +1292,8 @@ def player_props():
             "used_fallback": used_fallback,
             "drops": debug_drops,
         }
+
+    app.logger.info("[ROUTE] positioned_count=%d", len(positioned))
 
     # One-line log so we can see what's happening in Render
     try:
@@ -1824,10 +1848,13 @@ def background_initializer():
     try:
         logger.info("🚀 Starting background initialization...")
         
-        # Start scheduler
-        if not scheduler.running:
-            scheduler.start()
-            logger.info("✅ Background scheduler started")
+        # Start scheduler (only if RUN_SCHEDULER env var allows it)
+        if os.environ.get("RUN_SCHEDULER", "1") == "1":
+            if not scheduler.running:
+                scheduler.start()
+                logger.info("✅ Background scheduler started")
+        else:
+            logger.info("⏸️ Scheduler disabled by RUN_SCHEDULER env var")
         
         # Initial cache priming (non-blocking)
         logger.info("🔄 Starting cache priming...")
