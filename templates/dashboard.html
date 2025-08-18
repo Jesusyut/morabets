@@ -453,10 +453,40 @@
                 const insertionPoint = document.querySelector('.empty-state, [data-empty], main, .content, body');
                 (insertionPoint?.parentNode || document.body).insertBefore(list, insertionPoint || null);
             }
-            list.style.display = 'flex';
+                        list.style.display = 'flex';
             list.style.flexDirection = 'column';
             list.style.gap = '10px';
-
+            
+            // ----- Robust fetch with timeout -----
+            async function fetchWithTimeout(url, opts = {}, ms = 10000) {
+                const ctl = new AbortController();
+                const id = setTimeout(() => ctl.abort(), ms);
+                try {
+                    const res = await fetch(url, { ...opts, signal: ctl.signal, cache: 'no-cache' });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return await res.json();
+                } finally {
+                    clearTimeout(id);
+                }
+            }
+            
+            // ----- Discover props endpoint (first that works) -----
+            async function discoverPropsUrl(league) {
+                const candidates = [
+                    `/player_props?league=${league}&tz=ET`,
+                    `/api/player_props?league=${league}&tz=ET`,
+                    `/api/positioned-props?league=${league}&tz=ET`
+                ];
+                for (const url of candidates) {
+                    try {
+                        const j = await fetchWithTimeout(url, {}, 5000);
+                        const arr = Array.isArray(j) ? j : (Array.isArray(j?.props) ? j.props : null);
+                        if (arr !== null) return url.replace(/\?.*$/, ''); // return base path
+                    } catch (_) {}
+                }
+                throw new Error('No working props endpoint found');
+            }
+            
             // ----- API helpers -----
             const API = (league) => `/player_props?league=${league}&tz=ET`;
 
@@ -557,13 +587,16 @@
                 const filtered = filterItems(items);
                 if (totalBadge) totalBadge.textContent = String(filtered.length);
                 
-                // Hide loading spinner and show content
+                // Always hide loading spinner
                 list.className = ''; // Remove 'loading' class
                 
                 if (filtered.length) {
                     list.innerHTML = filtered.map(cardHTML).join('');
                 } else {
-                    list.innerHTML = `<div class="empty-state" style="padding:1rem;border:1px dashed #334155;border-radius:.8rem;color:#94a3b8;text-align:center">No props match your filters.</div>`;
+                    list.innerHTML = `<div class="empty-state" style="padding:1rem;border:1px dashed #334155;border-radius:.8rem;color:#94a3b8;text-align:center">
+                        <div style="font-size:1.1rem;margin-bottom:0.5rem;">No props available</div>
+                        <div style="font-size:0.9rem;opacity:0.8;">Try refreshing or check back later</div>
+                    </div>`;
                 }
             }
 
@@ -571,14 +604,17 @@
                 if (state.cache[league]?.length) return state.cache[league];
                 
                 try {
-                    const res = await fetch(`/player_props?league=${league}&tz=ET`, { cache:'no-store' });
-                    if (!res.ok) throw new Error('HTTP '+res.status);
-                    const data = await res.json();
-                    const items = Array.isArray(data.props) ? data.props : [];
+                    // Discover the working endpoint if not already cached
+                    const base = window.__PROPS_BASE__ || (window.__PROPS_BASE__ = await discoverPropsUrl(league));
+                    const url = `${base}?league=${league}&tz=ET`;
+                    const data = await fetchWithTimeout(url);
+                    
+                    // Accept both {props: [...]} and [...] shapes
+                    const items = Array.isArray(data) ? data : (Array.isArray(data?.props) ? data.props : []);
                     state.cache[league] = sortItems(items);
                     return state.cache[league];
                 } catch (error) {
-                    console.error('loadLeague error:', error);
+                    console.error('loadLeague failed:', error);
                     state.cache[league] = [];
                     return [];
                 }
@@ -610,7 +646,12 @@
             }
 
             // ----- Init: default to MLB odds-positioned list -----
-            switchLeague('mlb').catch(console.error);
+            switchLeague('mlb').catch(error => {
+                console.error('Initial load failed:', error);
+                // Ensure spinner is hidden even on error
+                list.className = '';
+                if (totalBadge) totalBadge.textContent = '0';
+            });
         })();
 
 

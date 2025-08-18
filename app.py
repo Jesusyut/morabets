@@ -1401,6 +1401,27 @@ def player_props():
 def player_props_cached():
     return get_enhanced_mlb_props()
 
+@app.route("/health/props", methods=["GET"])
+def health_props():
+    import json, os
+    def read_count(cache_file):
+        try:
+            if os.path.exists(cache_file):
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and "props" in data and isinstance(data["props"], list):
+                    return len(data["props"])
+                if isinstance(data, list):
+                    return len(data)
+        except Exception:
+            pass
+        return 0
+    return jsonify({
+        "ok": True,
+        "mlb_count": read_count("mlb_props_cache.json"),
+        "nfl_count": read_count("nfl_props_cache.json"),
+    })
+
 
 
 @app.route("/analytics")
