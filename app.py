@@ -29,6 +29,11 @@ from nfl_contextual import add_nfl_context
 # MLB game context enrichment
 from mlb_game_enrichment import enrich_mlb_props_with_context, filter_positive_environment_props
 
+# Positioned props functionality
+from datetime import date
+from context_from_odds import compute_event_context
+from positioned_props import filter_positioned_props
+
 # Environment configuration
 SPORT_TZ = os.getenv("SPORT_TZ", "America/New_York")
 
@@ -656,20 +661,20 @@ def group_props_by_matchup(props_data):
     try:
         from enrichment import get_player_team_mapping
         
-        # DIAGNOSTIC: Log input counts
-        print(f"[GROUPING DIAG] Starting group_props_by_matchup with {len(props_data)} props")
+        # DIAGNOSTIC: Log input counts (DISABLED)
+        # print(f"[GROUPING DIAG] Starting group_props_by_matchup with {len(props_data)} props")
         
-        # DIAGNOSTIC: Sample prop structure
-        if props_data and len(props_data) > 0:
-            sample_prop = props_data[0]
-            if isinstance(sample_prop, dict):
-                print(f"[GROUPING DIAG] Sample prop keys: {list(sample_prop.keys())}")
-                print(f"[GROUPING DIAG] Sample prop player: '{sample_prop.get('player', 'MISSING')}'")
-                print(f"[GROUPING DIAG] Sample prop team: '{sample_prop.get('team', 'MISSING')}'")
-                print(f"[GROUPING DIAG] Sample prop opponent: '{sample_prop.get('opponent', 'MISSING')}'")
-                print(f"[GROUPING DIAG] Sample prop date: '{sample_prop.get('date', 'MISSING')}'")
-            else:
-                print(f"[GROUPING DIAG] Sample prop is not a dict, type: {type(sample_prop)}")
+        # DIAGNOSTIC: Sample prop structure (DISABLED)
+        # if props_data and len(props_data) > 0:
+        #     sample_prop = props_data[0]
+        #     if isinstance(sample_prop, dict):
+        #         print(f"[GROUPING DIAG] Sample prop keys: {list(sample_prop.keys())}")
+        #         print(f"[GROUPING DIAG] Sample prop player: '{sample_prop.get('player', 'MISSING')}'")
+        #         print(f"[GROUPING DIAG] Sample prop team: '{sample_prop.get('team', 'MISSING')}'")
+        #         print(f"[GROUPING DIAG] Sample prop opponent: '{sample_prop.get('opponent', 'MISSING')}'")
+        #         print(f"[GROUPING DIAG] Sample prop date: '{sample_prop.get('date', 'MISSING')}'")
+        #     else:
+        #         print(f"[GROUPING DIAG] Sample prop is not a dict, type: {type(sample_prop)}")
         
         # Initialize diagnostics
         reasons = Counter()
@@ -682,8 +687,8 @@ def group_props_by_matchup(props_data):
         team_to_matchup = {}
         context_keys = set()
         
-        # DIAGNOSTIC: Log games data status
-        print(f"[GROUPING DIAG] Games data from cache: {'FOUND' if games_data else 'MISSING'}")
+        # DIAGNOSTIC: Log games data status (DISABLED)
+        # print(f"[GROUPING DIAG] Games data from cache: {'FOUND' if games_data else 'MISSING'}")
         
         if games_data:
             # Handle bytes, string, or dict data types
@@ -696,7 +701,7 @@ def group_props_by_matchup(props_data):
             
             # Build matchup mapping from real game data with normalization
             if isinstance(games, list):
-                print(f"[GROUPING DIAG] Processing {len(games)} games from cache")
+                # print(f"[GROUPING DIAG] Processing {len(games)} games from cache")
                 for game in games:
                     if isinstance(game, dict):
                         home_team = game.get("home_team", "")
@@ -733,19 +738,19 @@ def group_props_by_matchup(props_data):
                             # Map both teams to this matchup
                             team_to_matchup[home_team] = matchup_key
                             team_to_matchup[away_team] = matchup_key
-                        else:
-                            print(f"[GROUPING DIAG] Skipping game with missing data: home='{home_team}' away='{away_team}' date='{game_date}'")
-                print(f"[GROUPING DIAG] Created {len(real_matchups)} valid matchups from {len(games)} games")
-            else:
-                print(f"[GROUPING DIAG] Games data is not a list, type: {type(games)}")
+                        # else:
+                        #     print(f"[GROUPING DIAG] Skipping game with missing data: home='{home_team}' away='{away_team}' date='{game_date}'")
+                # print(f"[GROUPING DIAG] Created {len(real_matchups)} valid matchups from {len(games)} games")
+            # else:
+            #     print(f"[GROUPING DIAG] Games data is not a list, type: {type(games)}")
         
         # Get player-to-team mapping with caching
         try:
             player_team_map = get_player_team_mapping()
-            print(f"[GROUPING DIAG] Loaded player-team mapping with {len(player_team_map)} players")
+            # print(f"[GROUPING DIAG] Loaded player-team mapping with {len(player_team_map)} players")
         except Exception as e:
             logger.error(f"Could not load player-team mapping: {e}")
-            print(f"[GROUPING DIAG] ERROR loading player-team mapping: {e}")
+            # print(f"[GROUPING DIAG] ERROR loading player-team mapping: {e}")
             player_team_map = {}
         
         # Build matchup team sets for fast lookup with normalized team codes
@@ -766,8 +771,8 @@ def group_props_by_matchup(props_data):
         skipped_count = 0
         ungrouped_props = []
         
-        print(f"[GROUPING DIAG] Starting prop matching with {len(matchup_teams)} available matchups")
-        print(f"[GROUPING DIAG] Available matchup keys: {list(matchup_teams.keys())}")
+        # print(f"[GROUPING DIAG] Starting prop matching with {len(matchup_teams)} available matchups")
+        # print(f"[GROUPING DIAG] Available matchup keys: {list(matchup_teams.keys())}")
         
         # Sample prop keys for diagnostics
         prop_keys_sample = []
@@ -822,9 +827,9 @@ def group_props_by_matchup(props_data):
             norm_player_team = norm_code(player_team)
             prop_teams.add(norm_player_team)
             
-            # DIAGNOSTIC: Log first few player-team mappings
-            if matched_count + skipped_count < 5:
-                print(f"[GROUPING DIAG] Player '{player_name}' -> team '{player_team}' -> norm '{norm_player_team}'")
+            # DIAGNOSTIC: Log first few player-team mappings (DISABLED)
+            # if matched_count + skipped_count < 5:
+            #     print(f"[GROUPING DIAG] Player '{player_name}' -> team '{player_team}' -> norm '{norm_player_team}'")
             
             # Find which matchup this player's team belongs to
             matched_matchup = None
@@ -858,10 +863,10 @@ def group_props_by_matchup(props_data):
                 reasons['key_miss'] += 1
                 ungrouped_props.append(prop)
                 skipped_count += 1
-                # DIAGNOSTIC: Log first few failed matches
-                if skipped_count <= 3:
-                    print(f"[GROUPING DIAG] FAILED: Player '{player_name}' team '{player_team}' norm '{norm_player_team}' not found in any matchup")
-                    print(f"[GROUPING DIAG] Available teams in matchups: {[list(teams) for teams in matchup_teams.values()]}")
+                # DIAGNOSTIC: Log first few failed matches (DISABLED)
+                # if skipped_count <= 3:
+                #     print(f"[GROUPING DIAG] FAILED: Player '{player_name}' team '{player_team}' norm '{norm_player_team}' not found in any matchup")
+                #     print(f"[GROUPING DIAG] Available teams in matchups: {[list(teams) for teams in matchup_teams.values()]}")
         
         # FALLBACK: If no props were grouped but we have props, create relaxed groups
         if not grouped and props_data:
@@ -1006,17 +1011,17 @@ def group_props_by_matchup(props_data):
         teams_only_in_props = list(prop_teams - context_teams)
         teams_only_in_ctx = list(context_teams - prop_teams)
         
-        # DIAGNOSTIC: Print comprehensive summary to stdout for Render logs
-        print(f"[GROUPING DIAG] FINAL RESULTS:")
-        print(f"[GROUPING DIAG] Props processed: {len(props_data)}")
-        print(f"[GROUPING DIAG] Props matched: {matched_count}")
-        print(f"[GROUPING DIAG] Props skipped: {skipped_count}")
-        print(f"[GROUPING DIAG] Matchups created: {len(grouped)}")
-        print(f"[GROUPING DIAG] Skip reasons: {dict(reasons)}")
-        print(f"[GROUPING DIAG] Teams only in props: {sorted(teams_only_in_props)}")
-        print(f"[GROUPING DIAG] Teams only in contexts: {sorted(teams_only_in_ctx)}")
-        print(f"[GROUPING DIAG] Total contexts available: {len(context_keys)}")
-        print(f"[GROUPING DIAG] Available matchup keys: {list(matchup_teams.keys())}")
+        # DIAGNOSTIC: Print comprehensive summary to stdout for Render logs (DISABLED)
+        # print(f"[GROUPING DIAG] FINAL RESULTS:")
+        # print(f"[GROUPING DIAG] Props processed: {len(props_data)}")
+        # print(f"[GROUPING DIAG] Props matched: {matched_count}")
+        # print(f"[GROUPING DIAG] Props skipped: {skipped_count}")
+        # print(f"[GROUPING DIAG] Matchups created: {len(grouped)}")
+        # print(f"[GROUPING DIAG] Skip reasons: {dict(reasons)}")
+        # print(f"[GROUPING DIAG] Teams only in props: {sorted(teams_only_in_props)}")
+        # print(f"[GROUPING DIAG] Teams only in contexts: {sorted(teams_only_in_ctx)}")
+        # print(f"[GROUPING DIAG] Total contexts available: {len(context_keys)}")
+        # print(f"[GROUPING DIAG] Available matchup keys: {list(matchup_teams.keys())}")
         
         logger.debug("[GATE DIAG] matched=%s skipped=%s reasons=%s", matched_count, skipped_count, dict(reasons))
         logger.debug("[GATE DIAG] teams_only_in_props=%s teams_only_in_ctx=%s", 
@@ -1024,29 +1029,29 @@ def group_props_by_matchup(props_data):
         logger.debug("[GATE DIAG] total_props=%s total_contexts=%s", len(props_data), len(context_keys))
         logger.debug("[GATE DIAG] available_matchups=%s", list(matchup_teams.keys()))
         
-        # DIAG: 1) Unique teams in props vs contexts
-        teams_in_props = { (p.get("team") or p.get("team_abbr") or "").upper() for p in props_data if isinstance(p, dict) }
-        teams_in_ctx = { (c.get("home_team") or "").upper() for c in real_matchups } | { (c.get("away_team") or "").upper() for c in real_matchups }
-        print("[DIAG] teams_in_props:", sorted(t for t in teams_in_props if t))
-        print("[DIAG] teams_in_ctx:", sorted(t for t in teams_in_ctx if t))
-        print("[DIAG] only_in_props:", sorted(teams_in_props - teams_in_ctx))
-        print("[DIAG] only_in_ctx:", sorted(teams_in_ctx - teams_in_props))
+        # DIAG: 1) Unique teams in props vs contexts (DISABLED)
+        # teams_in_props = { (p.get("team") or p.get("team_abbr") or "").upper() for p in props_data if isinstance(p, dict) }
+        # teams_in_ctx = { (c.get("home_team") or "").upper() for c in real_matchups } | { (c.get("away_team") or "").upper() for c in real_matchups }
+        # print("[DIAG] teams_in_props:", sorted(t for t in teams_in_props if t))
+        # print("[DIAG] teams_in_ctx:", sorted(t for t in teams_in_ctx if t))
+        # print("[DIAG] only_in_props:", sorted(teams_in_props - teams_in_ctx))
+        # print("[DIAG] only_in_ctx:", sorted(teams_in_ctx - teams_in_props))
         
-        # DIAG: 2) Dates in props vs contexts
-        props_dates = { (p.get("game_date") or p.get("date") or "").split("T")[0] for p in props_data if isinstance(p, dict) }
-        ctx_dates = { (c.get("date") or c.get("start_time") or "").split("T")[0] for c in real_matchups }
-        print("[DIAG] props_dates:", sorted(d for d in props_dates if d))
-        print("[DIAG] ctx_dates:", sorted(d for d in ctx_dates if d))
+        # DIAG: 2) Dates in props vs contexts (DISABLED)
+        # props_dates = { (p.get("game_date") or p.get("date") or "").split("T")[0] for p in props_data if isinstance(p, dict) }
+        # ctx_dates = { (c.get("date") or c.get("start_time") or "").split("T")[0] for c in real_matchups }
+        # print("[DIAG] props_dates:", sorted(d for d in props_dates if d))
+        # print("[DIAG] ctx_dates:", sorted(d for d in ctx_dates if d))
         
-        # DIAG: 3) Match/skip summary
-        print("[DIAG] matched_count:", matched_count, "skipped_count:", skipped_count)
-        print("[DIAG] skip_reasons:", dict(reasons) if 'reasons' in locals() else {})
+        # DIAG: 3) Match/skip summary (DISABLED)
+        # print("[DIAG] matched_count:", matched_count, "skipped_count:", skipped_count)
+        # print("[DIAG] skip_reasons:", dict(reasons) if 'reasons' in locals() else {})
         
-        # DIAG: 4) Sample join keys
-        sample_prop_keys = { f"{p.get('date', '')}:{p.get('team', '')}:{p.get('opponent', '')}" for p in props_data if isinstance(p, dict) }
-        sample_ctx_keys = { f"{c.get('date', '')}:{c.get('away_team', '')}:{c.get('home_team', '')}" for c in real_matchups }
-        print("[DIAG] sample_prop_keys:", list(sample_prop_keys)[:5] if sample_prop_keys else [])
-        print("[DIAG] sample_ctx_keys:", list(sample_ctx_keys)[:5] if sample_ctx_keys else [])
+        # DIAG: 4) Sample join keys (DISABLED)
+        # sample_prop_keys = { f"{p.get('date', '')}:{p.get('team', '')}:{p.get('opponent', '')}" for p in props_data if isinstance(p, dict) }
+        # sample_ctx_keys = { f"{c.get('date', '')}:{c.get('away_team', '')}:{c.get('home_team', '')}" for c in real_matchups }
+        # print("[DIAG] sample_prop_keys:", list(sample_prop_keys)[:5] if sample_prop_keys else [])
+        # print("[DIAG] sample_ctx_keys:", list(sample_ctx_keys)[:5] if sample_ctx_keys else [])
         
         return enhanced_grouped
         
@@ -1108,144 +1113,74 @@ def get_mlb_props():
             "matchups": {}
         }), 503
 
-@app.route("/player_props")
-def get_props():
-    """Get enriched props grouped by matchup with optional filtering (Underdog Fantasy style)"""
+@app.route("/player_props", methods=["GET"])
+def player_props():
+    """
+    NEW: Return a flat, odds-context-filtered list (no matchup grouping).
+    Keeps same URL so the frontend doesn't change.
+    """
     try:
-        from enrichment import load_props_from_file
-        
-        # Load props from file cache (no Redis dependency)
-        props_data = load_props_from_file("mlb_props_cache.json")
-        
-        if not props_data:
-            print("⚠️ No cached props available in file")
+        league = request.args.get("league", "mlb")
+        target_date = request.args.get("date", date.today().isoformat())
+
+        # 1) Get event-level odds from cache and compute context
+        events_odds_data = cache_get("mlb_odds")
+        if not events_odds_data:
             return jsonify({
-                "message": "Props are being processed - please check back in a moment",
-                "status": "processing", 
-                "matchups": {}
-            }), 202
+                "date": target_date,
+                "league": league,
+                "count": 0,
+                "props": [],
+                "message": "No odds data available"
+            })
         
-        # Apply MLB game context enrichment to enhance props with positive environment analysis
-        enhanced_context = request.args.get("enhanced_context", "false").lower() == "true"
-        if enhanced_context:
-            try:
-                logger.info("Applying MLB game context enrichment to props")
-                props_data = enrich_mlb_props_with_context(props_data)
-                logger.info(f"MLB enrichment complete: {len(props_data)} props with positive environment")
-            except Exception as e:
-                logger.warning(f"MLB enrichment failed, using standard props: {e}")
+        # Handle bytes, string, or dict data types
+        if isinstance(events_odds_data, bytes):
+            events_odds = json.loads(events_odds_data.decode('utf-8'))
+        elif isinstance(events_odds_data, str):
+            events_odds = json.loads(events_odds_data)
+        else:
+            events_odds = events_odds_data
         
-        # Check for matchup filtering
-        matchup = request.args.get("matchup")
-        if matchup:
-            try:
-                # Group all props first, then filter by requested matchup
-                grouped_props = group_props_by_matchup(props_data)
-                
-                # Check if the requested matchup exists in our grouped data
-                if matchup in grouped_props:
-                    matchup_props = grouped_props[matchup]
-                    print(f"🎯 Found {len(matchup_props)} props for matchup {matchup}")
-                    
-                    # Return only the requested matchup
-                    filtered_result = {matchup: matchup_props}
-                    return jsonify(filtered_result)
-                else:
-                    # List available matchups for debugging
-                    available_matchups = list(grouped_props.keys())
-                    print(f"🎯 Matchup '{matchup}' not found. Available: {available_matchups}")
-                    return jsonify({"error": f"Matchup '{matchup}' not found. Available matchups: {available_matchups}"}), 404
-                
-            except Exception as e:
-                print(f"🔥 Error filtering props by matchup: {e}")
-                return jsonify({"error": "Failed to filter props by matchup"}), 500
+        event_ctx = {}
+        for ev in events_odds:
+            ctx = compute_event_context(ev)
+            if ctx and ctx.get("event_id"):
+                event_ctx[ctx["event_id"]] = ctx
+
+        # 2) Get player props from cache
+        props_data = cache_get("mlb_props_cache")
+        if not props_data:
+            return jsonify({
+                "date": target_date,
+                "league": league,
+                "count": 0,
+                "props": [],
+                "message": "No props data available"
+            })
         
-        # Group props by matchup (no filtering)
-        grouped_props = group_props_by_matchup(props_data)
-        
-        # RELAXED FALLBACK: If strict grouping returns empty but we have props
-        if not grouped_props and props_data:
-            logger.warning("Strict grouping returned empty, applying relaxed fallback")
-            
-            # Build schedule buckets via build_game_contexts_for_today()
-            game_contexts = build_game_contexts_for_today()
-            
-            if game_contexts:
-                # Create relaxed grouped structure with context
-                relaxed_grouped = {}
-                
-                for prop in props_data:
-                    if not isinstance(prop, dict):
-                        continue
-                        
-                    player_name = prop.get('player', '')
-                    if not player_name:
-                        continue
-                    
-                    # Find player's team using existing mapping
-                    from enrichment import get_player_team_mapping
-                    try:
-                        player_team_map = get_player_team_mapping()
-                    except:
-                        player_team_map = {}
-                    
-                    player_team = None
-                    if player_name in player_team_map:
-                        player_team = player_team_map[player_name]
-                    else:
-                        # Fuzzy matching
-                        for mapped_name, team in player_team_map.items():
-                            if len(player_name.split()) >= 2 and len(mapped_name.split()) >= 2:
-                                prop_last = player_name.split()[-1].lower()
-                                prop_first_initial = player_name.split()[0][0].lower()
-                                mapped_last = mapped_name.split()[-1].lower()
-                                mapped_first_initial = mapped_name.split()[0][0].lower()
-                                
-                                if (prop_last == mapped_last and 
-                                    prop_first_initial == mapped_first_initial and 
-                                    len(prop_last) > 3):
-                                    player_team = team
-                                    break
-                    
-                    if not player_team:
-                        continue
-                    
-                    # Find matching game context for this player's team
-                    for context_key, context in game_contexts.items():
-                        home_team = context.get('home_team', '')
-                        away_team = context.get('away_team', '')
-                        
-                        # Normalize player's team for comparison
-                        norm_player_team = norm_code(player_team)
-                        
-                        if norm_player_team in {home_team, away_team}:
-                            # Assign prop to this context
-                            if context_key not in relaxed_grouped:
-                                relaxed_grouped[context_key] = {
-                                    "context": context,
-                                    "props": []
-                                }
-                            
-                            # Add match_type for tracking
-                            relaxed_prop = prop.copy()
-                            relaxed_prop['match_type'] = 'relaxed'
-                            relaxed_grouped[context_key]["props"].append(relaxed_prop)
-                            break
-                
-                if relaxed_grouped:
-                    grouped_props = relaxed_grouped
-                    logger.info(f"Relaxed fallback created {len(relaxed_grouped)} groups")
-        
-        print(f"✅ Serving {len(props_data)} props grouped into {len(grouped_props)} matchups")
-        return jsonify(grouped_props)
-            
-    except Exception as e:
-        print(f"🔥 Props endpoint error: {str(e)}")
+        # Handle bytes, string, or dict data types
+        if isinstance(props_data, bytes):
+            props = json.loads(props_data.decode('utf-8'))
+        elif isinstance(props_data, str):
+            props = json.loads(props_data)
+        else:
+            props = props_data
+
+        # 3) Positioning filter (GREEN strong, BLUE neutral-with-player-edge)
+        positioned = filter_positioned_props(props, event_ctx)
+
+        # 4) Return flat list
         return jsonify({
-            "message": "Props temporarily unavailable",
-            "status": "error",
-            "matchups": {}
-        }), 503
+            "date": target_date,
+            "league": league,
+            "count": len(positioned),
+            "props": positioned
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in player_props: {e}")
+        return jsonify({"error": str(e)}), 500
 @app.route("/player_props_cached")
 def player_props_cached():
     return get_enhanced_mlb_props()
@@ -1362,78 +1297,78 @@ def get_enhanced_mlb_props():
         # Group by matchup
         grouped_props = group_props_by_matchup(enhanced_props)
         
-        # RELAXED FALLBACK: If strict grouping returns empty but we have props
-        if not grouped_props and enhanced_props:
-            logger.warning("Strict grouping returned empty, applying relaxed fallback")
-            
-            # Build schedule buckets via build_game_contexts_for_today()
-            game_contexts = build_game_contexts_for_today()
-            
-            if game_contexts:
-                # Create relaxed grouped structure with context
-                relaxed_grouped = {}
-                
-                for prop in enhanced_props:
-                    if not isinstance(prop, dict):
-                        continue
-                        
-                    player_name = prop.get('player', '')
-                    if not player_name:
-                        continue
-                    
-                    # Find player's team using existing mapping
-                    from enrichment import get_player_team_mapping
-                    try:
-                        player_team_map = get_player_team_mapping()
-                    except:
-                        player_team_map = {}
-                    
-                    player_team = None
-                    if player_name in player_team_map:
-                        player_team = player_team_map[player_name]
-                    else:
-                        # Fuzzy matching
-                        for mapped_name, team in player_team_map.items():
-                            if len(player_name.split()) >= 2 and len(mapped_name.split()) >= 2:
-                                prop_last = player_name.split()[-1].lower()
-                                prop_first_initial = player_name.split()[0][0].lower()
-                                mapped_last = mapped_name.split()[-1].lower()
-                                mapped_first_initial = mapped_name.split()[0][0].lower()
-                                
-                                if (prop_last == mapped_last and 
-                                    prop_first_initial == mapped_first_initial and 
-                                    len(prop_last) > 3):
-                                    player_team = team
-                                    break
-                    
-                    if not player_team:
-                        continue
-                    
-                    # Find matching game context for this player's team
-                    for context_key, context in game_contexts.items():
-                        home_team = context.get('home_team', '')
-                        away_team = context.get('away_team', '')
-                        
-                        # Normalize player's team for comparison
-                        norm_player_team = norm_code(player_team)
-                        
-                        if norm_player_team in {home_team, away_team}:
-                            # Assign prop to this context
-                            if context_key not in relaxed_grouped:
-                                relaxed_grouped[context_key] = {
-                                    "context": context,
-                                    "props": []
-                                }
-                            
-                            # Add match_type for tracking
-                            relaxed_prop = prop.copy()
-                            relaxed_prop['match_type'] = 'relaxed'
-                            relaxed_grouped[context_key]["props"].append(relaxed_prop)
-                            break
-                
-                if relaxed_grouped:
-                    grouped_props = relaxed_grouped
-                    logger.info(f"Relaxed fallback created {len(relaxed_grouped)} groups")
+        # RELAXED FALLBACK: If strict grouping returns empty but we have props (DISABLED)
+        # if not grouped_props and enhanced_props:
+        #     logger.warning("Strict grouping returned empty, applying relaxed fallback")
+        #     
+        #     # Build schedule buckets via build_game_contexts_for_today()
+        #     game_contexts = build_game_contexts_for_today()
+        #     
+        #     if game_contexts:
+        #         # Create relaxed grouped structure with context
+        #         relaxed_grouped = {}
+        #         
+        #         for prop in enhanced_props:
+        #             if not isinstance(prop, dict):
+        #                 continue
+        #                 
+        #             player_name = prop.get('player', '')
+        #             if not player_name:
+        #                 continue
+        #             
+        #             # Find player's team using existing mapping
+        #             from enrichment import get_player_team_mapping
+        #             try:
+        #                 player_team_map = get_player_team_mapping()
+        #             except:
+        #                 player_team_map = {}
+        #             
+        #             player_team = None
+        #             if player_name in player_team_map:
+        #                 player_team = player_team_map[player_name]
+        #             else:
+        #                 # Fuzzy matching
+        #                 for mapped_name, team in player_team_map.items():
+        #                     if len(player_name.split()) >= 2 and len(mapped_name.split()) >= 2:
+        #                         prop_last = player_name.split()[-1].lower()
+        #                         prop_first_initial = player_name.split()[0][0].lower()
+        #                         mapped_last = mapped_name.split()[-1].lower()
+        #                         mapped_first_initial = mapped_name.split()[0][0].lower()
+        #                         
+        #                         if (prop_last == mapped_last and 
+        #                             prop_first_initial == mapped_first_initial and 
+        #                             len(prop_last) > 3):
+        #                             player_team = team
+        #                             break
+        #             
+        #             if not player_team:
+        #                 continue
+        #             
+        #             # Find matching game context for this player's team
+        #             for context_key, context in game_contexts.items():
+        #                 home_team = context.get('home_team', '')
+        #                 away_team = context.get('away_team', '')
+        #                 
+        #                 # Normalize player's team for comparison
+        #                 norm_player_team = norm_code(player_team)
+        #                 
+        #                 if norm_player_team in {home_team, away_team}:
+        #                     # Assign prop to this context
+        #                     if context_key not in relaxed_grouped:
+        #                         relaxed_grouped[context_key] = {
+        #                             "context": context,
+        #                             "props": []
+        #                         }
+        #                     
+        #                     # Add match_type for tracking
+        #                     relaxed_prop = prop.copy()
+        #                     relaxed_prop['match_type'] = 'relaxed'
+        #                     relaxed_grouped[context_key]["props"].append(relaxed_prop)
+        #                     break
+        #         
+        #         if relaxed_grouped:
+        #             grouped_props = relaxed_grouped
+        #             logger.info(f"Relaxed fallback created {len(relaxed_grouped)} groups")
         
         logger.info(f"Enhanced MLB props: {len(enhanced_props)} props with game context")
         return jsonify({
