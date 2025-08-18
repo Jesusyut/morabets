@@ -132,28 +132,7 @@
         .confidence-medium { color: #f59e0b; }
         .confidence-low { color: #ef4444; }
 
-        /* New props panel styles */
-        .props-panel { margin-top: 1.25rem; }
-        .tabs-and-controls{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:space-between}
-        .tabs{display:flex;gap:.5rem}
-        .tab{padding:.5rem .9rem;border:1px solid #2c3e50;border-radius:.6rem;background:#0f172a;color:#e2e8f0;cursor:pointer}
-        .tab.active{background:#1e293b;color:#fff;border-color:#334155}
-        .controls{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
-        .ctrl{padding:.5rem .6rem;border:1px solid #334155;border-radius:.5rem;background:#0b1220;color:#e2e8f0}
-        .count-badge{padding:.35rem .6rem;border:1px solid #334155;border-radius:999px;color:#94a3b8}
-        .props-list{display:flex;flex-direction:column;gap:.6rem;margin-top:1rem}
-        .prop-card{display:flex;justify-content:space-between;align-items:flex-start;padding:.85rem 1rem;border:1px solid #334155;border-radius:1rem;background:#0b1220}
-        .prop-left{display:flex;flex-direction:column;gap:.25rem}
-        .prop-player{color:#f8fafc;font-weight:600}
-        .prop-meta{color:#cbd5e1;font-size:.9rem}
-        .prop-badges{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem}
-        .badge{font-size:.7rem;padding:.2rem .45rem;border:1px solid #334155;border-radius:999px;color:#cbd5e1}
-        .prop-right{display:flex;flex-direction:column;align-items:flex-end;gap:.25rem}
-        .label{font-size:.75rem;padding:.2rem .5rem;border:1px solid #334155;border-radius:999px;color:#e2e8f0}
-        .label.best{border-color:#14b8a6;color:#14b8a6}
-        .label.neutral{border-color:#94a3b8;color:#94a3b8}
-        .small{color:#94a3b8;font-size:.75rem}
-        .empty-state{padding:1rem;border:1px dashed #334155;border-radius:.8rem;color:#94a3b8;text-align:center}
+
 
 
 
@@ -324,33 +303,42 @@
                                 </ul>
                             </div>
                             
-                            <section id="props-panel" class="props-panel">
-                                <div class="tabs-and-controls">
-                                    <div class="tabs">
-                                        <button class="tab active" data-league="mlb">MLB Props</button>
-                                        <button class="tab" data-league="nfl">NFL Props</button>
-                                    </div>
-
-                                    <div class="controls">
-                                        <input id="search-input" class="ctrl" type="text" placeholder="Search players or stats…" />
-                                        <select id="confidence-select" class="ctrl">
-                                            <option value="0">All confidence</option>
-                                            <option value="0.70">High (≥70%)</option>
-                                            <option value="0.60">Medium (≥60%)</option>
-                                            <option value="0.50">Any (≥50%)</option>
-                                        </select>
-                                        <select id="matchup-select" class="ctrl" hidden>
-                                            <option value="">All matchups</option>
-                                        </select>
-                                        <span class="count-badge"><span data-props-total>0</span> props</span>
+                            <!-- Search and Filter Controls -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-5">
+                                    <input type="text" 
+                                           id="search-input" 
+                                           class="form-control" 
+                                           placeholder="Search players or stats..." 
+                                           onkeyup="applyFilters()">
+                                </div>
+                                <div class="col-md-4">
+                                    <select id="confidence-select" class="form-select" onchange="applyFilters()">
+                                        <option value="0">All confidence</option>
+                                        <option value="0.70">High (≥70%)</option>
+                                        <option value="0.60">Medium (≥60%)</option>
+                                        <option value="0.50">Any (≥50%)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-muted small text-center">
+                                        <div data-props-total>0 props</div>
                                     </div>
                                 </div>
-
-                                <div id="props-lists">
-                                    <div id="list-mlb" class="props-list"></div>
-                                    <div id="list-nfl" class="props-list" style="display:none"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <div id="props-container" class="loading">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading props...</span>
                                 </div>
-                            </section>
+                                <p class="mt-3">Loading player props...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -446,229 +434,169 @@
 
         // New vanilla JS for props panel
         (function(){
+            // ----- Resolve DOM hooks without changing the existing markup -----
+            // Buttons by their text content:
+            const btnMLB = [...document.querySelectorAll('button, a')].find(el => /MLB Props/i.test(el.textContent || ''));
+            const btnNFL = [...document.querySelectorAll('button, a')].find(el => /NFL Props/i.test(el.textContent || ''));
+            // Inputs:
+            const searchInput = document.querySelector('input[placeholder*="Search"]') || document.getElementById('search-input');
+            const confSelect = [...document.querySelectorAll('select')].find(s => /confidence/i.test(s.textContent + ' ' + (s.getAttribute('aria-label')||''))) || document.getElementById('confidence-select');
+            // Count badge:
+            const totalBadge = document.querySelector('[data-props-total]');
+
+            // List container: reuse if present; else create once.
+            let list = document.getElementById('props-container');
+            if (!list) {
+                list = document.createElement('div');
+                list.id = 'props-container';
+                // insert before the empty-state panel or at the main content area
+                const insertionPoint = document.querySelector('.empty-state, [data-empty], main, .content, body');
+                (insertionPoint?.parentNode || document.body).insertBefore(list, insertionPoint || null);
+            }
+            list.style.display = 'flex';
+            list.style.flexDirection = 'column';
+            list.style.gap = '10px';
+
+            // ----- API helpers -----
             const API = (league) => `/player_props?league=${league}&tz=ET`;
 
             const state = {
-                activeLeague: 'mlb',
-                cache: { mlb: { loaded:false, items:[] }, nfl: { loaded:false, items:[] } },
+                league: 'mlb',
+                cache: { mlb: [], nfl: [] },
                 search: '',
-                minConf: 0,
-                matchup: ''
+                minConf: 0
             };
 
-            const els = {
-                tabs: document.querySelectorAll('.tab'),
-                mlb: document.getElementById('list-mlb'),
-                nfl: document.getElementById('list-nfl'),
-                search: document.getElementById('search-input'),
-                conf: document.getElementById('confidence-select'),
-                matchup: document.getElementById('matchup-select'),
-                total: document.querySelector('[data-props-total]')
-            };
-
-            // ----- Utilities -----
             function safeNum(x, d=0){ return (typeof x==='number' && !isNaN(x)) ? x : d; }
-            function edgeScore(p){
-                // primary: position_score
-                const ps = safeNum(p.position_score, NaN);
-                if (!isNaN(ps)) return ps;
-                // fallback: engine_prob - prop_implied
-                const eg = safeNum(p?.position_context?.engine_prob, NaN);
-                const ip = safeNum(p?.position_context?.prop_implied, NaN);
-                if (!isNaN(eg) && !isNaN(ip)) return eg - ip;
-                // fallback: engine_prob
-                if (!isNaN(eg)) return eg;
+
+            function oddsEdge(p){
+                // 1) position_score
+                const ps = p?.position_score;
+                if (typeof ps === 'number' && !isNaN(ps)) return ps;
+                // 2) engine_prob - prop_implied (if provided inside position_context)
+                const eg = p?.position_context?.engine_prob;
+                const ip = p?.position_context?.prop_implied;
+                if (typeof eg === 'number' && typeof ip === 'number') return eg - ip;
+                // 3) engine_prob
+                if (typeof eg === 'number') return eg;
                 return 0;
             }
+
             function strongContext(p){
-                const ctx = p.position_context || {};
-                return (safeNum(ctx.team_true_win) >= 0.58) || (safeNum(ctx.true_prob_over) >= 0.58);
+                const ctx = p?.position_context || {};
+                return safeNum(ctx.team_true_win) >= 0.58 || safeNum(ctx.true_prob_over) >= 0.58;
             }
+
             function labelFor(p){
-                return strongContext(p) ? {txt:"Best position", cls:"best"} : {txt:"Neutral—Player Edge", cls:"neutral"};
+                return strongContext(p) ? { txt: 'Best position', cls: 'best' } : { txt: 'Neutral—Player Edge', cls: 'neutral' };
             }
+
             function confFrom(p){
-                // confidence as a probability proxy: prefer engine_prob, else position_score (clamped), else 0
-                const eg = safeNum(p?.position_context?.engine_prob, NaN);
-                if (!isNaN(eg)) return eg;
-                const ps = safeNum(p.position_score, NaN);
-                if (!isNaN(ps)) return Math.max(0, Math.min(1, ps));
+                // proxy confidence used for the dropdown filter
+                const eg = p?.position_context?.engine_prob;
+                if (typeof eg === 'number') return eg;
+                const ps = p?.position_score;
+                if (typeof ps === 'number') return Math.max(0, Math.min(1, ps));
                 return 0;
-            }
-            function matchupLabel(p){
-                if (p.matchup) return p.matchup;
-                const g = p.game || p.game_label;
-                if (g) return g;
-                const ctx = p.position_context || {};
-                const fav = ctx.favored_team;
-                const home = ctx.home_team || p.home_team;
-                const away = ctx.away_team || p.away_team;
-                if (home && away) return `${away} @ ${home}`;
-                if (fav) return `${fav} (fav)`;
-                return '';
             }
 
             function sortItems(items){
-                // Sort by: best position first, then edgeScore desc, then player asc
                 return [...items].sort((a,b)=>{
                     const aBest = strongContext(a) ? 0 : 1;
                     const bBest = strongContext(b) ? 0 : 1;
                     if (aBest !== bBest) return aBest - bBest;
-                    const ea = edgeScore(a), eb = edgeScore(b);
+                    const ea = oddsEdge(a), eb = oddsEdge(b);
                     if (eb !== ea) return eb - ea;
                     return String(a.player||'').localeCompare(String(b.player||''));
                 });
             }
 
-            function buildMatchups(items){
-                const set = new Set();
-                items.forEach(p => {
-                    const m = matchupLabel(p);
-                    if (m) set.add(m);
-                });
-                return [...set].sort();
-            }
-
-            // ----- Fetch & cache -----
-            async function loadLeague(league){
-                const bucket = state.cache[league];
-                if (bucket.loaded) return bucket.items;
-                const res = await fetch(API(league), { cache:"no-store" });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                const items = Array.isArray(data.props) ? data.props : [];
-                bucket.items = sortItems(items);
-                bucket.loaded = true;
-                return bucket.items;
-            }
-
-            // ----- Filters -----
-            function applyFilters(items){
-                const q = state.search.trim().toLowerCase();
+            function filterItems(items){
+                const q = (state.search || '').toLowerCase();
                 const min = state.minConf;
-                const m = state.matchup;
-
                 return items.filter(p=>{
-                    if (q){
-                        const hay = `${p.player||''} ${p.market||''} ${p.stat||''}`.toLowerCase();
+                    if (q) {
+                        const hay = `${p.player||''} ${(p.market||'').replaceAll('_',' ')} ${p.stat||''}`.toLowerCase();
                         if (!hay.includes(q)) return false;
                     }
                     if (min > 0 && confFrom(p) < min) return false;
-                    if (m){
-                        const ml = matchupLabel(p);
-                        if (ml !== m) return false;
-                    }
                     return true;
                 });
             }
 
-            // ----- Render -----
             function badgesHTML(p){
-                const badges = Array.isArray(p.badges) ? p.badges.filter(Boolean) : [];
-                if (!badges.length) return '';
-                return `<div class="prop-badges">${badges.map(b=>`<span class="badge">${b}</span>`).join('')}</div>`;
+                const arr = Array.isArray(p.badges) ? p.badges.filter(Boolean) : [];
+                if (!arr.length) return '';
+                return `<div class="prop-badges">${arr.map(b=>`<span class="badge">${b}</span>`).join('')}</div>`;
             }
 
             function cardHTML(p){
                 const ctx = p.position_context || {};
-                const label = labelFor(p);
                 const line = (p.line != null) ? String(p.line) : '';
-                const stat = (p.market || '').replaceAll('_', ' ');
-
-                const win = safeNum(ctx.team_true_win) ? `${Math.round(safeNum(ctx.team_true_win)*100)}%` : '—';
-                const over = safeNum(ctx.true_prob_over) ? `${Math.round(safeNum(ctx.true_prob_over)*100)}%` : '—';
+                const stat = (p.market || '').replaceAll('_',' ');
+                const win = (typeof ctx.team_true_win === 'number') ? `${Math.round(ctx.team_true_win*100)}%` : '—';
+                const over = (typeof ctx.true_prob_over === 'number') ? `${Math.round(ctx.true_prob_over*100)}%` : '—';
+                const label = labelFor(p);
 
                 return `
-                    <div class="prop-card">
-                        <div class="prop-left">
-                            <div class="prop-player">${p.player || ''}</div>
-                            <div class="prop-meta">${stat}${line ? ` • ${line}` : ''}</div>
+                    <div class="prop-card" style="display:flex;justify-content:space-between;align-items:flex-start;padding:.85rem 1rem;border:1px solid #334155;border-radius:1rem;background:#0b1220;">
+                        <div class="prop-left" style="display:flex;flex-direction:column;gap:.25rem;">
+                            <div class="prop-player" style="color:#f8fafc;font-weight:600">${p.player || ''}</div>
+                            <div class="prop-meta" style="color:#cbd5e1;font-size:.9rem">${stat}${line?` • ${line}`:''}</div>
                             ${badgesHTML(p)}
                         </div>
-                        <div class="prop-right">
-                            <div class="label ${label.cls}">${label.txt}</div>
-                            <div class="small">Win% ${win} • Over% ${over}</div>
+                        <div class="prop-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;">
+                            <div class="label ${label.cls}" style="font-size:.75rem;padding:.2rem .5rem;border:1px solid ${label.cls==='best'?'#14b8a6':'#94a3b8'};border-radius:999px;color:${label.cls==='best'?'#14b8a6':'#94a3b8'}">${label.txt}</div>
+                            <div class="small" style="color:#94a3b8;font-size:.75rem">Win% ${win} • Over% ${over}</div>
                         </div>
                     </div>
                 `;
             }
 
-            function renderList(league, items){
-                const listEl = (league==='mlb') ? els.mlb : els.nfl;
-                const filtered = applyFilters(items);
-                els.total.textContent = String(filtered.length);
-
-                if (!filtered.length){
-                    listEl.innerHTML = `<div class="empty-state">No props match your filters.</div>`;
-                    return;
-                }
-                listEl.innerHTML = filtered.map(cardHTML).join('');
+            function render(items){
+                const filtered = filterItems(items);
+                if (totalBadge) totalBadge.textContent = String(filtered.length);
+                list.innerHTML = filtered.length ? filtered.map(cardHTML).join('') :
+                    `<div class="empty-state" style="padding:1rem;border:1px dashed #334155;border-radius:.8rem;color:#94a3b8;text-align:center">No props match your filters.</div>`;
             }
 
-            function populateMatchups(items){
-                const opts = buildMatchups(items);
-                if (opts.length <= 1){
-                    els.matchup.hidden = true;
-                    els.matchup.value = '';
-                    state.matchup = '';
-                    return;
-                }
-                // keep prior selection if still present
-                const prev = state.matchup;
-                els.matchup.innerHTML = `<option value="">All matchups</option>` + opts.map(o=>`<option value="${o}">${o}</option>`).join('');
-                els.matchup.hidden = false;
-                if (prev && opts.includes(prev)) {
-                    els.matchup.value = prev;
-                } else {
-                    els.matchup.value = '';
-                    state.matchup = '';
-                }
+            async function loadLeague(league){
+                if (state.cache[league]?.length) return state.cache[league];
+                const res = await fetch(`/player_props?league=${league}&tz=ET`, { cache:'no-store' });
+                if (!res.ok) throw new Error('HTTP '+res.status);
+                const data = await res.json();
+                const items = Array.isArray(data.props) ? data.props : [];
+                state.cache[league] = sortItems(items);
+                return state.cache[league];
             }
 
-            // ----- Events -----
-            els.tabs.forEach(btn=>{
-                btn.addEventListener('click', async ()=>{
-                    els.tabs.forEach(b=>b.classList.remove('active'));
-                    btn.classList.add('active');
-                    state.activeLeague = btn.dataset.league;
+            async function switchLeague(league){
+                state.league = league;
+                const items = await loadLeague(league);
+                render(items);
+            }
 
-                    // toggle lists
-                    els.mlb.style.display = (state.activeLeague==='mlb') ? '' : 'none';
-                    els.nfl.style.display = (state.activeLeague==='nfl') ? '' : 'none';
+            // ----- Wire events -----
+            if (btnMLB) btnMLB.addEventListener('click', () => switchLeague('mlb'));
+            if (btnNFL) btnNFL.addEventListener('click', () => switchLeague('nfl'));
 
-                    const items = await loadLeague(state.activeLeague);
-                    populateMatchups(items);
-                    renderList(state.activeLeague, items);
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    state.search = searchInput.value || '';
+                    render(state.cache[state.league] || []);
                 });
-            });
+            }
 
-            els.search.addEventListener('input', ()=>{
-                state.search = els.search.value || '';
-                const items = state.cache[state.activeLeague].items || [];
-                renderList(state.activeLeague, items);
-            });
+            if (confSelect) {
+                confSelect.addEventListener('change', () => {
+                    const v = parseFloat(confSelect.value || '0');
+                    state.minConf = isNaN(v) ? 0 : v;
+                    render(state.cache[state.league] || []);
+                });
+            }
 
-            els.conf.addEventListener('change', ()=>{
-                state.minConf = parseFloat(els.conf.value || '0') || 0;
-                const items = state.cache[state.activeLeague].items || [];
-                renderList(state.activeLeague, items);
-            });
-
-            els.matchup.addEventListener('change', ()=>{
-                state.matchup = els.matchup.value || '';
-                const items = state.cache[state.activeLeague].items || [];
-                renderList(state.activeLeague, items);
-            });
-
-            // ----- Init: load MLB first (odds-positioned list by default) -----
-            (async function init(){
-                const items = await loadLeague('mlb');
-                // show lists
-                els.mlb.style.display = '';
-                els.nfl.style.display = 'none';
-                populateMatchups(items);
-                renderList('mlb', items);
-            })();
+            // ----- Init: default to MLB odds-positioned list -----
+            switchLeague('mlb').catch(console.error);
         })();
 
 
