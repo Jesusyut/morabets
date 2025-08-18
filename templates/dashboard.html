@@ -337,6 +337,9 @@
                                 </div>
                                 <p class="mt-3">Loading player props...</p>
                             </div>
+                            <div id="props-error" class="text-danger mt-2" style="display: none;">
+                                Couldn't load props. Retrying...
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -480,11 +483,18 @@
                 for (const url of candidates) {
                     try {
                         const j = await fetchWithTimeout(url, {}, 5000);
-                        const arr = Array.isArray(j) ? j : (Array.isArray(j?.props) ? j.props : null);
-                        if (arr !== null) return url.replace(/\?.*$/, ''); // return base path
+                        const arr = extractProps(j);
+                        if (arr.length > 0) return url.replace(/\?.*$/, ''); // return base path
                     } catch (_) {}
                 }
                 throw new Error('No working props endpoint found');
+            }
+            
+            // ----- Contract-safe adapter -----
+            function extractProps(json) {
+                if (Array.isArray(json)) return json;
+                if (json && Array.isArray(json.props)) return json.props;
+                return []; // fallback
             }
             
             // ----- API helpers -----
@@ -603,20 +613,45 @@
             async function loadLeague(league){
                 if (state.cache[league]?.length) return state.cache[league];
                 
-                try {
-                    // Discover the working endpoint if not already cached
-                    const base = window.__PROPS_BASE__ || (window.__PROPS_BASE__ = await discoverPropsUrl(league));
-                    const url = `${base}?league=${league}&tz=ET`;
-                    const data = await fetchWithTimeout(url);
-                    
-                    // Accept both {props: [...]} and [...] shapes
-                    const items = Array.isArray(data) ? data : (Array.isArray(data?.props) ? data.props : []);
-                    state.cache[league] = sortItems(items);
-                    return state.cache[league];
-                } catch (error) {
-                    console.error('loadLeague failed:', error);
-                    state.cache[league] = [];
-                    return [];
+                const errorEl = document.getElementById('props-error');
+                let retryCount = 0;
+                const maxRetries = 1;
+                
+                while (retryCount <= maxRetries) {
+                    try {
+                        // Discover the working endpoint if not already cached
+                        const base = window.__PROPS_BASE__ || (window.__PROPS_BASE__ = await discoverPropsUrl(league));
+                        const url = `${base}?league=${league}&tz=ET`;
+                        const data = await fetchWithTimeout(url);
+                        
+                        // Use contract-safe adapter
+                        const items = extractProps(data);
+                        
+                        // Log contract drift if detected
+                        if (items.length === 0 && data && data.count > 0) {
+                            console.error('Contract drift: count>0 but props empty', data);
+                        }
+                        
+                        // Hide error message on success
+                        if (errorEl) errorEl.style.display = 'none';
+                        
+                        state.cache[league] = sortItems(items);
+                        return state.cache[league];
+                    } catch (error) {
+                        console.error(`loadLeague failed (attempt ${retryCount + 1}):`, error);
+                        
+                        if (retryCount < maxRetries) {
+                            // Show error message and retry after 3 seconds
+                            if (errorEl) errorEl.style.display = 'block';
+                            await new Promise(resolve => setTimeout(resolve, 3000));
+                            retryCount++;
+                        } else {
+                            // Final failure
+                            if (errorEl) errorEl.style.display = 'none';
+                            state.cache[league] = [];
+                            return [];
+                        }
+                    }
                 }
             }
 

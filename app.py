@@ -1233,13 +1233,45 @@ def player_props():
     league = (request.args.get("league") or "mlb").lower()
     tz = request.args.get("tz") or "UTC"
 
-    items = load_cached_props(league)
-    return jsonify({
-        "date": today_str(tz),
-        "league": league,
-        "count": len(items),
-        "props": items
-    })
+    try:
+        # Load cached props
+        payload = load_cached_props(league)
+        
+        # Guarantee consistent envelope
+        if isinstance(payload, list):
+            result = {
+                "date": today_str(tz),
+                "league": league,
+                "count": len(payload),
+                "props": payload
+            }
+        elif isinstance(payload, dict):
+            # ensure keys exist
+            result = {
+                "date": today_str(tz),
+                "league": payload.get("league", league),
+                "count": payload.get("count", len(payload.get("props", []) if isinstance(payload.get("props"), list) else [])),
+                "props": payload.get("props", []) if isinstance(payload.get("props"), list) else []
+            }
+        else:
+            result = {
+                "date": today_str(tz),
+                "league": league,
+                "count": 0,
+                "props": []
+            }
+        
+        app.logger.info(f"serve_player_props league={league} count={len(result['props'])}")
+        return jsonify(result)
+        
+    except Exception as e:
+        app.logger.exception("player_props_failed", exc_info=True)
+        return jsonify({
+            "date": today_str(tz),
+            "league": league,
+            "count": 0,
+            "props": []
+        })
 
     # --- Try multiple dates to avoid UTC/day boundary misses ---
     tried = []
@@ -1421,6 +1453,57 @@ def health_props():
         "mlb_count": read_count("mlb_props_cache.json"),
         "nfl_count": read_count("nfl_props_cache.json"),
     })
+
+@app.route("/debug/props-summary", methods=["GET"])
+def debug_props_summary():
+    import json, os
+    from collections import Counter
+    
+    league = request.args.get("league", "mlb").lower()
+    cache_file = f"{league}_props_cache.json"
+    
+    try:
+        if os.path.exists(cache_file):
+            with open(cache_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            
+            props = []
+            if isinstance(data, dict) and "props" in data and isinstance(data["props"], list):
+                props = data["props"]
+            elif isinstance(data, list):
+                props = data
+            
+            # Count markets
+            markets = Counter()
+            for prop in props:
+                if isinstance(prop, dict) and "market" in prop:
+                    markets[prop["market"]] += 1
+            
+            # Sample first 2-3 props
+            sample = props[:3] if len(props) >= 3 else props
+            
+            return jsonify({
+                "league": league,
+                "count": len(props),
+                "markets": dict(markets),
+                "sample": sample
+            })
+        else:
+            return jsonify({
+                "league": league,
+                "count": 0,
+                "markets": {},
+                "sample": [],
+                "error": "Cache file not found"
+            })
+    except Exception as e:
+        return jsonify({
+            "league": league,
+            "count": 0,
+            "markets": {},
+            "sample": [],
+            "error": str(e)
+        })
 
 
 
