@@ -1,1 +1,2 @@
-web: gunicorn app:app --workers 1 --threads 1 --timeout 120
+web: gunicorn app:app -k uvicorn.workers.UvicornWorker -w 3 --timeout 60 --keep-alive 15
+worker: python worker.py --task=all && python worker.py --loop 600

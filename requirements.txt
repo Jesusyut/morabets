@@ -2,7 +2,6 @@ flask
 gunicorn
 flask-cors
 redis
-requests
-apscheduler
-stripe
-pytz
+httpx
+pytest
+pytest-asyncio
