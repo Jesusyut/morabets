@@ -1,47 +1,39 @@
 import os
 import redis
-from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
-def create_redis_client() -> Optional[redis.Redis]:
+def redis_client():
     """Create Redis client from REDIS_URL environment variable"""
-    redis_url = os.getenv("REDIS_URL")
-    if not redis_url:
-        logger.warning("REDIS_URL not set, Redis functionality disabled")
-        return None
+    url = os.getenv("REDIS_URL")
+    if not url:
+        raise RuntimeError("REDIS_URL missing")
     
+    use_tls = url.startswith("rediss://")
     try:
-        # Handle both redis:// and rediss:// (SSL) URLs
-        if redis_url.startswith("rediss://"):
-            # SSL connection
-            client = redis.from_url(
-                redis_url,
-                decode_responses=True,
-                ssl=True,
-                ssl_cert_reqs=None,  # Don't verify SSL cert
-                socket_connect_timeout=5,
-                socket_timeout=5,
-                retry_on_timeout=True
-            )
-        else:
-            # Standard connection
-            client = redis.from_url(
-                redis_url,
-                decode_responses=True,
-                socket_connect_timeout=5,
-                socket_timeout=5,
-                retry_on_timeout=True
-            )
-        
+        client = redis.Redis.from_url(
+            url,
+            decode_responses=True,
+            ssl=use_tls,
+            ssl_cert_reqs=None,  # Render Redis uses TLS; this avoids cert issues
+            socket_connect_timeout=5,
+            socket_timeout=5,
+            retry_on_timeout=True
+        )
         # Test connection
         client.ping()
         logger.info("✅ Redis connection established")
         return client
-        
     except Exception as e:
         logger.error(f"Failed to connect to Redis: {e}")
+        raise RuntimeError(f"Redis connection failed: {e}")
+
+def create_redis_client():
+    """Legacy function for backward compatibility"""
+    try:
+        return redis_client()
+    except Exception:
         return None
 
 def get_redis_lock(redis_client: redis.Redis, lock_name: str, ttl: int = 900) -> bool:
