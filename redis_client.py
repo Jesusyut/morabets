@@ -9,17 +9,17 @@ def redis_client():
     url = os.getenv("REDIS_URL")
     if not url:
         raise RuntimeError("REDIS_URL missing")
-    
-    use_tls = url.startswith("rediss://")
+
+    # rediss:// implies TLS automatically; no 'ssl' kwarg needed
     try:
         client = redis.Redis.from_url(
             url,
             decode_responses=True,
-            ssl=use_tls,
-            ssl_cert_reqs=None,  # Render Redis uses TLS; this avoids cert issues
-            socket_connect_timeout=5,
-            socket_timeout=5,
+            socket_timeout=5,          # optional: avoid hanging
+            socket_connect_timeout=5,  # optional
             retry_on_timeout=True
+            # If your Redis requires cert verification and you see TLS errors,
+            # add: ssl_cert_reqs=None   # but only if needed
         )
         # Test connection
         client.ping()
