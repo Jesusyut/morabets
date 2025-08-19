@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
 """
-Mora Bets Worker - Handles scheduled tasks and data refresh
+Mora Bets Worker - Production-ready background worker
 """
-import asyncio
-import json
-import logging
 import os
-import sys
-import time
+import json
+import asyncio
+import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
-import argparse
-
 import httpx
-
-from redis_client import redis_client
+import redis
 
 # Configure logging
 logging.basicConfig(
@@ -23,376 +17,143 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Redis connection
+try:
+    r = redis.Redis.from_url(os.environ["REDIS_URL"], decode_responses=True)
+    logger.info("✅ Redis client initialized")
+except Exception as e:
+    logger.error(f"❌ Redis client failed: {e}")
+    r = None
+
+def cache_key(league="mlb", dt=None):
+    """Generate cache key for props data"""
+    d = (dt or datetime.now(timezone.utc)).strftime("%Y%m%d")
+    return f"mb:props:{league}:{d}"
+
 def now_ts():
     """Get current timestamp"""
     return int(datetime.now(timezone.utc).timestamp())
-
-def today():
-    """Get today's date in YYYYMMDD format in UTC"""
-    return datetime.now(timezone.utc).strftime("%Y%m%d")
-
-def acquire_lock(name, ttl=900):
-    """Acquire a distributed lock"""
+    
+# ---- INSERT YOUR EXISTING FETCH/ENRICH CODE HERE ----
+async def fetch_odds(client):
+    """Fetch odds data from The Odds API"""
     try:
-        r = redis_client()
-        return r.set(f"lock:{name}", "1", nx=True, ex=ttl)
+        url = f"https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
+        params = {
+            "regions": "us",
+            "markets": "h2h,totals,player_props",
+            "oddsFormat": "american",
+            "apiKey": os.environ["ODDS_API_KEY"]
+        }
+        resp = await client.get(url, params=params)
+        resp.raise_for_status()
+        logger.info(f"✅ Fetched {len(resp.json())} odds events")
+        return resp.json()
     except Exception as e:
-        logger.error(f"Failed to acquire lock {name}: {e}")
-        return False
+        logger.error(f"❌ Failed to fetch odds: {e}")
+        raise
 
-def release_lock(name):
-    """Release a distributed lock"""
+async def fetch_mlb(client):
+    """Fetch MLB schedule and context data"""
     try:
-        r = redis_client()
-        r.delete(f"lock:{name}")
+        url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1"
+        resp = await client.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info(f"✅ Fetched MLB schedule with {len(data.get('dates', []))} dates")
+        return data
     except Exception as e:
-        logger.error(f"Failed to release lock {name}: {e}")
+        logger.error(f"❌ Failed to fetch MLB data: {e}")
+        raise
 
-class MoraBetsWorker:
-    def __init__(self):
-        try:
-            self.r = redis_client()
-            logger.info("✅ Redis client initialized")
-        except Exception as e:
-            logger.error(f"❌ Redis client failed: {e}")
-            self.r = None
+def enrich(odds_data, mlb_data):
+    """Enrich odds data with MLB context"""
+    try:
+        # TODO: Replace with your actual enrichment logic
+        # This is a placeholder that combines the data
+        enriched_props = []
         
-        self.odds_api_key = os.getenv("ODDS_API_KEY")
-        self.mlb_api_key = os.getenv("MLB_API_KEY")
+        for event in odds_data:
+            if "bookmakers" in event:
+                for bookmaker in event["bookmakers"]:
+                    if "markets" in bookmaker:
+                        for market in bookmaker["markets"]:
+                            if market["key"] == "player_props":
+                                for outcome in market["outcomes"]:
+                                    prop = {
+                                        "player": outcome.get("description", ""),
+                                        "market": market["key"],
+                                        "line": outcome.get("point"),
+                                        "odds": outcome.get("price"),
+                                        "team": event.get("home_team"),
+                                        "event_id": event.get("id"),
+                                        "commence_time": event.get("commence_time")
+                                    }
+                                    enriched_props.append(prop)
         
-        if not self.odds_api_key:
-            logger.error("ODDS_API_KEY not set")
-            sys.exit(1)
-    
-    async def refresh_odds(self) -> Dict[str, Any]:
-        """Refresh odds data from vendor API"""
-        job_name = "refresh_odds"
-        start_time = time.time()
+        # Add MLB context
+        mlb_context = mlb_data.get("dates", [])
         
-        if not acquire_lock(job_name):
-            logger.info(f"⏭️ Skipping {job_name} - lock exists")
-            return {"status": "skipped", "reason": "lock_exists"}
+        result = {
+            "props": enriched_props,
+            "mlb_context": mlb_context,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "count": len(enriched_props)
+        }
         
-        try:
-            logger.info(f"🔄 Starting {job_name}")
-            
-            # Fetch odds data from vendor
-            async with httpx.AsyncClient(timeout=15, limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)) as client:
-                url = f"https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
-                params = {
-                    "apiKey": self.odds_api_key,
-                    "regions": "us",
-                    "markets": "h2h,totals",
-                    "oddsFormat": "american"
-                }
-                
-                response = await client.get(url, params=params)
-                odds_data = response.json()
-            
-            # Store in Redis
-            if self.r:
-                self.r.setex(
-                    "mb:odds:latest",
-                    3600,  # 1 hour TTL
-                    json.dumps({
-                        "data": odds_data,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "count": len(odds_data)
-                    })
-                )
-                
-                # Update metadata
-                self.r.hset("mb:meta", "last_refresh_ts", now_ts())
-            
-            duration = time.time() - start_time
-            logger.info(f"✅ {job_name} completed in {duration:.2f}s - {len(odds_data)} events")
-            
-            return {
-                "status": "success",
-                "duration": duration,
-                "count": len(odds_data),
-                "http_status": response.status_code
-            }
-            
-        except Exception as e:
-            duration = time.time() - start_time
-            logger.error(f"❌ {job_name} failed after {duration:.2f}s: {e}")
-            return {
-                "status": "error",
-                "duration": duration,
-                "error": str(e)
-            }
-        finally:
-            release_lock(job_name)
-    
-    async def refresh_props(self) -> Dict[str, Any]:
-        """Refresh player props from vendor API"""
-        job_name = "refresh_props"
-        start_time = time.time()
+        logger.info(f"✅ Enriched {len(enriched_props)} props")
+        return result
         
-        if not acquire_lock(job_name):
-            logger.info(f"⏭️ Skipping {job_name} - lock exists")
-            return {"status": "skipped", "reason": "lock_exists"}
-        
-        try:
-            logger.info(f"🔄 Starting {job_name}")
-            
-            # Fetch props data from vendor
-            async with httpx.AsyncClient(timeout=15, limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)) as client:
-                url = f"https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
-                params = {
-                    "apiKey": self.odds_api_key,
-                    "regions": "us",
-                    "markets": "player_props",
-                    "oddsFormat": "american"
-                }
-                
-                response = await client.get(url, params=params)
-                props_data = response.json()
-            
-            # Store in Redis with date-based key (exact format web expects)
-            key = f"mb:props:mlb:{today()}"
-            if self.r:
-                self.r.setex(
-                    key,
-                    60*60,  # 1 hour TTL
-                    json.dumps({
-                        "data": props_data,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "count": len(props_data)
-                    })
-                )
-                
-                # Update metadata
-                self.r.hset("mb:meta", "last_refresh_ts", now_ts())
-                self.r.hset("mb:meta", "last_key", key)
-            
-            duration = time.time() - start_time
-            logger.info(f"[REFRESH] wrote {key} size={len(json.dumps(props_data))}")
-            logger.info(f"✅ {job_name} completed in {duration:.2f}s - {len(props_data)} props")
-            
-            return {
-                "status": "success",
-                "duration": duration,
-                "count": len(props_data),
-                "http_status": response.status_code
-            }
-            
-        except Exception as e:
-            duration = time.time() - start_time
-            logger.error(f"❌ {job_name} failed after {duration:.2f}s: {e}")
-            return {
-                "status": "error",
-                "duration": duration,
-                "error": str(e)
-            }
-        finally:
-            release_lock(job_name)
-    
-    async def enrich_mlb(self) -> Dict[str, Any]:
-        """Enrich MLB props with additional data"""
-        job_name = "enrich_mlb"
-        start_time = time.time()
-        
-        if not acquire_lock(job_name):
-            logger.info(f"⏭️ Skipping {job_name} - lock exists")
-            return {"status": "skipped", "reason": "lock_exists"}
-        
-        try:
-            logger.info(f"🔄 Starting {job_name}")
-            
-            # Get props data from Redis
-            props_key = f"mb:props:mlb:{today()}"
-            
-            if not self.r or not self.r.exists(props_key):
-                logger.warning(f"No props data found for {today()}")
-                return {"status": "skipped", "reason": "no_props_data"}
-            
-            props_data = json.loads(self.r.get(props_key))
-            
-            # TODO: Add enrichment logic here
-            # This would include probability calculations, edge analysis, etc.
-            enriched_data = props_data["data"]  # Placeholder
-            
-            # Store enriched data
-            if self.r:
-                self.r.setex(
-                    f"mb:enriched:mlb:{today()}",
-                    60*60,  # 1 hour TTL
-                    json.dumps({
-                        "data": enriched_data,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "count": len(enriched_data)
-                    })
-                )
-                
-                # Update metadata
-                self.r.hset("mb:meta", "last_refresh_ts", now_ts())
-            
-            duration = time.time() - start_time
-            logger.info(f"✅ {job_name} completed in {duration:.2f}s - {len(enriched_data)} enriched")
-            
-            return {
-                "status": "success",
-                "duration": duration,
-                "count": len(enriched_data)
-            }
-            
-        except Exception as e:
-            duration = time.time() - start_time
-            logger.error(f"❌ {job_name} failed after {duration:.2f}s: {e}")
-            return {
-                "status": "error",
-                "duration": duration,
-                "error": str(e)
-            }
-        finally:
-            release_lock(job_name)
-    
-    async def publish_magazine(self) -> Dict[str, Any]:
-        """Publish the daily magazine with top picks"""
-        job_name = "publish_magazine"
-        start_time = time.time()
-        
-        if not acquire_lock(job_name):
-            logger.info(f"⏭️ Skipping {job_name} - lock exists")
-            return {"status": "skipped", "reason": "lock_exists"}
-        
-        try:
-            logger.info(f"🔄 Starting {job_name}")
-            
-            # Get enriched data from Redis
-            enriched_key = f"mb:enriched:mlb:{today()}"
-            
-            if not self.r or not self.r.exists(enriched_key):
-                logger.warning(f"No enriched data found for {today()}")
-                return {"status": "skipped", "reason": "no_enriched_data"}
-            
-            enriched_data = json.loads(self.r.get(enriched_key))
-            
-            # TODO: Add magazine generation logic here
-            # This would include top picks selection, analysis, etc.
-            magazine_data = {
-                "date": today(),
-                "picks": enriched_data["data"][:10],  # Top 10 picks
-                "analysis": "Daily picks analysis...",
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-            
-            # Store magazine
-            if self.r:
-                self.r.setex(
-                    "mb:magazine:latest",
-                    60*60,  # 1 hour TTL
-                    json.dumps(magazine_data)
-                )
-                
-                # Update metadata
-                self.r.hset("mb:meta", "last_refresh_ts", now_ts())
-            
-            duration = time.time() - start_time
-            logger.info(f"✅ {job_name} completed in {duration:.2f}s")
-            
-            return {
-                "status": "success",
-                "duration": duration,
-                "picks_count": len(magazine_data["picks"])
-            }
-            
-        except Exception as e:
-            duration = time.time() - start_time
-            logger.error(f"❌ {job_name} failed after {duration:.2f}s: {e}")
-            return {
-                "status": "error",
-                "duration": duration,
-                "error": str(e)
-            }
-        finally:
-            release_lock(job_name)
-    
-    async def run_all_tasks(self) -> Dict[str, Any]:
-        """Run all tasks in sequence"""
-        logger.info("🚀 Starting full refresh cycle")
-        
-        results = {}
-        
-        # Run tasks in order
-        tasks = [
-            ("refresh_odds", self.refresh_odds),
-            ("refresh_props", self.refresh_props),
-            ("enrich_mlb", self.enrich_mlb),
-            ("publish_magazine", self.publish_magazine)
-        ]
-        
-        for task_name, task_func in tasks:
-            try:
-                result = await task_func()
-                results[task_name] = result
-                
-                if result["status"] == "error":
-                    logger.error(f"Task {task_name} failed, stopping cycle")
-                    break
-                    
-            except Exception as e:
-                logger.error(f"Task {task_name} crashed: {e}")
-                results[task_name] = {"status": "crashed", "error": str(e)}
-                break
-        
-        logger.info("🏁 Refresh cycle completed")
-        return results
-    
-    async def run_loop(self, interval: int = 600):
-        """Run tasks in a loop with specified interval"""
-        logger.info(f"🔄 Starting worker loop with {interval}s interval")
-        
-        while True:
-            try:
-                await self.run_all_tasks()
-                logger.info(f"💤 Sleeping for {interval}s")
-                await asyncio.sleep(interval)
-                
-            except KeyboardInterrupt:
-                logger.info("🛑 Worker loop interrupted")
-                break
-            except Exception as e:
-                logger.error(f"Worker loop error: {e}")
-                await asyncio.sleep(60)  # Wait 1 minute before retrying
+    except Exception as e:
+        logger.error(f"❌ Failed to enrich data: {e}")
+        raise
 
-async def main():
-    parser = argparse.ArgumentParser(description="Mora Bets Worker")
-    parser.add_argument("--task", choices=["all", "odds", "props", "enrich", "magazine"], 
-                       default="all", help="Task to run")
-    parser.add_argument("--loop", type=int, help="Run in loop with specified interval (seconds)")
-    parser.add_argument("--once", action="store_true", help="Run once and exit")
-    
-    args = parser.parse_args()
-    
-    worker = MoraBetsWorker()
+# ------------------------------------------------------
+
+async def refresh():
+    """Main refresh function - fetches, enriches, and caches data"""
+    if not r:
+        logger.error("❌ Redis not available")
+        return
     
     try:
-        if args.loop:
-            await worker.run_loop(args.loop)
-        elif args.once:
-            await worker.run_all_tasks()
-        else:
-            if args.task == "all":
-                results = await worker.run_all_tasks()
-                print(json.dumps(results, indent=2))
-            elif args.task == "odds":
-                result = await worker.refresh_odds()
-                print(json.dumps(result, indent=2))
-            elif args.task == "props":
-                result = await worker.refresh_props()
-                print(json.dumps(result, indent=2))
-            elif args.task == "enrich":
-                result = await worker.enrich_mlb()
-                print(json.dumps(result, indent=2))
-            elif args.task == "magazine":
-                result = await worker.publish_magazine()
-                print(json.dumps(result, indent=2))
+        logger.info("🔄 Starting data refresh...")
+        
+        async with httpx.AsyncClient(timeout=20) as client:
+            odds_data = await fetch_odds(client)
+            mlb_data = await fetch_mlb(client)
+            data = enrich(odds_data, mlb_data)
+
+        key = cache_key("mlb")
+        r.set(key, json.dumps(data), ex=3600)  # 1 hour TTL
+        r.hset("mb:meta", mapping={
+            "last_refresh_ts": now_ts(),
+            "last_key": key
+        })
+        
+        logger.info(f"[REFRESH] wrote {key}, size={len(json.dumps(data))}")
+        logger.info(f"✅ Refresh completed successfully")
+        
     except Exception as e:
-        logger.error(f"Worker failed: {e}")
-        sys.exit(1)
+        logger.error(f"❌ Refresh failed: {e}")
+        raise
+
+async def loop(interval=600):
+    """Run refresh in a loop with specified interval"""
+    logger.info(f"🔄 Starting worker loop with {interval}s interval")
+    
+    while True:
+        try:
+            await refresh()
+            logger.info(f"💤 Sleeping for {interval}s")
+            await asyncio.sleep(interval)
+            
+        except KeyboardInterrupt:
+            logger.info("🛑 Worker loop interrupted")
+            break
+        except Exception as e:
+            logger.error(f"Worker loop error: {e}")
+            await asyncio.sleep(60)  # Wait 1 minute before retrying
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(loop()) 
