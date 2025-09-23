@@ -984,59 +984,100 @@ def get_enhanced_mlb_props():
 
 @app.route("/api/nfl/props")
 def get_nfl_props():
-    """Get NFL player props with graceful off-season handling"""
+    """Get NFL player props (mirrors MLB shape; tolerates off-season)."""
     try:
         from nfl_odds_api import fetch_nfl_props
-        
-        # During NFL off-season, handle API errors gracefully
+
+        # 1) Fetch raw events (graceful off-season handling)
         try:
-            raw_props = fetch_nfl_props()
+            events = fetch_nfl_props()  # list of event dicts with bookmakers/markets/outcomes
         except RuntimeError as e:
             if "422" in str(e) or "INVALID_MARKET" in str(e):
                 logger.info("NFL off-season: No player props available")
-                return jsonify([])  # Return empty array instead of error
-            raise e
-        
-        if not raw_props:
-            return jsonify([])  # Return empty array for consistency
-        
-        # Simple transformation for now (can enhance later)
-        enhanced_props = []
-        for event in raw_props:
-            matchup = f"{event['away_team']} @ {event['home_team']}"
-            
-            for bookmaker in event.get('bookmakers', []):
-                for market in bookmaker.get('markets', []):
-                    for outcome in market.get('outcomes', []):
+                return jsonify([])
+            raise
+        if not events:
+            return jsonify([])
+
+        enhanced_props: list[dict] = []
+
+        # 2) Normalize to MLB-like rows
+        for event in events or []:
+            home_team = (event.get("home_team") or "").strip()
+            away_team = (event.get("away_team") or "").strip()
+
+            for bookmaker in (event.get("bookmakers") or []):
+                book_title = bookmaker.get("title", "Multiple Books")
+
+                for market in (bookmaker.get("markets") or []):
+                    market_key = market.get("key", "") or ""
+
+                    # Pair Over/Under outcomes for same (player_name, point)
+                    pairs: dict[tuple, dict] = {}
+                    for oc in (market.get("outcomes") or []):
+                        player_name = oc.get("description", "") or ""
+                        point = oc.get("point", None)
+                        side = (oc.get("name", "") or "").lower()  # "over"/"under"
+                        k = (player_name, point)
+                        entry = pairs.setdefault(k, {"over_odds": None, "under_odds": None})
+                        price = oc.get("price", None)
+                        if "over" in side:
+                            entry["over_odds"] = price
+                        elif "under" in side:
+                            entry["under_odds"] = price
+                        else:
+                            # Some books omit side; default to 'over' if only one outcome exists.
+                            if entry["over_odds"] is None:
+                                entry["over_odds"] = price
+                            else:
+                                entry["under_odds"] = price
+
+                    # Build one prop row per player/line with both sides attached
+                    for (player_name, point), ou in pairs.items():
                         prop = {
-                            'player': outcome.get('description', ''),
-                            'stat': market['key'],
-                            'line': outcome.get('point', 0),
-                            'over_odds': outcome.get('price', 0),
-                            'under_odds': 0,  # Would need to find corresponding under
-                            'bookmaker': bookmaker['title'],
-                            'home_team': event.get('home_team', ''),
-                            'away_team': event.get('away_team', ''),
-                            'home_abbr': get_team_abbreviation(event.get('home_team', '')),
-                            'away_abbr': get_team_abbreviation(event.get('away_team', '')),
-                            'matchup': f"{away_team} @ {home_team}",
-                            'confidence': 'Medium',  # Default confidence
-                               # optional display fields (fine to leave empty for now)
-                            'team': "",                         # player’s team (unknown from Odds API outcome)
-                            'team_abbr': "",                    # set if you later map player→team
-                            'team_status': "",                  # set to 'favored'/'underdog' if you know player’s team
+                            # names
+                            "player": player_name,
+                            "player_name": player_name,
 
-                                                                # keep a sane default so cards don’t look broken
-                            'hit_probability': 0.5,
+                            # stat / market (mirror MLB shape)
+                            "stat": market_key,
+                            "stat_type": market_key,
+                            "market": market_key,
 
+                            # line
+                            "line": point,
+                            "point": point,
+
+                            # book
+                            "bookmaker": book_title,
+                            "sportsbook": book_title,
+
+                            # matchup keys
+                            "home_team": home_team,
+                            "away_team": away_team,
+                            "home_abbr": get_team_abbreviation(home_team),
+                            "away_abbr": get_team_abbreviation(away_team),
+                            "matchup": f"{away_team} @ {home_team}",
+
+                            # odds (like MLB)
+                            "over_odds": ou.get("over_odds"),
+                            "under_odds": ou.get("under_odds"),
+
+                            # UI helpers
+                            "confidence": "Medium",
+                            "team": "",
+                            "team_abbr": "",
+                            "team_status": "",
+                            "hit_probability": 0.5,
                         }
                         enhanced_props.append(prop)
-        
+
         return jsonify(enhanced_props)
-        
+
     except Exception as e:
         logger.error(f"Error in NFL props endpoint: {e}")
-        return jsonify([])  # Return empty array instead of error for frontend compatibility
+        # Keep frontend stable even if a single event fails
+        return jsonify([])
 
 
 
