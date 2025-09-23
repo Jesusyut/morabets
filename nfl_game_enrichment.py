@@ -4,6 +4,24 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def novig_two_sided(p_over_raw: float | None, p_under_raw: float | None) -> float:
+    """
+    Convert raw implied probs for over/under into a single no-vig p(over).
+    If only one side is present, fall back to the other’s complement.
+    """
+    if p_over_raw is None and p_under_raw is None:
+        return 0.50
+    if p_over_raw is None:
+        return 1.0 - p_under_raw
+    if p_under_raw is None:
+        return p_over_raw
+
+    # Remove vig by normalizing the two sides to sum to 1
+    denom = p_over_raw + (1.0 - p_under_raw)
+    if denom <= 1e-9:
+        return 0.50
+    return p_over_raw / denom
+
 # ---------- odds helpers ----------
 def american_to_prob(american: Optional[int]) -> Optional[float]:
     if american is None: return None
