@@ -23,6 +23,7 @@ from team_abbreviations import get_team_abbreviation, format_matchup, TEAM_ABBRE
 from nfl_odds_api import fetch_nfl_props
 from nfl_enrichment import enrich_nfl_props
 from nfl_contextual import add_nfl_context
+from nfl_game_enrichment import build_nfl_environment_map, enrich_nfl_props_with_context
 
 # MLB game context enrichment
 from mlb_game_enrichment import enrich_mlb_props_with_context, filter_positive_environment_props
@@ -1072,13 +1073,15 @@ def get_nfl_props():
                         }
                         enhanced_props.append(prop)
 
-        return jsonify(enhanced_props)
+        # 3) Build environment + 4) enrich and return
+        env_map = build_nfl_environment_map(events)
+        enriched = enrich_nfl_props_with_context(enhanced_props, env_map)
+        return jsonify(enriched)
 
     except Exception as e:
         logger.error(f"Error in NFL props endpoint: {e}")
         # Keep frontend stable even if a single event fails
         return jsonify([])
-
 
 
 @app.route("/api/matchups")
