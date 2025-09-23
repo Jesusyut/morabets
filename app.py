@@ -1015,6 +1015,10 @@ def get_nfl_props():
                             'over_odds': outcome.get('price', 0),
                             'under_odds': 0,  # Would need to find corresponding under
                             'bookmaker': bookmaker['title'],
+                            'home_team': event.get('home_team', ''),
+                            'away_team': event.get('away_team', ''),
+                            'home_abbr': get_team_abbreviation(event.get('home_team', '')),
+                            'away_abbr': get_team_abbreviation(event.get('away_team', '')),
                             'matchup': matchup,
                             'confidence': 'Medium'  # Default confidence
                         }
