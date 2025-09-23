@@ -65,10 +65,10 @@ TEAM_ABBREVIATIONS_NFL = {
 def get_team_abbreviation(full_name: str) -> str:
     if not full_name:
         return ""
-    if full_name in TEAM_ABBREVIATIONS_MLB:
-        return TEAM_ABBREVIATIONS_MLB[full_name]
-    if full_name in TEAM_ABBREVIATIONS_NFL:
-        return TEAM_ABBREVIATIONS_NFL[full_name]
+    if full_name in TEAM_ABBREVIATIONS:
+        return TEAM_ABBREVIATIONS[full_name]
+    if full_name in TEAM_ABBREVIATIONS:
+        return TEAM_ABBREVIATIONS[full_name]
     return full_name[:3].upper()
 
 def format_matchup(away_team: str, home_team: str) -> str:
