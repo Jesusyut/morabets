@@ -1019,8 +1019,16 @@ def get_nfl_props():
                             'away_team': event.get('away_team', ''),
                             'home_abbr': get_team_abbreviation(event.get('home_team', '')),
                             'away_abbr': get_team_abbreviation(event.get('away_team', '')),
-                            'matchup': matchup,
+                            'matchup': f"{away_team} @ {home_team}",
                             'confidence': 'Medium'  # Default confidence
+                               # optional display fields (fine to leave empty for now)
+                            'team': '',                         # player’s team (unknown from Odds API outcome)
+                            'team_abbr': '',                    # set if you later map player→team
+                            'team_status': '',                  # set to 'favored'/'underdog' if you know player’s team
+
+                                                                # keep a sane default so cards don’t look broken
+                            'hit_probability': 0.5,
+
                         }
                         enhanced_props.append(prop)
         
