@@ -1022,9 +1022,9 @@ def get_nfl_props():
                             'matchup': f"{away_team} @ {home_team}",
                             'confidence': 'Medium'  # Default confidence
                                # optional display fields (fine to leave empty for now)
-                            'team': '',                         # player’s team (unknown from Odds API outcome)
-                            'team_abbr': '',                    # set if you later map player→team
-                            'team_status': '',                  # set to 'favored'/'underdog' if you know player’s team
+                            'team': "",                         # player’s team (unknown from Odds API outcome)
+                            'team_abbr': "",                    # set if you later map player→team
+                            'team_status': "",                  # set to 'favored'/'underdog' if you know player’s team
 
                                                                 # keep a sane default so cards don’t look broken
                             'hit_probability': 0.5,
