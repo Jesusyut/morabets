@@ -667,6 +667,9 @@
                     teamStatusBadge = `<span class="badge bg-warning ms-2" style="font-size: 0.7em;">
                         <i class="fas fa-dog me-1"></i>${teamAbbr} DOG
                     </span>`;
+                    const fav = prop.context?.fav_team_abbr;
+                    {fav && <span className="badge badge-fav">{fav} FAV</span>}
+
                 }
                 
                 return `
