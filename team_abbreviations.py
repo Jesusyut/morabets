@@ -49,52 +49,27 @@ TEAM_ABBREVIATIONS = {
 
 # --- NFL (new) ---
 TEAM_ABBREVIATIONS_NFL = {
-    "Arizona Cardinals": "ARI",
-    "Atlanta Falcons": "ATL",
-    "Baltimore Ravens": "BAL",
-    "Buffalo Bills": "BUF",
-    "Carolina Panthers": "CAR",
-    "Chicago Bears": "CHI",
-    "Cincinnati Bengals": "CIN",
-    "Cleveland Browns": "CLE",
-    "Dallas Cowboys": "DAL",
-    "Denver Broncos": "DEN",
-    "Detroit Lions": "DET",
-    "Green Bay Packers": "GB",
-    "Houston Texans": "HOU",
-    "Indianapolis Colts": "IND",
-    "Jacksonville Jaguars": "JAX",
-    "Kansas City Chiefs": "KC",
-    "Las Vegas Raiders": "LV",
-    "Los Angeles Chargers": "LAC",
-    "Los Angeles Rams": "LAR",
-    "Miami Dolphins": "MIA",
-    "Minnesota Vikings": "MIN",
-    "New England Patriots": "NE",
-    "New Orleans Saints": "NO",
-    "New York Giants": "NYG",
-    "New York Jets": "NYJ",
-    "Philadelphia Eagles": "PHI",
-    "Pittsburgh Steelers": "PIT",
-    "San Francisco 49ers": "SF",
-    "Seattle Seahawks": "SEA",
-    "Tampa Bay Buccaneers": "TB",
-    "Tennessee Titans": "TEN",
-    "Washington Commanders": "WSH",
+    "Arizona Cardinals": "ARI", "Atlanta Falcons": "ATL", "Baltimore Ravens": "BAL",
+    "Buffalo Bills": "BUF", "Carolina Panthers": "CAR", "Chicago Bears": "CHI",
+    "Cincinnati Bengals": "CIN", "Cleveland Browns": "CLE", "Dallas Cowboys": "DAL",
+    "Denver Broncos": "DEN", "Detroit Lions": "DET", "Green Bay Packers": "GB",
+    "Houston Texans": "HOU", "Indianapolis Colts": "IND", "Jacksonville Jaguars": "JAX",
+    "Kansas City Chiefs": "KC", "Las Vegas Raiders": "LV", "Los Angeles Chargers": "LAC",
+    "Los Angeles Rams": "LAR", "Miami Dolphins": "MIA", "Minnesota Vikings": "MIN",
+    "New England Patriots": "NE", "New Orleans Saints": "NO", "New York Giants": "NYG",
+    "New York Jets": "NYJ", "Philadelphia Eagles": "PHI", "Pittsburgh Steelers": "PIT",
+    "San Francisco 49ers": "SF", "Seattle Seahawks": "SEA", "Tampa Bay Buccaneers": "TB",
+    "Tennessee Titans": "TEN", "Washington Commanders": "WSH",
 }
+
 def get_team_abbreviation(full_name: str) -> str:
-    """Convert full team name to common abbreviation (MLB first, then NFL, else fallback)."""
     if not full_name:
         return ""
-    if full_name in TEAM_ABBREVIATIONS:
-        return TEAM_ABBREVIATIONS[full_name]
-    if full_name in TEAM_ABBREVIATIONS:
-        return TEAM_ABBREVIATIONS[full_name]
+    if full_name in TEAM_ABBREVIATIONS_MLB:
+        return TEAM_ABBREVIATIONS_MLB[full_name]
+    if full_name in TEAM_ABBREVIATIONS_NFL:
+        return TEAM_ABBREVIATIONS_NFL[full_name]
     return full_name[:3].upper()
 
 def format_matchup(away_team: str, home_team: str) -> str:
-    """Format matchup using abbreviations (MLB/NFL supported)."""
-    away_abbr = get_team_abbreviation(away_team)
-    home_abbr = get_team_abbreviation(home_team)
-    # Use '@' to stay consistent with MLB cards in your UI
-    return f"{away_abbr} @ {home_abbr}"
+    return f"{get_team_abbreviation(away_team)} @ {get_team_abbreviation(home_team)}"
