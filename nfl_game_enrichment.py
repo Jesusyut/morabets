@@ -129,47 +129,157 @@ def build_nfl_environment_map(events: List[Dict]) -> Dict[str, Dict[str, Any]]:
 
     return env
 
-# ----------------------- Optional: API-Sports form -----------------------
 
-_API_SPORTS_URL = "https://v1.american-football.api-sports.io/players"
+_API_PLAYERS = "https://v1.american-football.api-sports.io/players"
+_API_STATS   = "https://v1.american-football.api-sports.io/players/statistics"
 
-def _api_sports_headers() -> Optional[Dict[str, str]]:
-    key = os.getenv("API_SPORTS_KEY") or os.getenv("API_SPORTS_NFL_KEY")
-    if not key:
-        return None
-    return {"x-apisports-key": key}
+def _api_key() -> Optional[str]:
+    return os.getenv("API_SPORTS_KEY") or os.getenv("API_SPORTS_NFL_KEY") or os.getenv("APISPORTS_KEY")
 
-def _fetch_api_sports_form(player_name: str) -> Optional[Dict[str, Any]]:
-    """
-    Very lean: last 5 stats for a player if key is present; otherwise None.
-    We do not couple to IDs—just a name query best-effort.
-    """
-    hdrs = _api_sports_headers()
-    if not hdrs:
-        return None
+def _api_headers() -> Optional[Dict[str, str]]:
+    k = _api_key()
+    return {"x-apisports-key": k} if k else None
+
+# simple in-process cache to avoid hammering
+_FORM_CACHE: Dict[str, Tuple[float, float]] = {}  # {cache_key: (ts, bump)}
+
+def _http_get_json(url: str, headers: Dict[str, str], timeout: int = 5) -> Optional[Dict[str, Any]]:
     try:
-        q = urllib.parse.urlencode({"search": player_name})
-        req = urllib.request.Request(f"{_API_SPORTS_URL}?{q}", headers=hdrs)
-        with urllib.request.urlopen(req, timeout=4) as r:
-            data = json.loads(r.read().decode("utf-8"))
-        # You can refine how you aggregate; here we just return the raw
-        return data
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8"))
     except Exception as e:
-        logger.debug(f"API-Sports form fetch failed for {player_name}: {e}")
+        logger.debug(f"API-Sports GET failed: {url} -> {e}")
         return None
 
-def _form_adjust(player_name: str, stat_key: str) -> float:
-    """
-    Translate API-Sports last-5 into a tiny +/- bump.
-    Keep it very conservative to avoid overfitting.
-    """
-    data = _fetch_api_sports_form(player_name)
-    if not data:
-        return 0.0
-    # TODO: parse last-5 for specific stat types.
-    # For now, keep neutral until you wire exact fields.
-    return 0.0
+def _find_player_id(player_name: str) -> Optional[int]:
+    hdrs = _api_headers()
+    if not hdrs or not player_name:
+        return None
+    q = urllib.parse.urlencode({"search": player_name})
+    data = _http_get_json(f"{_API_PLAYERS}?{q}", hdrs, timeout=5)
+    if not data or "response" not in data:
+        return None
+    # pick first best match
+    try:
+        resp = data["response"]
+        if not resp:
+            return None
+        # response items often have {"player": { "id": ..., "name": ... }, ...}
+        item = resp[0]
+        pid = item.get("player", {}).get("id")
+        return int(pid) if pid is not None else None
+    except Exception:
+        return None
 
+def _fetch_last5_bump(player_name: str, stat_key: str, season: Optional[int]) -> float:
+    """
+    Returns a small bump in [-0.04, +0.04] based on last-5 usage aligned to stat_key.
+    If anything fails, returns 0.0.
+    """
+    if not _api_headers():
+        return 0.0
+
+    cache_key = f"{player_name}|{stat_key}|{season}"
+    now = time.time()
+    cached = _FORM_CACHE.get(cache_key)
+    if cached and (now - cached[0]) < 60 * 60:  # 1h TTL
+        return cached[1]
+
+    pid = _find_player_id(player_name)
+    if not pid:
+        _FORM_CACHE[cache_key] = (now, 0.0)
+        return 0.0
+
+    params = {"player": pid}
+    if season:
+        params["season"] = season
+    q = urllib.parse.urlencode(params)
+    data = _http_get_json(f"{_API_STATS}?{q}", _api_headers(), timeout=6)
+    if not data or "response" not in data:
+        _FORM_CACHE[cache_key] = (now, 0.0)
+        return 0.0
+
+    # The schema groups stats by team/league/games. We aggregate last 5 appearances.
+    try:
+        games = []
+        for block in data["response"]:
+            # block likely has "games" and position-specific "statistics"
+            g = block.get("games") or {}
+            st = block.get("statistics") or {}
+            # Most endpoints split by positions; we try to gather common fields
+            record = {
+                "receptions":   st.get("receptions", {}).get("receptions"),
+                "targets":      st.get("receptions", {}).get("targets"),
+                "rec_yards":    st.get("receiving", {}).get("yards"),
+                "rush_att":     st.get("rushing", {}).get("attempts"),
+                "rush_yards":   st.get("rushing", {}).get("yards"),
+                "pass_att":     st.get("passing", {}).get("att"),
+                "pass_yards":   st.get("passing", {}).get("yards"),
+                "pass_tds":     st.get("passing", {}).get("td"),
+            }
+            # guard against None → keep numeric or None
+            games.append(record)
+
+        # take last 5 records (end is latest on most APIs; if not, still fine)
+        last5 = games[-5:] if len(games) > 5 else games
+
+        def avg(key: str) -> Optional[float]:
+            vals = [float(x[key]) for x in last5 if x.get(key) is not None]
+            return sum(vals) / len(vals) if vals else None
+
+        # derive a tiny bump based on relevant metric vs typical line scale
+        bump = 0.0
+        k = stat_key.lower()
+
+        if "receptions" in k:
+            # targets per game & receptions per game
+            tpg = avg("targets") or 0.0
+            rpg = avg("receptions") or 0.0
+            # scale: 7+ targets ~= bullish; under 4 ~= bearish
+            if tpg >= 8 or rpg >= 6:
+                bump = +0.03
+            elif tpg <= 4 or rpg <= 3:
+                bump = -0.02
+
+        elif "reception_yds" in k or "rec_yds" in k:
+            ryg = avg("rec_yards") or 0.0
+            if ryg >= 70:
+                bump = +0.03
+            elif ryg <= 35:
+                bump = -0.02
+
+        elif "rush_yds" in k:
+            rapg = avg("rush_att") or 0.0
+            ryg = avg("rush_yards") or 0.0
+            if rapg >= 16 or ryg >= 70:
+                bump = +0.03
+            elif rapg <= 8 or ryg <= 35:
+                bump = -0.02
+
+        elif "pass_yds" in k:
+            pay = avg("pass_yards") or 0.0
+            paa = avg("pass_att") or 0.0
+            if pay >= 275 or paa >= 36:
+                bump = +0.02
+            elif pay <= 210 or paa <= 28:
+                bump = -0.02
+
+        elif "pass_tds" in k:
+            ptd = avg("pass_tds") or 0.0
+            if ptd >= 2.2:
+                bump = +0.02
+            elif ptd <= 1.0:
+                bump = -0.02
+
+        bump = clamp(bump, -0.04, 0.04)
+        _FORM_CACHE[cache_key] = (now, bump)
+        return bump
+
+    except Exception as e:
+        logger.debug(f"API-Sports parse error for {player_name}: {e}")
+        _FORM_CACHE[cache_key] = (now, 0.0)
+        return 0.0
 # -------------------- Per-prop confidence & hit rate --------------------
 
 _OFFENSE_KEYS = (
@@ -181,27 +291,21 @@ def _env_adjust(stat_key: str, env_bucket: str, fav_side: Optional[str]) -> floa
     k = stat_key.lower()
     offensey = any(s in k for s in _OFFENSE_KEYS)
     adj = 0.0
-
-    # totals-driven bias
     if env_bucket == "High Scoring" and offensey:
         adj += 0.05
     elif env_bucket == "Low Scoring" and offensey:
         adj -= 0.05
-
-    # small global nudge for favored team (matchup-level; per-player side unknown)
-    # this keeps it lean—later you can infer player team to make it per-card.
     if fav_side is not None:
-        adj += 0.01  # tiny bias toward favored context
-
+        adj += 0.01  # small bias toward favorite game script
     return adj
 
 def enrich_nfl_props_with_context(props: List[Dict], env_map: Dict[str, Dict[str, Any]]) -> List[Dict]:
-    """
-    Compute:
-      - hit_probability: no-vig base from book + environment + (optional) form
-      - confidence: High / Medium / Low using thresholds suited for no-vig
-      - context: environment, favored_side, total_points, fav_team_abbr
-    """
+    season_env = os.getenv("NFL_SEASON") or os.getenv("APISPORTS_NFL_SEASON")
+    try:
+        season = int(season_env) if season_env else None
+    except Exception:
+        season = None
+
     out: List[Dict] = []
     for p in props or []:
         stat = (p.get("stat") or p.get("market") or "").lower()
@@ -210,20 +314,19 @@ def enrich_nfl_props_with_context(props: List[Dict], env_map: Dict[str, Dict[str
         bucket = env.get("environment", "Neutral")
         fav_side = env.get("favored_side")
 
-        # base from no-vig p(over)
+        # base from no-vig Over/Under
         p_over_raw = american_to_prob(p.get("over_odds"))
         p_under_raw = american_to_prob(p.get("under_odds"))
         p_over_novig = novig_two_sided(p_over_raw, p_under_raw)
-
-        # Display as probability that the more likely side hits
         base = max(p_over_novig, 1.0 - p_over_novig)
 
-        # Environment + (optional) player-form nudges
+        # bumps
         env_bump  = _env_adjust(stat, bucket, fav_side)
-        form_bump = _form_adjust(p.get("player") or p.get("player_name") or "", stat)
+        form_bump = _fetch_last5_bump(p.get("player") or p.get("player_name") or "", stat, season)
+
         adj = clamp(base + env_bump + form_bump, 0.30, 0.90)
 
-        # Confidence cutoffs (tuned for no-vig base)
+        # confidence cutoffs (tuned for no-vig + small bumps)
         if   adj >= 0.66:
             conf = "High"
         elif adj >= 0.56:
@@ -231,7 +334,6 @@ def enrich_nfl_props_with_context(props: List[Dict], env_map: Dict[str, Dict[str
         else:
             conf = "Low"
 
-        # matchup-level favored badge (uses team abbreviations already on the row)
         fav_abbr = p.get("home_abbr") if fav_side == "home" else (p.get("away_abbr") if fav_side == "away" else None)
 
         p["context"] = {
