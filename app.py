@@ -985,7 +985,7 @@ def get_enhanced_mlb_props():
 
 @app.route("/api/nfl/props")
 def get_nfl_props():
-    """Get NFL player props (mirrors MLB shape; tolerates off-season)."""
+    """Get NFL player props (mirrors MLB shape; env + form enrichment)."""
     try:
         from nfl_odds_api import fetch_nfl_props
 
@@ -999,76 +999,76 @@ def get_nfl_props():
             raise
         if not events:
             return jsonify([])
-            
-    # start with an empty list
-enhanced_props: list[dict] = []
 
-# Normalize: pair Over/Under into one row per (player, market, line)
-for event in (events or []):
-    home_team = (event.get("home_team") or "").strip()
-    away_team = (event.get("away_team") or "").strip()
+        # 2) Normalize to MLB-like rows
+        enhanced_props: list[dict] = []
 
-    for bookmaker in (event.get("bookmakers") or []):
-        book_title = bookmaker.get("title", "Multiple Books")
+        # Normalize: pair Over/Under into one row per (player, market, line)
+        for event in (events or []):
+            home_team = (event.get("home_team") or "").strip()
+            away_team = (event.get("away_team") or "").strip()
 
-        for market in (bookmaker.get("markets") or []):
-            market_key = market.get("key", "") or ""
+            for bookmaker in (event.get("bookmakers") or []):
+                book_title = bookmaker.get("title", "Multiple Books")
 
-            # Pair Over/Under outcomes for same (player_name, point, market)
-            pairs: dict[tuple, dict] = {}
+                for market in (bookmaker.get("markets") or []):
+                    market_key = market.get("key", "") or ""
 
-            for oc in (market.get("outcomes") or []):
-                player_name = oc.get("description", "") or ""
-                point = oc.get("point", None)
-                side = (oc.get("name", "") or "").lower()  # "over"/"under"
-                key = (player_name, point, market_key)
-                entry = pairs.setdefault(key, {"over_odds": None, "under_odds": None})
-                price = oc.get("price", None)
-                if "over" in side:
-                    entry["over_odds"] = price
-                elif "under" in side:
-                    entry["under_odds"] = price
-                else:
-                    # if side omitted, default first one to over
-                    if entry["over_odds"] is None:
-                        entry["over_odds"] = price
-                    else:
-                        entry["under_odds"] = price
+                    # Pair Over/Under outcomes for same (player_name, point, market)
+                    pairs: dict[tuple, dict] = {}
 
-            # Build one prop row per player/line with both sides attached
-            for (player_name, point, mk), ou in pairs.items():
-                prop = {
-                    "player": player_name,
-                    "player_name": player_name,
+                    for oc in (market.get("outcomes") or []):
+                        player_name = oc.get("description", "") or ""
+                        point = oc.get("point", None)
+                        side = (oc.get("name", "") or "").lower()  # "over"/"under"
+                        key = (player_name, point, market_key)
+                        entry = pairs.setdefault(key, {"over_odds": None, "under_odds": None})
+                        price = oc.get("price", None)
+                        if "over" in side:
+                            entry["over_odds"] = price
+                        elif "under" in side:
+                            entry["under_odds"] = price
+                        else:
+                            # if side omitted, default first one to over
+                            if entry["over_odds"] is None:
+                                entry["over_odds"] = price
+                            else:
+                                entry["under_odds"] = price
 
-                    "stat": mk,
-                    "stat_type": mk,
-                    "market": mk,
+                    # Build one prop row per player/line with both sides attached
+                    for (player_name, point, mk), ou in pairs.items():
+                        prop = {
+                            "player": player_name,
+                            "player_name": player_name,
 
-                    "line": point,
-                    "point": point,
+                            "stat": mk,
+                            "stat_type": mk,
+                            "market": mk,
 
-                    "bookmaker": book_title,
-                    "sportsbook": book_title,
+                            "line": point,
+                            "point": point,
 
-                    "home_team": home_team,
-                    "away_team": away_team,
-                    "home_abbr": get_team_abbreviation(home_team),
-                    "away_abbr": get_team_abbreviation(away_team),
-                    "matchup": f"{away_team} @ {home_team}",
+                            "bookmaker": book_title,
+                            "sportsbook": book_title,
 
-                    "over_odds": ou.get("over_odds"),
-                    "under_odds": ou.get("under_odds"),
+                            "home_team": home_team,
+                            "away_team": away_team,
+                            "home_abbr": get_team_abbreviation(home_team),
+                            "away_abbr": get_team_abbreviation(away_team),
+                            "matchup": f"{away_team} @ {home_team}",
 
-                    # defaults (enrichment will overwrite)
-                    "confidence": "Medium",
-                    "team": "",
-                    "team_abbr": "",
-                    "team_status": "",
-                    "hit_probability": 0.5,
-                }
-                enhanced_props.append(prop)
+                            "over_odds": ou.get("over_odds"),
+                            "under_odds": ou.get("under_odds"),
 
+                            # defaults (enrichment will overwrite)
+                            "confidence": "Medium",
+                            "team": "",
+                            "team_abbr": "",
+                            "team_status": "",
+                            "hit_probability": 0.5,
+                        }
+                        enhanced_props.append(prop)
+                        
         # 3) Build environment + 4) enrich and return
         env_map = build_nfl_environment_map(events)
         enriched = enrich_nfl_props_with_context(enhanced_props, env_map)
