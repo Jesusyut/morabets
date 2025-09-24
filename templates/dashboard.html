@@ -648,29 +648,32 @@
                                       hitRate >= 0.5 ? 'Medium' : 'Low';
                 
                 // Map backend fields to display values
+           
                 const playerName = prop.player || prop.player_name || 'Unknown Player';
-                const statType = prop.stat || prop.stat_type || '';
-                const line = prop.line || prop.point || 'N/A';
-                const bookmaker = prop.bookmaker || prop.sportsbook || 'Multiple Books';
-                const team = prop.team || '';
+                const statType   = prop.stat || prop.stat_type || '';
+                const line       = prop.line || prop.point || 'N/A';
+                const bookmaker  = prop.bookmaker || prop.sportsbook || 'Multiple Books';
+                const team       = prop.team || '';
                 
-                // Team status badge
-                let teamStatusBadge = '';
+                // Badges
+                let badgesHtml = '';
+                
                 const teamStatus = prop.team_status || 'unknown';
-                const teamAbbr = prop.team_abbr || '';
-                
-                if (teamStatus === 'favored' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-success ms-2" style="font-size: 0.7em;">
-                        <i class="fas fa-crown me-1"></i>${teamAbbr} FAV
-                    </span>`;
-                } else if (teamStatus === 'underdog' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-warning ms-2" style="font-size: 0.7em;">
-                        <i class="fas fa-dog me-1"></i>${teamAbbr} DOG
-                    </span>`;
-                    const fav = prop.context?.fav_team_abbr;
-                    {fav && <span className="badge badge-fav">{fav} FAV</span>}
-
+                const teamAbbr   = prop.team_abbr || '';
+                if (teamAbbr && (teamStatus === 'favored' || teamStatus === 'underdog')) {
+                  const cls   = teamStatus === 'favored' ? 'bg-success' : 'bg-warning';
+                  const label = teamStatus === 'favored' ? 'FAV' : 'DOG';
+                  badgesHtml += `<span class="badge ${cls} ms-2" style="font-size:0.7em;">${teamAbbr} ${label}</span>`;
                 }
+                
+                // Matchup-level favored badge coming from backend context
+                const fav = (prop.context && prop.context.fav_team_abbr) || '';
+                if (fav) {
+                  badgesHtml += `<span class="badge bg-success ms-2" style="font-size:0.7em;">${fav} FAV</span>`;
+                }
+                
+                // later in your card HTML template, insert: ${badgesHtml}
+
                 
                 return `
                     <div class="col-md-6 col-lg-4 mb-3">
