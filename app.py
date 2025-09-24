@@ -1002,7 +1002,7 @@ def get_nfl_props():
 
         enhanced_props: list[dict] = []
 
-        # 2) Normalize to MLB-like rows
+       # Normalize: pair Over/Under into one row per (player, market, line)
         for event in events or []:
             home_team = (event.get("home_team") or "").strip()
             away_team = (event.get("away_team") or "").strip()
@@ -1012,14 +1012,13 @@ def get_nfl_props():
 
                 for market in (bookmaker.get("markets") or []):
                     market_key = market.get("key", "") or ""
-
-                    # Pair Over/Under outcomes for same (player_name, point)
                     pairs: dict[tuple, dict] = {}
+
                     for oc in (market.get("outcomes") or []):
                         player_name = oc.get("description", "") or ""
                         point = oc.get("point", None)
-                        side = (oc.get("name", "") or "").lower()  # "over"/"under"
-                        k = (player_name, point)
+                        side = (oc.get("name", "") or "").lower()  # over/under
+                        k = (player_name, point, market_key)
                         entry = pairs.setdefault(k, {"over_odds": None, "under_odds": None})
                         price = oc.get("price", None)
                         if "over" in side:
@@ -1027,44 +1026,28 @@ def get_nfl_props():
                         elif "under" in side:
                             entry["under_odds"] = price
                         else:
-                            # Some books omit side; default to 'over' if only one outcome exists.
-                            if entry["over_odds"] is None:
-                                entry["over_odds"] = price
-                            else:
-                                entry["under_odds"] = price
+                            # default if side omitted
+                            entry["over_odds"] = entry["over_odds"] or price
 
-                    # Build one prop row per player/line with both sides attached
-                    for (player_name, point), ou in pairs.items():
-                        prop = {
-                            # names
+                    for (player_name, point, mk), ou in pairs.items():
+                        enhanced_props.append({
                             "player": player_name,
                             "player_name": player_name,
-
-                            # stat / market (mirror MLB shape)
-                            "stat": market_key,
-                            "stat_type": market_key,
-                            "market": market_key,
-
-                            # line
+                            "stat": mk,
+                            "stat_type": mk,
+                            "market": mk,
                             "line": point,
                             "point": point,
-
-                            # book
                             "bookmaker": book_title,
                             "sportsbook": book_title,
-
-                            # matchup keys
                             "home_team": home_team,
                             "away_team": away_team,
                             "home_abbr": get_team_abbreviation(home_team),
                             "away_abbr": get_team_abbreviation(away_team),
                             "matchup": f"{away_team} @ {home_team}",
-
-                            # odds (like MLB)
                             "over_odds": ou.get("over_odds"),
                             "under_odds": ou.get("under_odds"),
-
-                            # UI helpers
+                            # defaults (will be overwritten by enrichment)
                             "confidence": "Medium",
                             "team": "",
                             "team_abbr": "",
