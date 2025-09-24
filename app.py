@@ -1000,7 +1000,7 @@ def get_nfl_props():
         if not events:
             return jsonify([])
 
-        enhanced_props: list[dict] = []
+        enhanced_props: list[dict] = (prop)
 
        # Normalize: pair Over/Under into one row per (player, market, line)
         for event in events or []:
