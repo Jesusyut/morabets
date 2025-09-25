@@ -174,112 +174,100 @@ def _find_player_id(player_name: str) -> Optional[int]:
         return None
 
 def _fetch_last5_bump(player_name: str, stat_key: str, season: Optional[int]) -> float:
-    # short-circuit if disabled
+    # quick kill-switch, optional
     if os.getenv("DISABLE_NFL_FORM") == "1":
         return 0.0
+
     try:
-        if not _api_headers():
+        # ensure API ready
+        hdrs = _api_headers()
+        if not hdrs:
             return 0.0
+
+        # cache
         cache_key = f"{player_name}|{stat_key}|{season}"
         now = time.time()
         cached = _FORM_CACHE.get(cache_key)
         if cached and (now - cached[0]) < 3600:
             return cached[1]
 
+        # find player id
         pid = _find_player_id(player_name)
         if not pid:
             _FORM_CACHE[cache_key] = (now, 0.0)
             return 0.0
 
+        # fetch stats
         params = {"player": pid}
         if season:
             params["season"] = season
         q = urllib.parse.urlencode(params)
-        data = _http_get_json(f"{_API_STATS}?{q}", _api_headers(), timeout=6)
+        data = _http_get_json(f"{_API_STATS}?{q}", hdrs, timeout=6)
         if not data or "response" not in data:
             _FORM_CACHE[cache_key] = (now, 0.0)
             return 0.0
 
-    # The schema groups stats by team/league/games. We aggregate last 5 appearances.
-    try:
-        games = []
+        # ---- aggregate last 5 ----
+        games: list[dict] = []
         for block in data["response"]:
-            # block likely has "games" and position-specific "statistics"
-            g = block.get("games") or {}
             st = block.get("statistics") or {}
-            # Most endpoints split by positions; we try to gather common fields
-            record = {
-                "receptions":   st.get("receptions", {}).get("receptions"),
-                "targets":      st.get("receptions", {}).get("targets"),
-                "rec_yards":    st.get("receiving", {}).get("yards"),
-                "rush_att":     st.get("rushing", {}).get("attempts"),
-                "rush_yards":   st.get("rushing", {}).get("yards"),
-                "pass_att":     st.get("passing", {}).get("att"),
-                "pass_yards":   st.get("passing", {}).get("yards"),
-                "pass_tds":     st.get("passing", {}).get("td"),
-            }
-            # guard against None → keep numeric or None
-            games.append(record)
+            games.append({
+                "receptions":  (st.get("receptions", {}) or {}).get("receptions"),
+                "targets":     (st.get("receptions", {}) or {}).get("targets"),
+                "rec_yards":   (st.get("receiving", {}) or {}).get("yards"),
+                "rush_att":    (st.get("rushing", {}) or {}).get("attempts"),
+                "rush_yards":  (st.get("rushing", {}) or {}).get("yards"),
+                "pass_att":    (st.get("passing", {}) or {}).get("att"),
+                "pass_yards":  (st.get("passing", {}) or {}).get("yards"),
+                "pass_tds":    (st.get("passing", {}) or {}).get("td"),
+            })
 
-        # take last 5 records (end is latest on most APIs; if not, still fine)
         last5 = games[-5:] if len(games) > 5 else games
 
         def avg(key: str) -> Optional[float]:
             vals = [float(x[key]) for x in last5 if x.get(key) is not None]
             return sum(vals) / len(vals) if vals else None
 
-        # derive a tiny bump based on relevant metric vs typical line scale
+        # ---- compute tiny bump ----
         bump = 0.0
-        k = stat_key.lower()
+        k = (stat_key or "").lower()
 
         if "receptions" in k:
-            # targets per game & receptions per game
             tpg = avg("targets") or 0.0
             rpg = avg("receptions") or 0.0
-            # scale: 7+ targets ~= bullish; under 4 ~= bearish
-            if tpg >= 8 or rpg >= 6:
-                bump = +0.03
-            elif tpg <= 4 or rpg <= 3:
-                bump = -0.02
+            if tpg >= 8 or rpg >= 6:   bump = +0.03
+            elif tpg <= 4 or rpg <= 3: bump = -0.02
 
         elif "reception_yds" in k or "rec_yds" in k:
             ryg = avg("rec_yards") or 0.0
-            if ryg >= 70:
-                bump = +0.03
-            elif ryg <= 35:
-                bump = -0.02
+            if ryg >= 70:   bump = +0.03
+            elif ryg <= 35: bump = -0.02
 
         elif "rush_yds" in k:
             rapg = avg("rush_att") or 0.0
-            ryg = avg("rush_yards") or 0.0
-            if rapg >= 16 or ryg >= 70:
-                bump = +0.03
-            elif rapg <= 8 or ryg <= 35:
-                bump = -0.02
+            ryg  = avg("rush_yards") or 0.0
+            if rapg >= 16 or ryg >= 70: bump = +0.03
+            elif rapg <= 8 or ryg <= 35: bump = -0.02
 
         elif "pass_yds" in k:
             pay = avg("pass_yards") or 0.0
             paa = avg("pass_att") or 0.0
-            if pay >= 275 or paa >= 36:
-                bump = +0.02
-            elif pay <= 210 or paa <= 28:
-                bump = -0.02
+            if pay >= 275 or paa >= 36: bump = +0.02
+            elif pay <= 210 or paa <= 28: bump = -0.02
 
         elif "pass_tds" in k:
             ptd = avg("pass_tds") or 0.0
-            if ptd >= 2.2:
-                bump = +0.02
-            elif ptd <= 1.0:
-                bump = -0.02
+            if ptd >= 2.2: bump = +0.02
+            elif ptd <= 1.0: bump = -0.02
 
         bump = clamp(bump, -0.04, 0.04)
         _FORM_CACHE[cache_key] = (now, bump)
         return bump
 
     except Exception as e:
-        logger.debug(f"API-Sports parse error for {player_name}: {e}")
-        _FORM_CACHE[cache_key] = (now, 0.0)
+        logger.debug(f"_fetch_last5_bump error for {player_name}: {e}")
         return 0.0
+
 # -------------------- Per-prop confidence & hit rate --------------------
 
 _OFFENSE_KEYS = (
