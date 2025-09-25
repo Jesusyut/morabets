@@ -1,6 +1,8 @@
 # nfl_game_enrichment.py
 from typing import Dict, List, Any, Optional, Tuple
 import logging, os, json, urllib.request
+import urllib.request
+import urllib.parse   # <-- this line is critical
 
 logger = logging.getLogger(__name__)
 
