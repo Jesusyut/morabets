@@ -59,20 +59,10 @@
             padding: 1.5rem;
             margin-bottom: 1rem;
         }
-        .probability-high {
-            color: var(--bs-success);
-            font-weight: bold;
-        }
-        .probability-medium {
-            color: var(--bs-warning);
-        }
-        .probability-low {
-            color: var(--bs-danger);
-        }
-        .loading {
-            text-align: center;
-            padding: 2rem;
-        }
+        .probability-high { color: var(--bs-success); font-weight: bold; }
+        .probability-medium { color: var(--bs-warning); }
+        .probability-low { color: var(--bs-danger); }
+        .loading { text-align: center; padding: 2rem; }
         .api-endpoint {
             background: var(--bs-secondary);
             border-radius: 0.25rem;
@@ -80,151 +70,75 @@
             font-family: monospace;
             font-size: 0.9rem;
         }
-        .edge-positive {
-            color: var(--bs-success);
-        }
-        .edge-negative {
-            color: var(--bs-danger);
-        }
-        .matchup-tab {
-            min-width: 140px;
-            white-space: nowrap;
-            transition: all 0.3s ease;
-        }
-        .matchup-tab:hover {
-            transform: translateY(-2px);
-        }
+        .edge-positive { color: var(--bs-success); }
+        .edge-negative { color: var(--bs-danger); }
+
+        .matchup-tab { min-width: 140px; white-space: nowrap; transition: all 0.3s ease; }
+        .matchup-tab:hover { transform: translateY(-2px); }
+
         .platform-header {
             background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%);
             border-radius: 1rem;
             margin-bottom: 2rem;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         }
-        .nav-pills .nav-link {
-            border-radius: 50rem;
-            transition: all 0.3s ease;
-            margin: 0 0.25rem;
-        }
+
+        .nav-pills .nav-link { border-radius: 50rem; transition: all 0.3s ease; margin: 0 0.25rem; }
         .nav-pills .nav-link.active {
-            background: linear-gradient(45deg, #06b6d4, #3b82f6);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+            background: linear-gradient(45deg, #06b6d4, #3b82f6); color: white;
+            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
         }
-        .nav-pills .nav-link:hover:not(.active) {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
+        .nav-pills .nav-link:hover:not(.active) { background: rgba(255,255,255,0.1); color: white; }
+
         .prop-card {
-            background: var(--bs-dark);
-            border: 1px solid var(--bs-border-color);
-            border-radius: 0.75rem;
-            transition: all 0.3s ease;
-            margin-bottom: 1rem;
+            background: var(--bs-dark); border: 1px solid var(--bs-border-color);
+            border-radius: 0.75rem; transition: all 0.3s ease; margin-bottom: 1rem;
         }
-        .prop-card:hover {
-            transform: translateY(-2px);
-            border-color: var(--bs-primary);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-        }
+        .prop-card:hover { transform: translateY(-2px); border-color: var(--bs-primary); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+
         .confidence-high { color: #22c55e; font-weight: bold; }
         .confidence-medium { color: #f59e0b; }
         .confidence-low { color: #ef4444; }
 
-        .status-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 0.5rem;
-        }
+        .status-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
         .status-live { background-color: #22c55e; }
         .status-updating { background-color: #f59e0b; }
         .status-offline { background-color: #ef4444; }
-        
+
         .ai-badge {
             background: linear-gradient(45deg, #8b5cf6, #a855f7);
-            color: white;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.375rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
+            color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em;
         }
-        
+
         .refresh-btn {
             background: linear-gradient(45deg, #06b6d4, #3b82f6);
-            border: none;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
+            border: none; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.3s ease;
         }
-        
-        .refresh-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
-        }
-        
-        .picks-container {
-            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-            border-radius: 1rem;
-            padding: 2rem;
-            margin: 1rem 0;
-        }
-        
-        .parlay-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        
+        .refresh-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4); }
+
+        .picks-container { background: linear-gradient(135deg, #1f2937 0%, #374151 100%); border-radius: 1rem; padding: 2rem; margin: 1rem 0; }
+        .parlay-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1rem; }
         .parlay-title {
             background: linear-gradient(45deg, #8b5cf6, #a855f7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: bold;
-            font-size: 1.25rem;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            font-weight: bold; font-size: 1.25rem;
         }
-        
-        .matchup-card {
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .matchup-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--bs-primary);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        }
-        
-        .analysis-content {
-            background: rgba(255, 255, 255, 0.03);
-            border-left: 4px solid #8b5cf6;
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-        }
-        
-        .env-label {
-            font-size: 0.8rem;
-            font-weight: 500;
-            padding: 4px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .favored {
-            color: #00FF95;
-            font-weight: bold;
-            text-shadow: 0 0 8px rgba(0, 255, 149, 0.3);
-        }
+
+        .matchup-card { transition: all 0.3s ease; cursor: pointer; }
+        .matchup-card:hover { transform: translateY(-5px); border-color: var(--bs-primary); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+
+        .analysis-content { background: rgba(255,255,255,0.03); border-left: 4px solid #8b5cf6; padding: 1.5rem; border-radius: 0.5rem; line-height: 1.6; }
+
+        .env-label { font-size: 0.8rem; font-weight: 500; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .favored { color: #00FF95; font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 149, 0.3); }
+
+        /* ✅ chips used across MLB/NFL */
+        .badge { border-radius: 10px; padding: 2px 8px; font-size: 0.72rem; }
+        .badge-fav { background: #16a34a; color: #fff; }  /* green */
+        .badge-dog { background: #eab308; color: #1f2937; } /* amber */
+        .badge-env { background: #6366f1; color: #fff; }  /* indigo */
     </style>
 </head>
 <body>
@@ -325,13 +239,11 @@
                                         <option value="">All Confidence Levels</option>
                                         <option value="high">High Confidence (≥70%)</option>
                                         <option value="medium">Medium Confidence (50-69%)</option>
-                                        <option value="low">Low Confidence (<50%)</option>
+                                        <option value="low">Low Confidence (&lt;50%)</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <div class="text-muted small text-center">
-                                        <div id="prop-count-display">-- props</div>
-                                    </div>
+                                    <!-- removed duplicate prop-count-display to avoid duplicate IDs -->
                                 </div>
                             </div>
                         </div>
@@ -349,8 +261,6 @@
                     </div>
                 </div>
             </div>
-
-
 
             <!-- How to Profit Tab -->
             <div class="tab-pane fade" id="how-to-profit" role="tabpanel">
@@ -422,12 +332,20 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
+        // ---------------------
+        // Global state
+        // ---------------------
         let allProps = [];
         let allFilteredProps = [];
         let matchupData = null;
-        let environmentData = null;
+        let environmentData = null; // MLB or NFL env map (normalized)
         let currentPropsDisplayed = 50;
-        
+
+        let currentSport = 'mlb';
+        let mlbProps = [];
+        let nflProps = [];
+        let currentMatchupData = null;
+
         // Auto-refresh platform status every 5 minutes
         setInterval(updatePlatformStatus, 300000);
         
@@ -435,60 +353,63 @@
         document.addEventListener('DOMContentLoaded', function() {
             updatePlatformStatus();
             loadPlayerProps();
-            // No additional content loading needed
+
+            // sport tabs
+            const sportTabs = document.querySelectorAll('#sport-tabs button');
+            sportTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const sport = this.getAttribute('data-sport');
+                    switchSport(sport);
+                });
+            });
         });
 
         async function updatePlatformStatus() {
             try {
                 const statusResponse = await fetch('/api/status');
-                const statusData = await statusResponse.json();
+                await statusResponse.json();
                 
-                // Update last updated time
                 document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
                 
-                // Update total props count
                 try {
                     const propsResponse = await fetch('/player_props');
                     const propsData = await propsResponse.json();
-                    const propsCount = Array.isArray(propsData) ? propsData.length : Object.keys(propsData).length;
+                    const propsCount = Array.isArray(propsData) ? propsData.length : Object.keys(propsData || {}).length;
                     document.getElementById('total-props').textContent = propsCount.toLocaleString();
                 } catch (e) {
                     document.getElementById('total-props').textContent = '--';
                 }
-                
             } catch (error) {
                 console.error('Error updating platform status:', error);
             }
         }
 
-
-
+        // ---------------------
+        // Unified loader for current sport (initial = MLB)
+        // ---------------------
         async function loadPlayerProps() {
             try {
-                // Load both props and environment data
                 const environmentEndpoint = currentSport === 'mlb' ? '/api/mlb/environment' : '/api/nfl/environment';
                 const [propsResponse, envResponse] = await Promise.all([
                     fetch('/player_props'),
-                    fetch(environmentEndpoint).catch(() => ({ json: () => ({}) }))
+                    fetch(environmentEndpoint).catch(() => ({ json: async () => ({}) }))
                 ]);
                 
                 const data = await propsResponse.json();
                 
-                // Try to get environment data for favored team highlighting
+                // env data (either {environments:{...}} or plain object)
                 try {
                     const envData = await envResponse.json();
-                    if (envData.environments) {
-                        // Store environment data for favored team highlighting
-                        environmentData = envData.environments;
-                        console.log(`Loaded ${currentSport.toUpperCase()} environment data with favored teams:`, Object.keys(environmentData));
+                    if (envData && (envData.environments || typeof envData === 'object')) {
+                        environmentData = envData.environments || envData;
+                        console.log(`Loaded ${currentSport.toUpperCase()} environment data with favored teams:`, Object.keys(environmentData || {}));
                     }
                 } catch (e) {
                     console.log('Environment data not available, continuing without favored team highlighting');
                 }
                 
-                // Store matchup data for Today's Games layout
+                // grouped vs flat props from /player_props
                 if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-                    // Backend returns grouped matchup data
                     matchupData = data;
                     allProps = [];
                     Object.values(data).forEach(matchupProps => {
@@ -504,34 +425,23 @@
                     matchupData = null;
                 }
                 
-                // Apply Hits line filtering immediately after loading data
+                // MLB hits filter (keep only 0.5 and 1.5)
                 allProps = allProps.filter(prop => {
                     const statType = prop.stat || prop.stat_type || '';
                     const line = parseFloat(prop.line || prop.point || 0);
-                    
-                    // Filter out irrelevant Hits lines (keep only 0.5 and 1.5)
-                    if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) {
-                        return false;
-                    }
+                    if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) return false;
                     return true;
                 });
                 
-                // Update matchupData with filtered props
                 if (matchupData) {
                     const filteredMatchupData = {};
                     Object.entries(matchupData).forEach(([matchup, props]) => {
-                        if (Array.isArray(props)) {
-                            filteredMatchupData[matchup] = props.filter(prop => {
-                                const statType = prop.stat || prop.stat_type || '';
-                                const line = parseFloat(prop.line || prop.point || 0);
-                                
-                                // Filter out irrelevant Hits lines (keep only 0.5 and 1.5)
-                                if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) {
-                                    return false;
-                                }
-                                return true;
-                            });
-                        }
+                        filteredMatchupData[matchup] = (props || []).filter(prop => {
+                            const statType = prop.stat || prop.stat_type || '';
+                            const line = parseFloat(prop.line || prop.point || 0);
+                            if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) return false;
+                            return true;
+                        });
                     });
                     matchupData = filteredMatchupData;
                 }
@@ -547,10 +457,9 @@
                     return;
                 }
                 
-                // Set default High Confidence filter for Player Props
+                // default High Confidence
                 document.getElementById('confidence-filter').value = 'high';
                 
-                // Display Today's Games layout
                 displayTodaysGames();
                 
             } catch (error) {
@@ -564,39 +473,28 @@
             }
         }
 
+        // ---------------------
+        // Filtering & Cards
+        // ---------------------
         function applyFilters() {
             const searchTerm = document.getElementById('player-search').value.toLowerCase().trim();
             const confidenceFilter = document.getElementById('confidence-filter').value;
+            if (!allProps || allProps.length === 0) return;
             
-            if (!allProps || allProps.length === 0) {
-                return;
-            }
-            
-            // Filter the props data directly
             allFilteredProps = allProps.filter(prop => {
                 let shouldShow = true;
                 
-                // Search filter
                 if (searchTerm) {
                     const playerName = (prop.player || prop.player_name || '').toLowerCase();
                     const statType = (prop.stat || prop.stat_type || '').toLowerCase();
                     const humanStat = getHumanStatName(prop.stat || prop.stat_type).toLowerCase();
-                    
-                    shouldShow = shouldShow && (
-                        playerName.includes(searchTerm) ||
-                        statType.includes(searchTerm) ||
-                        humanStat.includes(searchTerm)
-                    );
+                    shouldShow = shouldShow && (playerName.includes(searchTerm) || statType.includes(searchTerm) || humanStat.includes(searchTerm));
                 }
                 
-                // Filter out irrelevant Hits lines (keep only 0.5 and 1.5)
                 const statType = prop.stat || prop.stat_type || '';
                 const line = parseFloat(prop.line || prop.point || 0);
-                if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) {
-                    shouldShow = false;
-                }
+                if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) shouldShow = false;
                 
-                // Confidence filter
                 if (confidenceFilter) {
                     let hitRate = 0;
                     if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
@@ -604,13 +502,9 @@
                     } else {
                         hitRate = parseFloat(prop.contextual_hit_rate) || 0;
                     }
-                    if (confidenceFilter === 'high') {
-                        shouldShow = shouldShow && hitRate >= 0.7;
-                    } else if (confidenceFilter === 'medium') {
-                        shouldShow = shouldShow && hitRate >= 0.5 && hitRate < 0.7;
-                    } else if (confidenceFilter === 'low') {
-                        shouldShow = shouldShow && hitRate < 0.5;
-                    }
+                    if (confidenceFilter === 'high') shouldShow = shouldShow && hitRate >= 0.7;
+                    else if (confidenceFilter === 'medium') shouldShow = shouldShow && hitRate >= 0.5 && hitRate < 0.7;
+                    else if (confidenceFilter === 'low') shouldShow = shouldShow && hitRate < 0.5;
                 }
                 
                 return shouldShow;
@@ -622,7 +516,6 @@
 
         function displayProps() {
             const propsToShow = allFilteredProps.slice(0, currentPropsDisplayed);
-            
             if (propsToShow.length === 0) {
                 document.getElementById('player-props-container').innerHTML = `
                     <div class="alert alert-info text-center">
@@ -634,44 +527,47 @@
             }
             
             const propCards = propsToShow.map(prop => {
-                // Handle different hit rate formats from backend
+                // normalize hit rate
                 let hitRate = 0;
                 if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
                     hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
                 } else {
-                    hitRate = parseFloat(prop.contextual_hit_rate) || 0;
+                    hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0;
                 }
-                
-                const confidenceClass = hitRate >= 0.7 ? 'confidence-high' : 
-                                       hitRate >= 0.5 ? 'confidence-medium' : 'confidence-low';
-                const confidenceText = hitRate >= 0.7 ? 'High' : 
-                                      hitRate >= 0.5 ? 'Medium' : 'Low';
-                
-                // Map backend fields to display values
-                const playerName = prop.player || prop.player_name || 'Unknown Player';
-                const statType = prop.stat || prop.stat_type || '';
-                const line = prop.line || prop.point || 'N/A';
-                const bookmaker = prop.bookmaker || prop.sportsbook || 'Multiple Books';
-                const team = prop.team || '';
-                
-                // Team status badge
-                let teamStatusBadge = '';
-                const teamStatus = prop.team_status || 'unknown';
-                const teamAbbr = prop.team_abbr || '';
-                
-                if (teamStatus === 'favored' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-success ms-2" style="font-size: 0.7em;">
-                        <i class="fas fa-crown me-1"></i>${teamAbbr} FAV
-                    </span>`;
-                } else if (teamStatus === 'underdog' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-warning ms-2" style="font-size: 0.7em;">
-                        <i class="fas fa-dog me-1"></i>${teamAbbr} DOG
-                    </span>`;
-                    const fav = prop.context?.fav_team_abbr;
-                    {fav && <span className="badge badge-fav">{fav} FAV</span>}
 
+                const confidenceClass = hitRate >= 0.7 ? 'confidence-high' :
+                                        hitRate >= 0.5 ? 'confidence-medium' : 'confidence-low';
+                const confidenceText = hitRate >= 0.7 ? 'High' :
+                                       hitRate >= 0.5 ? 'Medium' : 'Low';
+
+                const playerName = prop.player || prop.player_name || 'Unknown Player';
+                const statType   = prop.stat || prop.stat_type || '';
+                const line       = prop.line || prop.point || 'N/A';
+                const bookmaker  = prop.bookmaker || prop.sportsbook || 'Multiple Books';
+                const team       = prop.team || '';
+
+                // ✅ badges: single string (no JSX / no stray variables)
+                let badgesHtml = "";
+
+                // matchup-level favored badge (from backend context if provided)
+                const fav = (prop.context && prop.context.fav_team_abbr) || "";
+                if (fav) {
+                    badgesHtml += `<span class="badge badge-fav ms-2">${fav} FAV</span>`;
                 }
-                
+
+                // optional player-team status
+                const teamStatus = prop.team_status || "unknown";
+                const teamAbbr   = prop.team_abbr || "";
+                if (teamAbbr && (teamStatus === "favored" || teamStatus === "underdog")) {
+                    const cls   = teamStatus === "favored" ? "badge-fav" : "badge-dog";
+                    const label = teamStatus === "favored" ? "FAV" : "DOG";
+                    badgesHtml += `<span class="badge ${cls} ms-2">${teamAbbr} ${label}</span>`;
+                }
+
+                // (optional) env label near hit rate
+                const env = (prop.context && prop.context.environment) || "Neutral";
+                const envHtml = env !== "Neutral" ? `<span class="badge badge-env ms-2">${env}</span>` : "";
+
                 return `
                     <div class="col-md-6 col-lg-4 mb-3">
                         <div class="prop-card card bg-dark border-secondary">
@@ -681,28 +577,22 @@
                                         <h6 class="mb-0">${playerName}</h6>
                                         <small class="text-muted">${team}</small>
                                     </div>
-                                    ${teamStatusBadge}
+                                    ${badgesHtml}
                                 </div>
-                                
+
                                 <div class="mb-2">
                                     <strong>${getHumanStatName(statType)}</strong>
                                     <span class="float-end">
                                         <span class="badge bg-primary">${line}</span>
                                     </span>
                                 </div>
-                                
-                                <div class="row mb-2">
-                                    <div class="col-6">
-                                        <small class="text-muted">Hit Rate</small><br>
-                                        <span class="${confidenceClass}">${(hitRate * 100).toFixed(1)}%</span>
-                                    </div>
-                                    <div class="col-6 text-end">
-                                        <small class="text-muted">Confidence</small><br>
-                                        <span class="${confidenceClass}">${confidenceText}</span>
-                                    </div>
+
+                                <div class="d-flex align-items-center text-muted small mt-1">
+                                    Hit Rate <strong class="ms-1">${(hitRate * 100).toFixed(1)}%</strong>
+                                    ${envHtml}
                                 </div>
-                                
-                                <div class="text-center">
+
+                                <div class="text-center mt-2">
                                     <small class="text-warning">
                                         <i class="fas fa-building me-1"></i>${bookmaker}
                                     </small>
@@ -719,27 +609,24 @@
                 </div>
             `;
             
-            // Show/hide load more button
             const loadMoreBtn = document.getElementById('load-more-props');
-            if (allFilteredProps.length > currentPropsDisplayed) {
-                loadMoreBtn.style.display = 'block';
-            } else {
-                loadMoreBtn.style.display = 'none';
-            }
+            loadMoreBtn.style.display = (allFilteredProps.length > currentPropsDisplayed) ? 'block' : 'none';
         }
 
+        // ---------------------
+        // “Today’s Games” unified layout (MLB + NFL)
+        // ---------------------
         function displayTodaysGames() {
             if (!matchupData) {
-                // Fallback to regular display if no matchup data
                 displayRegularProps();
                 return;
             }
             
-            // Reset filter controls when returning to games view
+            // reset filters in games view
             document.getElementById('confidence-filter').value = '';
             document.getElementById('player-search').value = '';
             
-            // Reset header back to main view
+            // header
             document.getElementById('games-header').innerHTML = `
                 <i class="fas fa-users text-primary me-2"></i>Today's Games
                 <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${currentSport === 'mlb' ? 'MLB' : 'NFL'} player props grouped by matchup</small>
@@ -747,9 +634,9 @@
             
             const matchupCards = Object.entries(matchupData).map(([matchup, props]) => {
                 const propCount = Array.isArray(props) ? props.length : 0;
-                const sportIcon = currentSport === 'mlb' ? 'fas fa-baseball' : 'fas fa-football-ball';
+                const sportIcon = currentSport === 'mlb' ? 'fas fa-baseball-ball' : 'fas fa-football-ball';
                 
-                // Parse matchup and environment label
+                // Parse matchup and env label if present (MLB path sometimes has “ — High Scoring”)
                 let displayMatchup = matchup;
                 let environmentLabel = '';
                 let environmentClass = '';
@@ -758,45 +645,42 @@
                     const parts = matchup.split(' — ');
                     displayMatchup = parts[0];
                     environmentLabel = parts[1];
-                    
-                    // Set environment styling
-                    if (environmentLabel === 'High Scoring') {
-                        environmentClass = 'bg-success';
-                    } else if (environmentLabel === 'Low Scoring') {
-                        environmentClass = 'bg-danger';
-                    } else {
-                        environmentClass = 'bg-secondary';
-                    }
+                    if (environmentLabel === 'High Scoring') environmentClass = 'badge-env';
+                    else if (environmentLabel === 'Low Scoring') environmentClass = 'badge-dog';
+                    else environmentClass = 'badge';
                 }
                 
-                // Parse team names and apply favored highlighting
+                // favored team highlight (if available)
                 const teamParts = displayMatchup.split(' @ ');
                 let awayTeam = teamParts[0] || '';
                 let homeTeam = teamParts[1] || '';
                 
-                // Get favored team from environment data
                 let favoredTeam = null;
                 if (environmentData && environmentData[displayMatchup]) {
-                    favoredTeam = environmentData[displayMatchup].favored_team;
+                    // MLB env may have favored_team; NFL env is normalized by loadNFLProps()
+                    const e = environmentData[displayMatchup] || {};
+                    favoredTeam = e.favored_team || null;
                 }
                 
-                // Apply favored styling
                 const awayClass = favoredTeam === awayTeam ? 'favored' : '';
                 const homeClass = favoredTeam === homeTeam ? 'favored' : '';
                 
-                const environmentBadge = environmentLabel ? 
-                    `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>` : '';
+                const envBadge = environmentLabel
+                    ? `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>`
+                    : ((environmentData && environmentData[displayMatchup] && environmentData[displayMatchup].environment && environmentData[displayMatchup].environment !== 'Neutral')
+                        ? `<span class="badge badge-env ms-2 env-label">${environmentData[displayMatchup].environment}</span>`
+                        : '');
                 
                 return `
                     <div class="col-md-6 col-lg-4 mb-3">
                         <div class="card bg-dark border-secondary matchup-card h-100">
                             <div class="card-body">
                                 <h5 class="card-title text-primary">
-                                    <i class="${sportIcon} me-2"></i><span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${environmentBadge}
+                                    <i class="${sportIcon} me-2"></i>
+                                    <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>
+                                    ${envBadge}
                                 </h5>
-                                <p class="card-text text-muted mb-3">
-                                    ${propCount} props available
-                                </p>
+                                <p class="card-text text-muted mb-3">${propCount} props available</p>
                                 <button class="btn btn-outline-primary w-100" onclick="showMatchupProps('${matchup}')">
                                     View Props
                                 </button>
@@ -823,22 +707,17 @@
         
         function showMatchupProps(matchup) {
             if (!matchupData || !matchupData[matchup]) return;
-            
             const matchupProps = matchupData[matchup];
             
-            // Apply filtering to matchup props to preserve hits filtering
+            // restrict allProps to the matchup, then filter
             allProps = matchupProps;
-            
-            // Apply default High Confidence filter
             document.getElementById('confidence-filter').value = 'high';
             applyFilters();
-            
             currentPropsDisplayed = 50;
-            
             displayProps();
             updatePropCount();
             
-            // Parse matchup for display in header
+            // header
             let displayMatchup = matchup;
             let environmentLabel = '';
             let environmentClass = '';
@@ -847,39 +726,31 @@
                 const parts = matchup.split(' — ');
                 displayMatchup = parts[0];
                 environmentLabel = parts[1];
-                
-                // Set environment styling
-                if (environmentLabel === 'High Scoring') {
-                    environmentClass = 'bg-success';
-                } else if (environmentLabel === 'Low Scoring') {
-                    environmentClass = 'bg-danger';
-                } else {
-                    environmentClass = 'bg-secondary';
-                }
+                environmentClass = environmentLabel === 'High Scoring' ? 'badge-env'
+                                  : environmentLabel === 'Low Scoring'  ? 'badge-dog'
+                                  : 'badge';
             }
             
-            // Parse teams and apply favored highlighting
             const teamParts = displayMatchup.split(' @ ');
             let awayTeam = teamParts[0] || '';
             let homeTeam = teamParts[1] || '';
             
-            // Get favored team from environment data
             let favoredTeam = null;
             if (environmentData && environmentData[displayMatchup]) {
-                favoredTeam = environmentData[displayMatchup].favored_team;
+                const e = environmentData[displayMatchup] || {};
+                favoredTeam = e.favored_team || null;
             }
             
-            // Apply favored styling
             const awayClass = favoredTeam === awayTeam ? 'favored' : '';
             const homeClass = favoredTeam === homeTeam ? 'favored' : '';
             
-            const environmentBadge = environmentLabel ? 
-                `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>` : '';
+            const envBadge = environmentLabel
+                ? `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>`
+                : '';
             
-            // Update header with back arrow
             document.getElementById('games-header').innerHTML = `
                 <i class="fas fa-arrow-left text-primary me-2" style="cursor: pointer;" onclick="resetToSportHome()"></i>
-                <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${environmentBadge}
+                <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${envBadge}
                 <small class="text-muted d-block fs-6 mt-1">${currentSport === 'mlb' ? 'MLB' : 'NFL'} Player Props</small>
             `;
         }
@@ -913,50 +784,25 @@
                 'outs': 'Pitching Outs',
                 'hits_allowed': 'Hits Allowed'
             };
-            return statMap[statType] || statType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return statMap[statType] || (statType || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         }
 
-        // Load more props functionality
+        // Load more props
         document.getElementById('load-more-props').addEventListener('click', function() {
             currentPropsDisplayed += 50;
             displayProps();
         });
 
-
-        // Refresh picks functionality
-
-        // Dashboard loaded successfully - key verification handled server-side
-        console.log('Dashboard loaded successfully');
-
-        // Global variables for sport management
-        let currentSport = 'mlb';
-        let mlbProps = [];
-        let nflProps = [];
-        let currentMatchupData = null;
-
-        // Sport tab functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const sportTabs = document.querySelectorAll('#sport-tabs button');
-            sportTabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const sport = this.getAttribute('data-sport');
-                    switchSport(sport);
-                });
-            });
-        });
-
+        // ---------------------
+        // Sport switching
+        // ---------------------
         function switchSport(sport) {
             if (currentSport === sport) return;
-            
             currentSport = sport;
             
-            // Update tab appearance
-            document.querySelectorAll('#sport-tabs button').forEach(tab => {
-                tab.classList.remove('active');
-            });
+            document.querySelectorAll('#sport-tabs button').forEach(tab => tab.classList.remove('active'));
             document.getElementById(`${sport}-tab`).classList.add('active');
             
-            // Update header labels
             const propsLabel = document.getElementById('total-props-label');
             const gamesSubtitle = document.getElementById('games-subtitle');
             
@@ -972,16 +818,11 @@
         }
 
         function resetToSportHome() {
-            // Reset to the current sport's home view
             currentMatchupData = null;
             document.getElementById('player-search').value = '';
             document.getElementById('confidence-filter').value = '';
-            
-            if (currentSport === 'mlb') {
-                loadMLBProps();
-            } else {
-                loadNFLProps();
-            }
+            if (currentSport === 'mlb') loadMLBProps();
+            else loadNFLProps();
         }
 
         function loadMLBProps() {
@@ -993,11 +834,11 @@
                     <p class="mt-3">Loading MLB player props...</p>
                 </div>
             `;
-            
-            loadPlayerProps(); // Use existing MLB loading function
+            loadPlayerProps(); // reuse unified loader
         }
 
-        function loadNFLProps() {
+        // ✅ NFL now normalized to MLB layout (matchupData + environmentData + displayTodaysGames)
+        async function loadNFLProps() {
             document.getElementById('player-props-container').innerHTML = `
                 <div class="loading text-center">
                     <div class="spinner-border text-primary" role="status">
@@ -1007,31 +848,17 @@
                 </div>
             `;
             
-            fetch('/api/nfl/props')
-                .then(response => response.json())
-                .then(data => {
-                    nflProps = data || [];
-                    
-                    // Handle off-season gracefully (empty array means off-season)
-                    if (nflProps.length === 0) {
-                        document.getElementById('player-props-container').innerHTML = `
-                            <div class="alert alert-info text-center">
-                                <h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season</h4>
-                                <p class="mb-3">NFL player props are not available during the off-season.</p>
-                                <p class="mb-0 text-muted">
-                                    <strong>NFL Environment Analysis:</strong> 272+ games are still available for futures betting analysis.<br>
-                                    Check back during the NFL season for live player props!
-                                </p>
-                            </div>
-                        `;
-                        document.getElementById('prop-count-display').textContent = '0 props';
-                        return;
-                    }
-                    
-                    displayNFLProps(nflProps);
-                })
-                .catch(error => {
-                    console.error('Error loading NFL props:', error);
+            try {
+                const [propsRes, envRes] = await Promise.all([
+                    fetch('/api/nfl/props'),
+                    fetch('/api/nfl/environment').catch(() => ({ json: async () => ({}) }))
+                ]);
+
+                nflProps = (await propsRes.json()) || [];
+                const envRaw = await envRes.json().catch(() => ({}));
+                const envMap = envRaw.environments || envRaw || {};
+
+                if (nflProps.length === 0) {
                     document.getElementById('player-props-container').innerHTML = `
                         <div class="alert alert-info text-center">
                             <h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season</h4>
@@ -1043,163 +870,68 @@
                         </div>
                     `;
                     document.getElementById('prop-count-display').textContent = '0 props';
-                });
-        }
+                    return;
+                }
 
-        function displayNFLProps(props) {
-            if (!props || props.length === 0) {
+                // Build grouped matchupData just like MLB
+                const grouped = {};
+                nflProps.forEach(p => {
+                    const key = `${p.away_team} @ ${p.home_team}`;
+                    (grouped[key] ||= []).push(p);
+                });
+                matchupData = grouped;
+                allProps = nflProps.slice();
+
+                // Normalize env to MLB-like: favored_team + environment
+                const normalizedEnv = {};
+                for (const matchup of Object.keys(grouped)) {
+                    const e = envMap[matchup] || {};
+                    const sample = grouped[matchup][0]; // one prop to resolve teams/abbr
+                    let favored_team = null;
+                    if (sample && e.favored_side) {
+                        favored_team = e.favored_side === 'home'
+                          ? (sample.home_abbr || sample.home_team)
+                          : (sample.away_abbr || sample.away_team);
+                    }
+                    normalizedEnv[matchup] = {
+                        favored_team,
+                        environment: e.environment || 'Neutral'
+                    };
+                }
+                environmentData = normalizedEnv;
+
+                // Reuse the same UI
+                displayTodaysGames();
+
+                // labels
+                document.getElementById('total-props-label').textContent = 'Total NFL Props';
+                document.getElementById('games-subtitle').textContent = 'NFL player props grouped by matchup';
+                document.getElementById('prop-count-display').textContent = `${nflProps.length} props`;
+            } catch (error) {
+                console.error('Error loading NFL props:', error);
                 document.getElementById('player-props-container').innerHTML = `
                     <div class="alert alert-info text-center">
-                        <i class="fas fa-football-ball fa-3x mb-3 text-muted"></i>
-                        <h4>NFL Props Updating</h4>
-                        <p class="mb-0">NFL props are being updated. Please check back shortly.</p>
+                        <h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season</h4>
+                        <p class="mb-3">NFL player props are not available during the off-season.</p>
+                        <p class="mb-0 text-muted">
+                            <strong>NFL Environment Analysis:</strong> 272+ games are still available for futures betting analysis.<br>
+                            Check back during the NFL season for live player props!
+                        </p>
                     </div>
                 `;
-                document.getElementById('total-props').textContent = '0';
                 document.getElementById('prop-count-display').textContent = '0 props';
-                return;
             }
-
-            // Group NFL props by matchup
-            const matchups = {};
-            props.forEach(prop => {
-                const matchup = `${prop.away_team} @ ${prop.home_team}`;
-                if (!matchups[matchup]) {
-                    matchups[matchup] = [];
-                }
-                matchups[matchup].push(prop);
-            });
-
-            const matchupCards = Object.entries(matchups).map(([matchup, matchupProps]) => {
-                return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card bg-dark border-secondary matchup-card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title text-primary">
-                                    <i class="fas fa-football-ball me-2"></i>${matchup}
-                                </h5>
-                                <p class="card-text text-muted mb-3">
-                                    ${matchupProps.length} props available
-                                </p>
-                                <button class="btn btn-outline-primary w-100" onclick="showNFLMatchupProps('${matchup}')">
-                                    View Props
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="mb-4">
-                    <h4 class="text-center text-muted">Today's NFL Games</h4>
-                    <p class="text-center text-muted">Click on any matchup to view player props</p>
-                </div>
-                <div class="row">
-                    ${matchupCards}
-                </div>
-            `;
-
-            // Update counters
-            document.getElementById('total-props').textContent = props.length;
-            document.getElementById('prop-count-display').textContent = `${props.length} props`;
         }
 
-        function showNFLMatchupProps(matchup) {
-            const matchupProps = nflProps.filter(prop => `${prop.away_team} @ ${prop.home_team}` === matchup);
-            
-            // Update header
-            document.getElementById('games-header').innerHTML = `
-                <i class="fas fa-arrow-left text-primary me-2" style="cursor: pointer;" onclick="resetToSportHome()"></i>
-                ${matchup}
-                <small class="text-muted d-block fs-6 mt-1">NFL Player Props</small>
-            `;
+        // (Legacy NFL renderers kept for reference; now unused)
+        // function displayNFLProps(...) {}
+        // function showNFLMatchupProps(...) {}
+        // function displayNFLPropsGrid(...) {}
 
-            displayNFLPropsGrid(matchupProps);
-        }
-
-        function displayNFLPropsGrid(props) {
-            if (!props || props.length === 0) {
-                document.getElementById('player-props-container').innerHTML = `
-                    <div class="alert alert-warning text-center">
-                        <h4>No Props Available</h4>
-                        <p>No props available for this matchup.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const propCards = props.map(prop => {
-                const hitRate = prop.hit_probability || 0.5;
-                const confidenceClass = hitRate >= 0.7 ? 'confidence-high' : 
-                                      hitRate >= 0.5 ? 'confidence-medium' : 'confidence-low';
-                const confidenceText = hitRate >= 0.7 ? 'High' : 
-                                     hitRate >= 0.5 ? 'Medium' : 'Low';
-
-                // Team status badge for NFL
-                let teamStatusBadge = '';
-                const teamStatus = prop.team_status || 'unknown';
-                const teamAbbr = prop.team_abbr || prop.team || '';
-                
-                if (teamStatus === 'favored' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-success ms-2" style="font-size: 0.7em;">
-                        <i class="fas fa-crown me-1"></i>${teamAbbr} FAV
-                    </span>`;
-                } else if (teamStatus === 'underdog' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-warning ms-2" style="font-size: 0.7em;">
-                        <i class="fas fa-dog me-1"></i>${teamAbbr} DOG
-                    </span>`;
-                }
-
-                return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="prop-card card bg-dark border-secondary">
-                            <div class="card-body">
-                                <div class="mb-2 d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <h6 class="mb-0">${prop.player_name}</h6>
-                                        <small class="text-muted">${prop.team}</small>
-                                    </div>
-                                    ${teamStatusBadge}
-                                </div>
-                                
-                                <div class="mb-2">
-                                    <strong>${prop.market}</strong>
-                                    <span class="float-end">
-                                        <span class="badge bg-primary">${prop.point}</span>
-                                    </span>
-                                </div>
-                                
-                                <div class="row mb-2">
-                                    <div class="col-6">
-                                        <small class="text-muted">Hit Rate</small><br>
-                                        <span class="${confidenceClass}">${(hitRate * 100).toFixed(1)}%</span>
-                                    </div>
-                                    <div class="col-6 text-end">
-                                        <small class="text-muted">Confidence</small><br>
-                                        <span class="${confidenceClass}">${confidenceText}</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="text-center">
-                                    <small class="text-warning">
-                                        <i class="fas fa-building me-1"></i>${prop.bookmaker}
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="row">
-                    ${propCards}
-                </div>
-            `;
-
-            document.getElementById('prop-count-display').textContent = `${props.length} props`;
-        }
+        // ---------------------
+        // Console
+        // ---------------------
+        console.log('Dashboard loaded successfully');
     </script>
 </body>
 </html>
