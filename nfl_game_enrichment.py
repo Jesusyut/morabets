@@ -1,15 +1,11 @@
 # nfl_game_enrichment.py
 from typing import Dict, List, Any, Optional, Tuple
-import logging, os, json, urllib.request
-import urllib.request
-import urllib.parse   # <-- this line is critical
-import time
+import os, json, time, logging, urllib.request, urllib.parse
 
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("nfl_enrich")
+logger.setLevel(logging.INFO)
 
 # ------------------------ Odds helpers ------------------------
-
 def american_to_prob(american: Optional[int]) -> Optional[float]:
     if american is None:
         return None
@@ -22,19 +18,13 @@ def american_to_prob(american: Optional[int]) -> Optional[float]:
     return 100 / (a + 100)
 
 def novig_two_sided(p_over_raw: Optional[float], p_under_raw: Optional[float]) -> float:
-    """
-    Convert raw implied probs for over/under into a single no-vig p(over).
-    If only one side is present, fall back to the other’s complement.
-    """
+    """Return no-vig p(over) from raw implied probs."""
     if p_over_raw is None and p_under_raw is None:
         return 0.50
     if p_over_raw is None:
         return 1.0 - (p_under_raw or 0.5)
     if p_under_raw is None:
         return p_over_raw
-
-    # Remove vig by normalizing the two sides to sum to 1
-    # p_over_raw + (1 - p_under_raw) is the book-implied sum for the two outcomes
     denom = p_over_raw + (1.0 - p_under_raw)
     if denom <= 1e-9:
         return 0.50
@@ -43,8 +33,7 @@ def novig_two_sided(p_over_raw: Optional[float], p_under_raw: Optional[float]) -
 def clamp(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, x))
 
-# -------------------- Env from totals / spread / ML --------------------
-
+# -------------------- Environment from totals / moneyline / spread --------------------
 def _classify_env(total_points: Optional[float], over_am: Optional[int], under_am: Optional[int]) -> str:
     if total_points is None:
         return "Neutral"
@@ -62,12 +51,9 @@ def _fav_side_from_ml(home_ml: Optional[int], away_ml: Optional[int]) -> Optiona
     return "home" if ph > pa else "away"
 
 def build_nfl_environment_map(events: List[Dict]) -> Dict[str, Dict[str, Any]]:
-    """
-    Keys: '<Away Name> @ <Home Name>'
-    Values include: total_points, over/under prices, spreads, favored_side, environment.
-    """
+    """Keys: '<Away> @ <Home>'"""
     env: Dict[str, Dict[str, Any]] = {}
-    for ev in events or []:
+    for ev in (events or []):
         home = (ev.get("home_team") or "").strip()
         away = (ev.get("away_team") or "").strip()
         if not home or not away:
@@ -112,14 +98,12 @@ def build_nfl_environment_map(events: List[Dict]) -> Dict[str, Dict[str, Any]]:
                         elif t == away:
                             away_spread = pt
 
-        # start with ML; if spreads exist, prefer the negative spread
         fav_side = _fav_side_from_ml(home_ml, away_ml)
-        if home_spread is not None and away_spread is not None:
-            if isinstance(home_spread, (int, float)) and isinstance(away_spread, (int, float)):
-                if home_spread < 0:
-                    fav_side = "home"
-                elif away_spread < 0:
-                    fav_side = "away"
+        if isinstance(home_spread, (int, float)) and isinstance(away_spread, (int, float)):
+            if home_spread < 0:
+                fav_side = "home"
+            elif away_spread < 0:
+                fav_side = "away"
 
         env[f"{away} @ {home}"] = {
             "total_points": total_points,
@@ -127,33 +111,35 @@ def build_nfl_environment_map(events: List[Dict]) -> Dict[str, Dict[str, Any]]:
             "under_american": under_am,
             "home_spread": home_spread,
             "away_spread": away_spread,
-            "favored_side": fav_side,   # 'home' | 'away' | None
+            "favored_side": fav_side,         # 'home' | 'away' | None
             "environment": _classify_env(total_points, over_am, under_am),
         }
-
     return env
 
-
+# -------------------- API-Sports (Players + Statistics) --------------------
+# Use American-Football base; switch to v1.nfl.api-sports.io if your plan requires it.
 _API_PLAYERS = "https://v1.american-football.api-sports.io/players"
 _API_STATS   = "https://v1.american-football.api-sports.io/players/statistics"
 
 def _api_key() -> Optional[str]:
-    return os.getenv("API_SPORTS_KEY") or os.getenv("API_SPORTS_NFL_KEY") or os.getenv("APISPORTS_KEY")
+    # Primary: APISPORTS_KEY ; others are optional fallbacks if you ever add them
+    return os.getenv("APISPORTS_KEY") or os.getenv("API_SPORTS_KEY") or os.getenv("API_SPORTS_NFL_KEY")
 
 def _api_headers() -> Optional[Dict[str, str]]:
     k = _api_key()
     return {"x-apisports-key": k} if k else None
 
-# simple in-process cache to avoid hammering
-_FORM_CACHE: Dict[str, Tuple[float, float]] = {}  # {cache_key: (ts, bump)}
+# small in-process cache: {cache_key: (timestamp, bump)}
+_FORM_CACHE: Dict[str, Tuple[float, float]] = {}
 
-def _http_get_json(url: str, headers: Dict[str, str], timeout: int = 5) -> Optional[Dict[str, Any]]:
+def _http_get_json(url: str, headers: Dict[str, str], timeout: int = 6) -> Optional[Dict[str, Any]]:
+    logger.info("[NFL] API-Sports GET %s", url)
     try:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode("utf-8"))
     except Exception as e:
-        logger.debug(f"API-Sports GET failed: {url} -> {e}")
+        logger.error("[NFL] API-Sports GET failed %s :: %s", url, e)
         return None
 
 def _find_player_id(player_name: str) -> Optional[int]:
@@ -162,116 +148,97 @@ def _find_player_id(player_name: str) -> Optional[int]:
         if not hdrs or not player_name:
             return None
         q = urllib.parse.urlencode({"search": player_name})
-        data = _http_get_json(f"{_API_PLAYERS}?{q}", hdrs, timeout=5)
-        if not data or "response" not in data:
-            return None
-        resp = data["response"]
+        data = _http_get_json(f"{_API_PLAYERS}?{q}", hdrs, timeout=6)
+        resp = data.get("response") if data else None
         if not resp:
             return None
-        item = resp[0]
-        pid = item.get("player", {}).get("id")
+        pid = (resp[0].get("player") or {}).get("id")
         return int(pid) if pid is not None else None
     except Exception as e:
-        logger.debug(f"_find_player_id error for {player_name}: {e}")
+        logger.debug("_find_player_id error for %s: %s", player_name, e)
         return None
 
 def _fetch_last5_bump(player_name: str, stat_key: str, season: Optional[int]) -> float:
-    # quick kill-switch, optional
+    """Tiny ±0.04 bump from last-5 form using Players Statistics."""
     if os.getenv("DISABLE_NFL_FORM") == "1":
         return 0.0
-
     try:
-        # ensure API ready
         hdrs = _api_headers()
         if not hdrs:
             return 0.0
 
-        # cache
         cache_key = f"{player_name}|{stat_key}|{season}"
         now = time.time()
         cached = _FORM_CACHE.get(cache_key)
         if cached and (now - cached[0]) < 3600:
             return cached[1]
 
-        # find player id
         pid = _find_player_id(player_name)
         if not pid:
             _FORM_CACHE[cache_key] = (now, 0.0)
             return 0.0
 
-        # fetch stats
         params = {"player": pid}
         if season:
             params["season"] = season
         q = urllib.parse.urlencode(params)
-        data = _http_get_json(f"{_API_STATS}?{q}", hdrs, timeout=6)
-        if not data or "response" not in data:
+        logger.info("[NFL] fetch last5 for id=%s stat=%s season=%s", pid, stat_key, season)
+        data = _http_get_json(f"{_API_STATS}?{q}", hdrs, timeout=8)
+        resp = data.get("response") if data else None
+        if not resp:
             _FORM_CACHE[cache_key] = (now, 0.0)
             return 0.0
 
-        # ---- aggregate last 5 ----
-        games: list[dict] = []
-        for block in data["response"]:
+        games: List[Dict[str, Any]] = []
+        for block in resp:
             st = block.get("statistics") or {}
             games.append({
-                "receptions":  (st.get("receptions", {}) or {}).get("receptions"),
-                "targets":     (st.get("receptions", {}) or {}).get("targets"),
-                "rec_yards":   (st.get("receiving", {}) or {}).get("yards"),
-                "rush_att":    (st.get("rushing", {}) or {}).get("attempts"),
-                "rush_yards":  (st.get("rushing", {}) or {}).get("yards"),
-                "pass_att":    (st.get("passing", {}) or {}).get("att"),
-                "pass_yards":  (st.get("passing", {}) or {}).get("yards"),
-                "pass_tds":    (st.get("passing", {}) or {}).get("td"),
+                "receptions":  (st.get("receptions") or {}).get("receptions"),
+                "targets":     (st.get("receptions") or {}).get("targets"),
+                "rec_yards":   (st.get("receiving")  or {}).get("yards"),
+                "rush_att":    (st.get("rushing")    or {}).get("attempts"),
+                "rush_yards":  (st.get("rushing")    or {}).get("yards"),
+                "pass_att":    (st.get("passing")    or {}).get("att"),
+                "pass_yards":  (st.get("passing")    or {}).get("yards"),
+                "pass_tds":    (st.get("passing")    or {}).get("td"),
             })
 
         last5 = games[-5:] if len(games) > 5 else games
 
-        def avg(key: str) -> Optional[float]:
-            vals = [float(x[key]) for x in last5 if x.get(key) is not None]
+        def avg(k: str) -> Optional[float]:
+            vals = [float(g[k]) for g in last5 if g.get(k) is not None]
             return sum(vals) / len(vals) if vals else None
 
-        # ---- compute tiny bump ----
         bump = 0.0
         k = (stat_key or "").lower()
-
         if "receptions" in k:
             tpg = avg("targets") or 0.0
             rpg = avg("receptions") or 0.0
-            if tpg >= 8 or rpg >= 6:   bump = +0.03
-            elif tpg <= 4 or rpg <= 3: bump = -0.02
-
+            bump = +0.03 if (tpg >= 8 or rpg >= 6) else (-0.02 if (tpg <= 4 or rpg <= 3) else 0.0)
         elif "reception_yds" in k or "rec_yds" in k:
             ryg = avg("rec_yards") or 0.0
-            if ryg >= 70:   bump = +0.03
-            elif ryg <= 35: bump = -0.02
-
+            bump = +0.03 if ryg >= 70 else (-0.02 if ryg <= 35 else 0.0)
         elif "rush_yds" in k:
             rapg = avg("rush_att") or 0.0
             ryg  = avg("rush_yards") or 0.0
-            if rapg >= 16 or ryg >= 70: bump = +0.03
-            elif rapg <= 8 or ryg <= 35: bump = -0.02
-
+            bump = +0.03 if (rapg >= 16 or ryg >= 70) else (-0.02 if (rapg <= 8 or ryg <= 35) else 0.0)
         elif "pass_yds" in k:
             pay = avg("pass_yards") or 0.0
             paa = avg("pass_att") or 0.0
-            if pay >= 275 or paa >= 36: bump = +0.02
-            elif pay <= 210 or paa <= 28: bump = -0.02
-
+            bump = +0.02 if (pay >= 275 or paa >= 36) else (-0.02 if (pay <= 210 or paa <= 28) else 0.0)
         elif "pass_tds" in k:
             ptd = avg("pass_tds") or 0.0
-            if ptd >= 2.2: bump = +0.02
-            elif ptd <= 1.0: bump = -0.02
+            bump = +0.02 if ptd >= 2.2 else (-0.02 if ptd <= 1.0 else 0.0)
 
         bump = clamp(bump, -0.04, 0.04)
         _FORM_CACHE[cache_key] = (now, bump)
         return bump
 
     except Exception as e:
-        logger.debug(f"_fetch_last5_bump error for {player_name}: {e}")
+        logger.debug("_fetch_last5_bump error for %s: %s", player_name, e)
         return 0.0
 
 # -------------------- Per-prop confidence & hit rate --------------------
-
 _OFFENSE_KEYS = (
     "pass_yds", "pass_tds", "rec_yds", "reception_yds", "receptions",
     "rush_yds", "rush_tds", "reception_tds"
@@ -286,7 +253,7 @@ def _env_adjust(stat_key: str, env_bucket: str, fav_side: Optional[str]) -> floa
     elif env_bucket == "Low Scoring" and offensey:
         adj -= 0.05
     if fav_side is not None:
-        adj += 0.01  # small bias toward favorite game script
+        adj += 0.01  # tiny bias for favored game script
     return adj
 
 def enrich_nfl_props_with_context(props: List[Dict], env_map: Dict[str, Dict[str, Any]]) -> List[Dict]:
@@ -297,8 +264,19 @@ def enrich_nfl_props_with_context(props: List[Dict], env_map: Dict[str, Dict[str
         season = None
 
     out: List[Dict] = []
-    for p in props or []:
-        stat = (p.get("stat") or p.get("market") or "").lower()
+    key_map = {
+        "player_receptions": "receptions",
+        "player_reception_yds": "rec_yds",
+        "player_receiving_yds": "rec_yds",
+        "player_rush_yds": "rush_yds",
+        "player_pass_yds": "pass_yds",
+        "player_pass_tds": "pass_tds",
+    }
+
+    for p in (props or []):
+        raw_key = (p.get("stat") or p.get("market") or "").lower()
+        stat = key_map.get(raw_key, raw_key)
+
         matchup = p.get("matchup", "")
         env = env_map.get(matchup, {}) or {}
         bucket = env.get("environment", "Neutral")
@@ -307,8 +285,8 @@ def enrich_nfl_props_with_context(props: List[Dict], env_map: Dict[str, Dict[str
         # base from no-vig Over/Under
         p_over_raw = american_to_prob(p.get("over_odds"))
         p_under_raw = american_to_prob(p.get("under_odds"))
-        p_over_novig = novig_two_sided(p_over_raw, p_under_raw)
-        base = max(p_over_novig, 1.0 - p_over_novig)
+        base_over = novig_two_sided(p_over_raw, p_under_raw)
+        base = max(base_over, 1.0 - base_over)
 
         # bumps
         env_bump  = _env_adjust(stat, bucket, fav_side)
@@ -316,13 +294,8 @@ def enrich_nfl_props_with_context(props: List[Dict], env_map: Dict[str, Dict[str
 
         adj = clamp(base + env_bump + form_bump, 0.30, 0.90)
 
-        # confidence cutoffs (tuned for no-vig + small bumps)
-        if   adj >= 0.66:
-            conf = "High"
-        elif adj >= 0.56:
-            conf = "Medium"
-        else:
-            conf = "Low"
+        # confidence
+        conf = "High" if adj >= 0.66 else ("Medium" if adj >= 0.56 else "Low")
 
         fav_abbr = p.get("home_abbr") if fav_side == "home" else (p.get("away_abbr") if fav_side == "away" else None)
 
@@ -331,10 +304,11 @@ def enrich_nfl_props_with_context(props: List[Dict], env_map: Dict[str, Dict[str
             "favored_side": fav_side,
             "total_points": env.get("total_points"),
             "fav_team_abbr": fav_abbr,
+            # Optional: expose components for debugging
+            # "components": {"base": round(base,3), "env": round(env_bump,3), "form": round(form_bump,3)}
         }
         p["hit_probability"] = round(adj, 3)
         p["confidence"] = conf
         out.append(p)
 
     return out
-
