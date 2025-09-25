@@ -155,52 +155,50 @@ def _http_get_json(url: str, headers: Dict[str, str], timeout: int = 5) -> Optio
         return None
 
 def _find_player_id(player_name: str) -> Optional[int]:
-    hdrs = _api_headers()
-    if not hdrs or not player_name:
-        return None
-    q = urllib.parse.urlencode({"search": player_name})
-    data = _http_get_json(f"{_API_PLAYERS}?{q}", hdrs, timeout=5)
-    if not data or "response" not in data:
-        return None
-    # pick first best match
     try:
+        hdrs = _api_headers()
+        if not hdrs or not player_name:
+            return None
+        q = urllib.parse.urlencode({"search": player_name})
+        data = _http_get_json(f"{_API_PLAYERS}?{q}", hdrs, timeout=5)
+        if not data or "response" not in data:
+            return None
         resp = data["response"]
         if not resp:
             return None
-        # response items often have {"player": { "id": ..., "name": ... }, ...}
         item = resp[0]
         pid = item.get("player", {}).get("id")
         return int(pid) if pid is not None else None
-    except Exception:
+    except Exception as e:
+        logger.debug(f"_find_player_id error for {player_name}: {e}")
         return None
 
 def _fetch_last5_bump(player_name: str, stat_key: str, season: Optional[int]) -> float:
-    """
-    Returns a small bump in [-0.04, +0.04] based on last-5 usage aligned to stat_key.
-    If anything fails, returns 0.0.
-    """
-    if not _api_headers():
+    # short-circuit if disabled
+    if os.getenv("DISABLE_NFL_FORM") == "1":
         return 0.0
+    try:
+        if not _api_headers():
+            return 0.0
+        cache_key = f"{player_name}|{stat_key}|{season}"
+        now = time.time()
+        cached = _FORM_CACHE.get(cache_key)
+        if cached and (now - cached[0]) < 3600:
+            return cached[1]
 
-    cache_key = f"{player_name}|{stat_key}|{season}"
-    now = time.time()
-    cached = _FORM_CACHE.get(cache_key)
-    if cached and (now - cached[0]) < 60 * 60:  # 1h TTL
-        return cached[1]
+        pid = _find_player_id(player_name)
+        if not pid:
+            _FORM_CACHE[cache_key] = (now, 0.0)
+            return 0.0
 
-    pid = _find_player_id(player_name)
-    if not pid:
-        _FORM_CACHE[cache_key] = (now, 0.0)
-        return 0.0
-
-    params = {"player": pid}
-    if season:
-        params["season"] = season
-    q = urllib.parse.urlencode(params)
-    data = _http_get_json(f"{_API_STATS}?{q}", _api_headers(), timeout=6)
-    if not data or "response" not in data:
-        _FORM_CACHE[cache_key] = (now, 0.0)
-        return 0.0
+        params = {"player": pid}
+        if season:
+            params["season"] = season
+        q = urllib.parse.urlencode(params)
+        data = _http_get_json(f"{_API_STATS}?{q}", _api_headers(), timeout=6)
+        if not data or "response" not in data:
+            _FORM_CACHE[cache_key] = (now, 0.0)
+            return 0.0
 
     # The schema groups stats by team/league/games. We aggregate last 5 appearances.
     try:
