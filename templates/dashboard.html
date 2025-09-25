@@ -1,937 +1,1318 @@
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
 <head>
-    <!-- ✅ Charset & Viewport -->
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- ✅ Page Title -->
-    <title>Today's MLB Player Props & Parlays – Mora Bets</title>
-    
-    <!-- ✅ Meta Description -->
-    <meta name="description" content="Daily MLB player prop picks, optimized parlays, and expert insights. See today's top 2-leg picks powered by Mora Bets.">
-    
-    <!-- ✅ Open Graph Tags -->
-    <meta property="og:title" content="Mora Bets – Today's Best MLB Prop Picks">
-    <meta property="og:description" content="Expert-crafted 2-leg parlays and hit prop picks, updated daily.">
-    <meta property="og:url" content="https://morabets.com/">
-    <meta property="og:type" content="website">
-    <meta property="og:image" content="https://morabets.com/assets/og-image.png">
-    
-    <!-- ✅ Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Mora Bets – MLB Prop Picks">
-    <meta name="twitter:description" content="Updated daily with the best 2-leg parlays and MLB player props.">
-    <meta name="twitter:image" content="https://morabets.com/assets/og-image.png">
-    
-    <!-- ✅ Canonical URL -->
-    <link rel="canonical" href="https://morabets.com/">
-    
-    <!-- ✅ Favicon -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    
-    <!-- Meta Pixel Code -->
-    <script>
-      !function(f,b,e,v,n,t,s)
-      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window, document,'script',
-      'https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init', '1209944777515078'); 
-      fbq('track', 'PageView');
-    </script>
-    <noscript>
-      <img height="1" width="1" style="display:none"
-      src="https://www.facebook.com/tr?id=1209944777515078&ev=PageView&noscript=1"/>
-    </noscript>
-    <!-- End Meta Pixel Code -->
-    
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .stats-card {
-            background: var(--bs-dark);
-            border: 1px solid var(--bs-border-color);
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        .probability-high { color: var(--bs-success); font-weight: bold; }
-        .probability-medium { color: var(--bs-warning); }
-        .probability-low { color: var(--bs-danger); }
-        .loading { text-align: center; padding: 2rem; }
-        .api-endpoint {
-            background: var(--bs-secondary);
-            border-radius: 0.25rem;
-            padding: 0.5rem;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-        .edge-positive { color: var(--bs-success); }
-        .edge-negative { color: var(--bs-danger); }
+  <!-- ✅ Charset & Viewport -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-        .matchup-tab { min-width: 140px; white-space: nowrap; transition: all 0.3s ease; }
-        .matchup-tab:hover { transform: translateY(-2px); }
+  <!-- ✅ Page Title -->
+  <title>Today's MLB Player Props & Parlays – Mora Bets</title>
 
-        .platform-header {
-            background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%);
-            border-radius: 1rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
+  <!-- ✅ Meta Description -->
+  <meta
+    name="description"
+    content="Daily MLB player prop picks, optimized parlays, and expert insights. See today's top 2-leg picks powered by Mora Bets."
+  />
 
-        .nav-pills .nav-link { border-radius: 50rem; transition: all 0.3s ease; margin: 0 0.25rem; }
-        .nav-pills .nav-link.active {
-            background: linear-gradient(45deg, #06b6d4, #3b82f6); color: white;
-            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
-        }
-        .nav-pills .nav-link:hover:not(.active) { background: rgba(255,255,255,0.1); color: white; }
+  <!-- ✅ Open Graph Tags -->
+  <meta property="og:title" content="Mora Bets – Today's Best MLB Prop Picks" />
+  <meta
+    property="og:description"
+    content="Expert-crafted 2-leg parlays and hit prop picks, updated daily."
+  />
+  <meta property="og:url" content="https://morabets.com/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://morabets.com/assets/og-image.png" />
 
-        .prop-card {
-            background: var(--bs-dark); border: 1px solid var(--bs-border-color);
-            border-radius: 0.75rem; transition: all 0.3s ease; margin-bottom: 1rem;
-        }
-        .prop-card:hover { transform: translateY(-2px); border-color: var(--bs-primary); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+  <!-- ✅ Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Mora Bets – MLB Prop Picks" />
+  <meta
+    name="twitter:description"
+    content="Updated daily with the best 2-leg parlays and MLB player props."
+  />
+  <meta name="twitter:image" content="https://morabets.com/assets/og-image.png" />
 
-        .confidence-high { color: #22c55e; font-weight: bold; }
-        .confidence-medium { color: #f59e0b; }
-        .confidence-low { color: #ef4444; }
+  <!-- ✅ Canonical URL -->
+  <link rel="canonical" href="https://morabets.com/" />
 
-        .status-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
-        .status-live { background-color: #22c55e; }
-        .status-updating { background-color: #f59e0b; }
-        .status-offline { background-color: #ef4444; }
+  <!-- ✅ Favicon -->
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
 
-        .ai-badge {
-            background: linear-gradient(45deg, #8b5cf6, #a855f7);
-            color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem;
-            border-radius: 0.375rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em;
-        }
+  <!-- Meta Pixel Code -->
+  <script>
+    !(function (f, b, e, v, n, t, s) {
+      if (f.fbq) return;
+      n = f.fbq = function () {
+        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+      };
+      if (!f._fbq) f._fbq = n;
+      n.push = n;
+      n.loaded = !0;
+      n.version = "2.0";
+      n.queue = [];
+      t = b.createElement(e);
+      t.async = !0;
+      t.src = v;
+      s = b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t, s);
+    })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+    fbq("init", "1209944777515078");
+    fbq("track", "PageView");
+  </script>
+  <noscript>
+    <img
+      height="1"
+      width="1"
+      style="display:none"
+      src="https://www.facebook.com/tr?id=1209944777515078&ev=PageView&noscript=1"
+    />
+  </noscript>
+  <!-- End Meta Pixel Code -->
 
-        .refresh-btn {
-            background: linear-gradient(45deg, #06b6d4, #3b82f6);
-            border: none; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.3s ease;
-        }
-        .refresh-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4); }
+  <link
+    href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    .stats-card {
+      background: var(--bs-dark);
+      border: 1px solid var(--bs-border-color);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .probability-high {
+      color: var(--bs-success);
+      font-weight: bold;
+    }
+    .probability-medium {
+      color: var(--bs-warning);
+    }
+    .probability-low {
+      color: var(--bs-danger);
+    }
+    .loading {
+      text-align: center;
+      padding: 2rem;
+    }
+    .api-endpoint {
+      background: var(--bs-secondary);
+      border-radius: 0.25rem;
+      padding: 0.5rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    .edge-positive {
+      color: var(--bs-success);
+    }
+    .edge-negative {
+      color: var(--bs-danger);
+    }
+    .matchup-tab {
+      min-width: 140px;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+    }
+    .matchup-tab:hover {
+      transform: translateY(-2px);
+    }
+    .platform-header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%);
+      border-radius: 1rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    .nav-pills .nav-link {
+      border-radius: 50rem;
+      transition: all 0.3s ease;
+      margin: 0 0.25rem;
+    }
+    .nav-pills .nav-link.active {
+      background: linear-gradient(45deg, #06b6d4, #3b82f6);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+    }
+    .nav-pills .nav-link:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+    .prop-card {
+      background: var(--bs-dark);
+      border: 1px solid var(--bs-border-color);
+      border-radius: 0.75rem;
+      transition: all 0.3s ease;
+      margin-bottom: 1rem;
+    }
+    .prop-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--bs-primary);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+    .confidence-high {
+      color: #22c55e;
+      font-weight: bold;
+    }
+    .confidence-medium {
+      color: #f59e0b;
+    }
+    .confidence-low {
+      color: #ef4444;
+    }
 
-        .picks-container { background: linear-gradient(135deg, #1f2937 0%, #374151 100%); border-radius: 1rem; padding: 2rem; margin: 1rem 0; }
-        .parlay-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1rem; }
-        .parlay-title {
-            background: linear-gradient(45deg, #8b5cf6, #a855f7);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            font-weight: bold; font-size: 1.25rem;
-        }
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 0.5rem;
+    }
+    .status-live {
+      background-color: #22c55e;
+    }
+    .status-updating {
+      background-color: #f59e0b;
+    }
+    .status-offline {
+      background-color: #ef4444;
+    }
 
-        .matchup-card { transition: all 0.3s ease; cursor: pointer; }
-        .matchup-card:hover { transform: translateY(-5px); border-color: var(--bs-primary); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+    .ai-badge {
+      background: linear-gradient(45deg, #8b5cf6, #a855f7);
+      color: white;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
 
-        .analysis-content { background: rgba(255,255,255,0.03); border-left: 4px solid #8b5cf6; padding: 1.5rem; border-radius: 0.5rem; line-height: 1.6; }
+    .refresh-btn {
+      background: linear-gradient(45deg, #06b6d4, #3b82f6);
+      border: none;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
 
-        .env-label { font-size: 0.8rem; font-weight: 500; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .refresh-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+    }
 
-        .favored { color: #00FF95; font-weight: bold; text-shadow: 0 0 8px rgba(0, 255, 149, 0.3); }
+    .picks-container {
+      background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+      border-radius: 1rem;
+      padding: 2rem;
+      margin: 1rem 0;
+    }
 
-        /* ✅ chips used across MLB/NFL */
-        .badge { border-radius: 10px; padding: 2px 8px; font-size: 0.72rem; }
-        .badge-fav { background: #16a34a; color: #fff; }  /* green */
-        .badge-dog { background: #eab308; color: #1f2937; } /* amber */
-        .badge-env { background: #6366f1; color: #fff; }  /* indigo */
-    </style>
+    .parlay-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .parlay-title {
+      background: linear-gradient(45deg, #8b5cf6, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: bold;
+      font-size: 1.25rem;
+    }
+
+    .matchup-card {
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .matchup-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--bs-primary);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .analysis-content {
+      background: rgba(255, 255, 255, 0.03);
+      border-left: 4px solid #8b5cf6;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+    }
+
+    .env-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .favored {
+      color: #00ff95;
+      font-weight: bold;
+      text-shadow: 0 0 8px rgba(0, 255, 149, 0.3);
+    }
+
+    /* ✅ Chips used in cards & tiles */
+    .badge {
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 0.72rem;
+    }
+    .badge-fav {
+      background: #16a34a;
+      color: #fff;
+    } /* green */
+    .badge-dog {
+      background: #eab308;
+      color: #1f2937;
+    } /* amber */
+    .badge-env {
+      background: #6366f1;
+      color: #fff;
+    } /* indigo */
+  </style>
 </head>
 <body>
-    <div class="container-fluid py-4">
-        <!-- Platform Header -->
-        <div class="platform-header p-4 text-white">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h1 class="display-6 fw-bold mb-2">
-                        <i class="fas fa-chart-line me-2"></i>Mora Bets
-                    </h1>
-                    <p class="mb-0 fs-5">Real-Time Prop Betting Edge Tool</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <div class="d-flex justify-content-md-end align-items-center gap-3 flex-wrap">
-                        <div class="text-center">
-                            <small class="d-block text-light opacity-75">Last Updated</small>
-                            <strong id="last-updated">--:--</strong>
-                        </div>
-                        <div class="text-center">
-                            <small class="d-block text-light opacity-75" id="total-props-label">Total MLB Props</small>
-                            <strong id="total-props">--</strong>
-                        </div>
-                        <div class="text-center">
-                            <small class="d-block text-light opacity-75">Live Odds</small>
-                            <span class="status-indicator status-live"></span>
-                            <strong id="odds-status">Synced</strong>
-                        </div>
-                        <a href="/logout" class="btn btn-outline-light btn-sm">
-                            <i class="fas fa-sign-out-alt me-1"></i>Logout
-                        </a>
-                    </div>
-                </div>
-            </div>
+  <div class="container-fluid py-4">
+    <!-- Platform Header -->
+    <div class="platform-header p-4 text-white">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h1 class="display-6 fw-bold mb-2">
+            <i class="fas fa-chart-line me-2"></i>Mora Bets
+          </h1>
+          <p class="mb-0 fs-5">Real-Time Prop Betting Edge Tool</p>
         </div>
-
-        <!-- Main Navigation -->
-        <ul class="nav nav-pills justify-content-center mb-4" id="main-tabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="player-props-tab" data-bs-toggle="pill" data-bs-target="#player-props" type="button" role="tab">
-                    <i class="fas fa-users me-2"></i>Player Props
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="how-to-profit-tab" data-bs-toggle="pill" data-bs-target="#how-to-profit" type="button" role="tab">
-                    <i class="fas fa-graduation-cap me-2"></i>Betting Strategy
-                </button>
-            </li>
-        </ul>
-
-        <!-- Tab Content -->
-        <div class="tab-content" id="pills-tabContent">
-            <!-- Player Props Tab -->
-            <div class="tab-pane fade show active" id="player-props" role="tabpanel">
-                <div class="container">
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <!-- Sport Selection Tabs -->
-                            <div class="d-flex justify-content-center mb-4">
-                                <ul class="nav nav-pills nav-fill" id="sport-tabs" style="max-width: 400px;" role="tablist">
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link active" id="mlb-tab" data-sport="mlb" type="button" role="tab">
-                                            <i class="fas fa-baseball-ball me-2"></i>MLB Props
-                                        </button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="nfl-tab" data-sport="nfl" type="button" role="tab">
-                                            <i class="fas fa-football-ball me-2"></i>NFL Props
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h2 id="games-header" style="cursor: pointer;" onclick="resetToSportHome()">
-                                    <i class="fas fa-users text-primary me-2"></i>Today's Games
-                                    <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">Player props grouped by matchup</small>
-                                </h2>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-primary" id="prop-count-display">Loading...</span>
-                                    <button id="load-more-props" class="btn btn-outline-primary" style="display: none;">
-                                        Load More Props
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Search and Filter Controls -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-5">
-                                    <input type="text" 
-                                           id="player-search" 
-                                           class="form-control" 
-                                           placeholder="Search players or stats..." 
-                                           onkeyup="applyFilters()">
-                                </div>
-                                <div class="col-md-4">
-                                    <select id="confidence-filter" class="form-select" onchange="applyFilters()">
-                                        <option value="">All Confidence Levels</option>
-                                        <option value="high">High Confidence (≥70%)</option>
-                                        <option value="medium">Medium Confidence (50-69%)</option>
-                                        <option value="low">Low Confidence (&lt;50%)</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <!-- removed duplicate prop-count-display to avoid duplicate IDs -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-12">
-                            <div id="player-props-container" class="loading">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading props...</span>
-                                </div>
-                                <p class="mt-3">Loading player props...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div class="col-md-6 text-md-end">
+          <div class="d-flex justify-content-md-end align-items-center gap-3 flex-wrap">
+            <div class="text-center">
+              <small class="d-block text-light opacity-75">Last Updated</small>
+              <strong id="last-updated">--:--</strong>
             </div>
-
-            <!-- How to Profit Tab -->
-            <div class="tab-pane fade" id="how-to-profit" role="tabpanel">
-                <div class="container">
-                    <h2 class="text-center mb-5">
-                        <i class="fas fa-graduation-cap text-info me-2"></i>Betting Strategy Guide
-                    </h2>
-                    
-                    <div class="row">
-                        <div class="col-lg-8 mx-auto">
-                            <!-- Bankroll Management -->
-                            <div class="card mb-4 bg-dark border-secondary">
-                                <div class="card-header bg-primary">
-                                    <h4 class="mb-0"><i class="fas fa-piggy-bank me-2"></i>1. Bankroll Management</h4>
-                                </div>
-                                <div class="card-body">
-                                    <p>The foundation of profitable betting is proper bankroll management:</p>
-                                    <ul>
-                                        <li><strong>Unit System:</strong> Bet 1-5% of your total bankroll per wager</li>
-                                        <li><strong>High Confidence:</strong> 3-5% of bankroll (60%+ hit probability)</li>
-                                        <li><strong>Medium Confidence:</strong> 2-3% of bankroll (50-59% hit probability)</li>
-                                        <li><strong>Low/Speculative:</strong> 1-2% of bankroll (under 50% hit probability)</li>
-                                    </ul>
-                                    <div class="alert alert-info mt-3">
-                                        <strong>Example:</strong> With a $300 bankroll, your max bet should be $15 (5%) on high-confidence plays
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Player Diversification -->
-                            <div class="card mb-4 bg-dark border-secondary">
-                                <div class="card-header bg-success">
-                                    <h4 class="mb-0"><i class="fas fa-users me-2"></i>2. Player Diversification</h4>
-                                </div>
-                                <div class="card-body">
-                                    <p>Avoid correlation risk by diversifying your selections:</p>
-                                    <ul>
-                                        <li><strong>Different Teams:</strong> Don't stack multiple players from the same team</li>
-                                        <li><strong>Different Games:</strong> Spread picks across multiple matchups</li>
-                                        <li><strong>Different Stat Types:</strong> Mix hitting, pitching, and fielding props</li>
-                                        <li><strong>Avoid Same-Game Parlays:</strong> One bad game kills multiple legs</li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <!-- Optimal Slip Sizing -->
-                            <div class="card mb-4 bg-dark border-secondary">
-                                <div class="card-header bg-warning">
-                                    <h4 class="mb-0"><i class="fas fa-list me-2"></i>3. Optimal Slip Sizing</h4>
-                                </div>
-                                <div class="card-body">
-                                    <p>Structure your bet slips for maximum profitability:</p>
-                                    <ul>
-                                        <li><strong>3-4 Pick Maximum:</strong> Sweet spot for risk vs. reward</li>
-                                        <li><strong>Focus on Expected Value:</strong> Target positive EV over big payouts</li>
-                                        <li><strong>Quality Over Quantity:</strong> Better to place fewer, well-researched bets</li>
-                                        <li><strong>Single Bets:</strong> Consider straight bets on high-confidence props</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="text-center">
+              <small class="d-block text-light opacity-75" id="total-props-label"
+                >Total MLB Props</small
+              >
+              <strong id="total-props">--</strong>
             </div>
+            <div class="text-center">
+              <small class="d-block text-light opacity-75">Live Odds</small>
+              <span class="status-indicator status-live"></span>
+              <strong id="odds-status">Synced</strong>
+            </div>
+            <a href="/logout" class="btn btn-outline-light btn-sm">
+              <i class="fas fa-sign-out-alt me-1"></i>Logout
+            </a>
+          </div>
         </div>
+      </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        // ---------------------
-        // Global state
-        // ---------------------
-        let allProps = [];
-        let allFilteredProps = [];
-        let matchupData = null;
-        let environmentData = null; // MLB or NFL env map (normalized)
-        let currentPropsDisplayed = 50;
+    <!-- Main Navigation -->
+    <ul class="nav nav-pills justify-content-center mb-4" id="main-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link active"
+          id="player-props-tab"
+          data-bs-toggle="pill"
+          data-bs-target="#player-props"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-users me-2"></i>Player Props
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link"
+          id="how-to-profit-tab"
+          data-bs-toggle="pill"
+          data-bs-target="#how-to-profit"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-graduation-cap me-2"></i>Betting Strategy
+        </button>
+      </li>
+    </ul>
 
-        let currentSport = 'mlb';
-        let mlbProps = [];
-        let nflProps = [];
-        let currentMatchupData = null;
+    <!-- Tab Content -->
+    <div class="tab-content" id="pills-tabContent">
+      <!-- Player Props Tab -->
+      <div class="tab-pane fade show active" id="player-props" role="tabpanel">
+        <div class="container">
+          <div class="row mb-4">
+            <div class="col-12">
+              <!-- Sport Selection Tabs -->
+              <div class="d-flex justify-content-center mb-4">
+                <ul
+                  class="nav nav-pills nav-fill"
+                  id="sport-tabs"
+                  style="max-width: 400px"
+                  role="tablist"
+                >
+                  <li class="nav-item" role="presentation">
+                    <button
+                      class="nav-link active"
+                      id="mlb-tab"
+                      data-sport="mlb"
+                      type="button"
+                      role="tab"
+                    >
+                      <i class="fas fa-baseball-ball me-2"></i>MLB Props
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button
+                      class="nav-link"
+                      id="nfl-tab"
+                      data-sport="nfl"
+                      type="button"
+                      role="tab"
+                    >
+                      <i class="fas fa-football-ball me-2"></i>NFL Props
+                    </button>
+                  </li>
+                </ul>
+              </div>
 
-        // Auto-refresh platform status every 5 minutes
-        setInterval(updatePlatformStatus, 300000);
-        
-        // Initial load
-        document.addEventListener('DOMContentLoaded', function() {
-            updatePlatformStatus();
-            loadPlayerProps();
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 id="games-header" style="cursor: pointer" onclick="resetToSportHome()">
+                  <i class="fas fa-users text-primary me-2"></i>Today's Games
+                  <small class="text-muted d-block fs-6 mt-1" id="games-subtitle"
+                    >Player props grouped by matchup</small
+                  >
+                </h2>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-primary" id="prop-count-display">Loading...</span>
+                  <button id="load-more-props" class="btn btn-outline-primary" style="display: none">
+                    Load More Props
+                  </button>
+                </div>
+              </div>
 
-            // sport tabs
-            const sportTabs = document.querySelectorAll('#sport-tabs button');
-            sportTabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const sport = this.getAttribute('data-sport');
-                    switchSport(sport);
-                });
-            });
+              <!-- Search and Filter Controls -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-5">
+                  <input
+                    type="text"
+                    id="player-search"
+                    class="form-control"
+                    placeholder="Search players or stats..."
+                    onkeyup="applyFilters()"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <select id="confidence-filter" class="form-select" onchange="applyFilters()">
+                    <option value="">All Confidence Levels</option>
+                    <option value="high">High Confidence (≥70%)</option>
+                    <option value="medium">Medium Confidence (50-69%)</option>
+                    <option value="low">Low Confidence (&lt;50%)</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <div class="text-muted small text-center">
+                    <div id="prop-count-display">-- props</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-12">
+              <div id="player-props-container" class="loading">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading props...</span>
+                </div>
+                <p class="mt-3">Loading player props...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- How to Profit Tab -->
+      <div class="tab-pane fade" id="how-to-profit" role="tabpanel">
+        <div class="container">
+          <h2 class="text-center mb-5">
+            <i class="fas fa-graduation-cap text-info me-2"></i>Betting Strategy Guide
+          </h2>
+
+          <div class="row">
+            <div class="col-lg-8 mx-auto">
+              <!-- Bankroll Management -->
+              <div class="card mb-4 bg-dark border-secondary">
+                <div class="card-header bg-primary">
+                  <h4 class="mb-0"><i class="fas fa-piggy-bank me-2"></i>1. Bankroll Management</h4>
+                </div>
+                <div class="card-body">
+                  <p>The foundation of profitable betting is proper bankroll management:</p>
+                  <ul>
+                    <li><strong>Unit System:</strong> Bet 1-5% of your total bankroll per wager</li>
+                    <li><strong>High Confidence:</strong> 3-5% of bankroll (60%+ hit probability)</li>
+                    <li><strong>Medium Confidence:</strong> 2-3% of bankroll (50-59% hit probability)</li>
+                    <li><strong>Low/Speculative:</strong> 1-2% of bankroll (under 50% hit probability)</li>
+                  </ul>
+                  <div class="alert alert-info mt-3">
+                    <strong>Example:</strong> With a $300 bankroll, your max bet should be $15 (5%) on
+                    high-confidence plays
+                  </div>
+                </div>
+              </div>
+
+              <!-- Player Diversification -->
+              <div class="card mb-4 bg-dark border-secondary">
+                <div class="card-header bg-success">
+                  <h4 class="mb-0"><i class="fas fa-users me-2"></i>2. Player Diversification</h4>
+                </div>
+                <div class="card-body">
+                  <p>Avoid correlation risk by diversifying your selections:</p>
+                  <ul>
+                    <li><strong>Different Teams:</strong> Don't stack multiple players from the same team</li>
+                    <li><strong>Different Games:</strong> Spread picks across multiple matchups</li>
+                    <li><strong>Different Stat Types:</strong> Mix hitting, pitching, and fielding props</li>
+                    <li><strong>Avoid Same-Game Parlays:</strong> One bad game kills multiple legs</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Optimal Slip Sizing -->
+              <div class="card mb-4 bg-dark border-secondary">
+                <div class="card-header bg-warning">
+                  <h4 class="mb-0"><i class="fas fa-list me-2"></i>3. Optimal Slip Sizing</h4>
+                </div>
+                <div class="card-body">
+                  <p>Structure your bet slips for maximum profitability:</p>
+                  <ul>
+                    <li><strong>3-4 Pick Maximum:</strong> Sweet spot for risk vs. reward</li>
+                    <li><strong>Focus on Expected Value:</strong> Target positive EV over big payouts</li>
+                    <li><strong>Quality Over Quantity:</strong> Better to place fewer, well-researched bets</li>
+                    <li><strong>Single Bets:</strong> Consider straight bets on high-confidence props</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    let allProps = [];
+    let allFilteredProps = [];
+    let matchupData = null;
+    let environmentData = null; // MLB or generic grouped env map
+    let currentPropsDisplayed = 50;
+
+    // NFL-specific stores (to mirror MLB chips behavior)
+    let nflProps = [];
+    let nflEnv = {}; // { "Away @ Home": { favored_side, environment } }
+
+    // Auto-refresh platform status every 5 minutes
+    setInterval(updatePlatformStatus, 300000);
+
+    // Initial load
+    document.addEventListener("DOMContentLoaded", function () {
+      updatePlatformStatus();
+      loadPlayerProps();
+    });
+
+    async function updatePlatformStatus() {
+      try {
+        const statusResponse = await fetch("/api/status");
+        await statusResponse.json();
+
+        // Update last updated time
+        document.getElementById("last-updated").textContent = new Date().toLocaleTimeString();
+
+        // Update total props count
+        try {
+          const propsResponse = await fetch("/player_props");
+          const propsData = await propsResponse.json();
+          const propsCount = Array.isArray(propsData) ? propsData.length : Object.keys(propsData || {}).length;
+          document.getElementById("total-props").textContent = propsCount.toLocaleString();
+        } catch (e) {
+          document.getElementById("total-props").textContent = "--";
+        }
+      } catch (error) {
+        console.error("Error updating platform status:", error);
+      }
+    }
+
+    async function loadPlayerProps() {
+      try {
+        // Load both props and environment data (MLB by default)
+        const environmentEndpoint =
+          currentSport === "mlb" ? "/api/mlb/environment" : "/api/nfl/environment";
+        const [propsResponse, envResponse] = await Promise.all([
+          fetch("/player_props"),
+          fetch(environmentEndpoint).catch(() => ({ json: async () => ({}) })),
+        ]);
+
+        const data = await propsResponse.json();
+
+        // Try to get environment data for favored team highlighting
+        try {
+          const envData = await envResponse.json();
+          if (envData && (envData.environments || typeof envData === "object")) {
+            // Backends might return {environments: {...}} or a plain dict
+            environmentData = envData.environments || envData;
+            console.log(
+              `Loaded ${currentSport.toUpperCase()} environment data with favored teams:`,
+              Object.keys(environmentData || {})
+            );
+          }
+        } catch (e) {
+          console.log("Environment data not available, continuing without favored team highlighting");
+        }
+
+        // Store matchup data for Today's Games layout
+        if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+          // Backend returns grouped matchup data
+          matchupData = data;
+          allProps = [];
+          Object.values(data).forEach((matchupProps) => {
+            if (Array.isArray(matchupProps)) {
+              allProps = allProps.concat(matchupProps);
+            }
+          });
+        } else if (Array.isArray(data)) {
+          allProps = data;
+          matchupData = null;
+        } else {
+          allProps = [];
+          matchupData = null;
+        }
+
+        // Filter out irrelevant MLB Hits lines (keep only 0.5 and 1.5)
+        allProps = allProps.filter((prop) => {
+          const statType = prop.stat || prop.stat_type || "";
+          const line = parseFloat(prop.line || prop.point || 0);
+          if ((statType === "batter_hits" || statType === "hits") && line >= 2.5) return false;
+          return true;
         });
 
-        async function updatePlatformStatus() {
-            try {
-                const statusResponse = await fetch('/api/status');
-                await statusResponse.json();
-                
-                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
-                
-                try {
-                    const propsResponse = await fetch('/player_props');
-                    const propsData = await propsResponse.json();
-                    const propsCount = Array.isArray(propsData) ? propsData.length : Object.keys(propsData || {}).length;
-                    document.getElementById('total-props').textContent = propsCount.toLocaleString();
-                } catch (e) {
-                    document.getElementById('total-props').textContent = '--';
-                }
-            } catch (error) {
-                console.error('Error updating platform status:', error);
-            }
-        }
-
-        // ---------------------
-        // Unified loader for current sport (initial = MLB)
-        // ---------------------
-        async function loadPlayerProps() {
-            try {
-                const environmentEndpoint = currentSport === 'mlb' ? '/api/mlb/environment' : '/api/nfl/environment';
-                const [propsResponse, envResponse] = await Promise.all([
-                    fetch('/player_props'),
-                    fetch(environmentEndpoint).catch(() => ({ json: async () => ({}) }))
-                ]);
-                
-                const data = await propsResponse.json();
-                
-                // env data (either {environments:{...}} or plain object)
-                try {
-                    const envData = await envResponse.json();
-                    if (envData && (envData.environments || typeof envData === 'object')) {
-                        environmentData = envData.environments || envData;
-                        console.log(`Loaded ${currentSport.toUpperCase()} environment data with favored teams:`, Object.keys(environmentData || {}));
-                    }
-                } catch (e) {
-                    console.log('Environment data not available, continuing without favored team highlighting');
-                }
-                
-                // grouped vs flat props from /player_props
-                if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-                    matchupData = data;
-                    allProps = [];
-                    Object.values(data).forEach(matchupProps => {
-                        if (Array.isArray(matchupProps)) {
-                            allProps = allProps.concat(matchupProps);
-                        }
-                    });
-                } else if (Array.isArray(data)) {
-                    allProps = data;
-                    matchupData = null;
-                } else {
-                    allProps = [];
-                    matchupData = null;
-                }
-                
-                // MLB hits filter (keep only 0.5 and 1.5)
-                allProps = allProps.filter(prop => {
-                    const statType = prop.stat || prop.stat_type || '';
-                    const line = parseFloat(prop.line || prop.point || 0);
-                    if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) return false;
-                    return true;
-                });
-                
-                if (matchupData) {
-                    const filteredMatchupData = {};
-                    Object.entries(matchupData).forEach(([matchup, props]) => {
-                        filteredMatchupData[matchup] = (props || []).filter(prop => {
-                            const statType = prop.stat || prop.stat_type || '';
-                            const line = parseFloat(prop.line || prop.point || 0);
-                            if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) return false;
-                            return true;
-                        });
-                    });
-                    matchupData = filteredMatchupData;
-                }
-                
-                if (allProps.length === 0) {
-                    document.getElementById('player-props-container').innerHTML = `
-                        <div class="alert alert-info text-center">
-                            <h5><i class="fas fa-info-circle me-2"></i>No Props Available</h5>
-                            <p class="mb-0">No player props currently available. Check back later.</p>
-                            <p class="mt-2 text-muted small">Want a custom breakdown? (Coming soon: Mora Assist)</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                // default High Confidence
-                document.getElementById('confidence-filter').value = 'high';
-                
-                displayTodaysGames();
-                
-            } catch (error) {
-                console.error('Error loading player props:', error);
-                document.getElementById('player-props-container').innerHTML = `
-                    <div class="alert alert-danger">
-                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Error Loading Props</h5>
-                        <p class="mb-0">Unable to load player props. Please try again later.</p>
-                    </div>
-                `;
-            }
-        }
-
-        // ---------------------
-        // Filtering & Cards
-        // ---------------------
-        function applyFilters() {
-            const searchTerm = document.getElementById('player-search').value.toLowerCase().trim();
-            const confidenceFilter = document.getElementById('confidence-filter').value;
-            if (!allProps || allProps.length === 0) return;
-            
-            allFilteredProps = allProps.filter(prop => {
-                let shouldShow = true;
-                
-                if (searchTerm) {
-                    const playerName = (prop.player || prop.player_name || '').toLowerCase();
-                    const statType = (prop.stat || prop.stat_type || '').toLowerCase();
-                    const humanStat = getHumanStatName(prop.stat || prop.stat_type).toLowerCase();
-                    shouldShow = shouldShow && (playerName.includes(searchTerm) || statType.includes(searchTerm) || humanStat.includes(searchTerm));
-                }
-                
-                const statType = prop.stat || prop.stat_type || '';
-                const line = parseFloat(prop.line || prop.point || 0);
-                if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) shouldShow = false;
-                
-                if (confidenceFilter) {
-                    let hitRate = 0;
-                    if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
-                        hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
-                    } else {
-                        hitRate = parseFloat(prop.contextual_hit_rate) || 0;
-                    }
-                    if (confidenceFilter === 'high') shouldShow = shouldShow && hitRate >= 0.7;
-                    else if (confidenceFilter === 'medium') shouldShow = shouldShow && hitRate >= 0.5 && hitRate < 0.7;
-                    else if (confidenceFilter === 'low') shouldShow = shouldShow && hitRate < 0.5;
-                }
-                
-                return shouldShow;
+        if (matchupData) {
+          const filteredMatchupData = {};
+          Object.entries(matchupData).forEach(([matchup, props]) => {
+            filteredMatchupData[matchup] = (props || []).filter((prop) => {
+              const statType = prop.stat || prop.stat_type || "";
+              const line = parseFloat(prop.line || prop.point || 0);
+              if ((statType === "batter_hits" || statType === "hits") && line >= 2.5) return false;
+              return true;
             });
-            
-            displayProps();
-            updatePropCount();
+          });
+          matchupData = filteredMatchupData;
         }
 
-        function displayProps() {
-            const propsToShow = allFilteredProps.slice(0, currentPropsDisplayed);
-            if (propsToShow.length === 0) {
-                document.getElementById('player-props-container').innerHTML = `
-                    <div class="alert alert-info text-center">
-                        <h5><i class="fas fa-search me-2"></i>No Props Match Your Filters</h5>
-                        <p class="mb-0">Try adjusting your search or filter criteria.</p>
+        if (allProps.length === 0) {
+          document.getElementById("player-props-container").innerHTML = `
+              <div class="alert alert-info text-center">
+                <h5><i class="fas fa-info-circle me-2"></i>No Props Available</h5>
+                <p class="mb-0">No player props currently available. Check back later.</p>
+                <p class="mt-2 text-muted small">Want a custom breakdown? (Coming soon: Mora Assist)</p>
+              </div>
+            `;
+          return;
+        }
+
+        // Default High Confidence filter
+        document.getElementById("confidence-filter").value = "high";
+
+        // Display Today's Games layout
+        displayTodaysGames();
+      } catch (error) {
+        console.error("Error loading player props:", error);
+        document.getElementById("player-props-container").innerHTML = `
+            <div class="alert alert-danger">
+              <h5><i class="fas fa-exclamation-triangle me-2"></i>Error Loading Props</h5>
+              <p class="mb-0">Unable to load player props. Please try again later.</p>
+            </div>
+          `;
+      }
+    }
+
+    function applyFilters() {
+      const searchTerm = document.getElementById("player-search").value.toLowerCase().trim();
+      const confidenceFilter = document.getElementById("confidence-filter").value;
+
+      if (!allProps || allProps.length === 0) return;
+
+      allFilteredProps = allProps.filter((prop) => {
+        let shouldShow = true;
+
+        if (searchTerm) {
+          const playerName = (prop.player || prop.player_name || "").toLowerCase();
+          const statType = (prop.stat || prop.stat_type || "").toLowerCase();
+          const humanStat = getHumanStatName(prop.stat || prop.stat_type).toLowerCase();
+          shouldShow =
+            shouldShow &&
+            (playerName.includes(searchTerm) ||
+              statType.includes(searchTerm) ||
+              humanStat.includes(searchTerm));
+        }
+
+        // MLB hits filter
+        const statType = prop.stat || prop.stat_type || "";
+        const line = parseFloat(prop.line || prop.point || 0);
+        if ((statType === "batter_hits" || statType === "hits") && line >= 2.5) shouldShow = false;
+
+        // Confidence filter
+        if (confidenceFilter) {
+          let hitRate = 0;
+          if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === "object") {
+            hitRate =
+              parseFloat(
+                prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate
+              ) || 0;
+          } else {
+            hitRate = parseFloat(prop.contextual_hit_rate) || 0;
+          }
+          if (confidenceFilter === "high") shouldShow = shouldShow && hitRate >= 0.7;
+          else if (confidenceFilter === "medium") shouldShow = shouldShow && hitRate >= 0.5 && hitRate < 0.7;
+          else if (confidenceFilter === "low") shouldShow = shouldShow && hitRate < 0.5;
+        }
+
+        return shouldShow;
+      });
+
+      displayProps();
+      updatePropCount();
+    }
+
+    function displayProps() {
+      const propsToShow = allFilteredProps.slice(0, currentPropsDisplayed);
+
+      if (propsToShow.length === 0) {
+        document.getElementById("player-props-container").innerHTML = `
+            <div class="alert alert-info text-center">
+              <h5><i class="fas fa-search me-2"></i>No Props Match Your Filters</h5>
+              <p class="mb-0">Try adjusting your search or filter criteria.</p>
+            </div>
+          `;
+        return;
+      }
+
+      const propCards = propsToShow
+        .map((prop) => {
+          // Hit rate normalization
+          let hitRate = 0;
+          if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === "object") {
+            hitRate =
+              parseFloat(
+                prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate
+              ) || 0;
+          } else {
+            hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0;
+          }
+
+          const confidenceClass =
+            hitRate >= 0.7 ? "confidence-high" : hitRate >= 0.5 ? "confidence-medium" : "confidence-low";
+          const confidenceText = hitRate >= 0.7 ? "High" : hitRate >= 0.5 ? "Medium" : "Low";
+
+          const playerName = prop.player || prop.player_name || "Unknown Player";
+          const statType = prop.stat || prop.stat_type || "";
+          const line = prop.line || prop.point || "N/A";
+          const bookmaker = prop.bookmaker || prop.sportsbook || "Multiple Books";
+          const team = prop.team || "";
+
+          // --- BADGES: single string (no JSX / no stray var) ---
+          let badgesHtml = "";
+
+          // 1) Matchup-level favored team badge (uses backend context)
+          const fav = (prop.context && prop.context.fav_team_abbr) || "";
+          if (fav) {
+            badgesHtml += `<span class="badge badge-fav ms-2">${fav} FAV</span>`;
+          }
+
+          // 2) Optional player-team status if you later map player → team
+          const teamStatus = prop.team_status || "unknown";
+          const teamAbbr = prop.team_abbr || "";
+          if (teamAbbr && (teamStatus === "favored" || teamStatus === "underdog")) {
+            const cls = teamStatus === "favored" ? "badge-fav" : "badge-dog";
+            const label = teamStatus === "favored" ? "FAV" : "DOG";
+            badgesHtml += `<span class="badge ${cls} ms-2">${teamAbbr} ${label}</span>`;
+          }
+
+          // (Optional) Environment label beside Hit Rate
+          const env = (prop.context && prop.context.environment) || "Neutral";
+          const envHtml = env !== "Neutral" ? `<span class="badge badge-env ms-2">${env}</span>` : "";
+
+          return `
+              <div class="col-md-6 col-lg-4 mb-3">
+                <div class="prop-card card bg-dark border-secondary">
+                  <div class="card-body">
+                    <div class="mb-2 d-flex align-items-center justify-content-between">
+                      <div>
+                        <h6 class="mb-0">${playerName}</h6>
+                        <small class="text-muted">${team}</small>
+                      </div>
+                      ${badgesHtml}
                     </div>
-                `;
-                return;
-            }
-            
-            const propCards = propsToShow.map(prop => {
-                // normalize hit rate
-                let hitRate = 0;
-                if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
-                    hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
-                } else {
-                    hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0;
-                }
 
-                const confidenceClass = hitRate >= 0.7 ? 'confidence-high' :
-                                        hitRate >= 0.5 ? 'confidence-medium' : 'confidence-low';
-                const confidenceText = hitRate >= 0.7 ? 'High' :
-                                       hitRate >= 0.5 ? 'Medium' : 'Low';
-
-                const playerName = prop.player || prop.player_name || 'Unknown Player';
-                const statType   = prop.stat || prop.stat_type || '';
-                const line       = prop.line || prop.point || 'N/A';
-                const bookmaker  = prop.bookmaker || prop.sportsbook || 'Multiple Books';
-                const team       = prop.team || '';
-
-                // ✅ badges: single string (no JSX / no stray variables)
-                let badgesHtml = "";
-
-                // matchup-level favored badge (from backend context if provided)
-                const fav = (prop.context && prop.context.fav_team_abbr) || "";
-                if (fav) {
-                    badgesHtml += `<span class="badge badge-fav ms-2">${fav} FAV</span>`;
-                }
-
-                // optional player-team status
-                const teamStatus = prop.team_status || "unknown";
-                const teamAbbr   = prop.team_abbr || "";
-                if (teamAbbr && (teamStatus === "favored" || teamStatus === "underdog")) {
-                    const cls   = teamStatus === "favored" ? "badge-fav" : "badge-dog";
-                    const label = teamStatus === "favored" ? "FAV" : "DOG";
-                    badgesHtml += `<span class="badge ${cls} ms-2">${teamAbbr} ${label}</span>`;
-                }
-
-                // (optional) env label near hit rate
-                const env = (prop.context && prop.context.environment) || "Neutral";
-                const envHtml = env !== "Neutral" ? `<span class="badge badge-env ms-2">${env}</span>` : "";
-
-                return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="prop-card card bg-dark border-secondary">
-                            <div class="card-body">
-                                <div class="mb-2 d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <h6 class="mb-0">${playerName}</h6>
-                                        <small class="text-muted">${team}</small>
-                                    </div>
-                                    ${badgesHtml}
-                                </div>
-
-                                <div class="mb-2">
-                                    <strong>${getHumanStatName(statType)}</strong>
-                                    <span class="float-end">
-                                        <span class="badge bg-primary">${line}</span>
-                                    </span>
-                                </div>
-
-                                <div class="d-flex align-items-center text-muted small mt-1">
-                                    Hit Rate <strong class="ms-1">${(hitRate * 100).toFixed(1)}%</strong>
-                                    ${envHtml}
-                                </div>
-
-                                <div class="text-center mt-2">
-                                    <small class="text-warning">
-                                        <i class="fas fa-building me-1"></i>${bookmaker}
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="mb-2">
+                      <strong>${getHumanStatName(statType)}</strong>
+                      <span class="float-end">
+                        <span class="badge bg-primary">${line}</span>
+                      </span>
                     </div>
-                `;
-            }).join('');
-            
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="row">
-                    ${propCards}
-                </div>
-            `;
-            
-            const loadMoreBtn = document.getElementById('load-more-props');
-            loadMoreBtn.style.display = (allFilteredProps.length > currentPropsDisplayed) ? 'block' : 'none';
-        }
 
-        // ---------------------
-        // “Today’s Games” unified layout (MLB + NFL)
-        // ---------------------
-        function displayTodaysGames() {
-            if (!matchupData) {
-                displayRegularProps();
-                return;
-            }
-            
-            // reset filters in games view
-            document.getElementById('confidence-filter').value = '';
-            document.getElementById('player-search').value = '';
-            
-            // header
-            document.getElementById('games-header').innerHTML = `
-                <i class="fas fa-users text-primary me-2"></i>Today's Games
-                <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${currentSport === 'mlb' ? 'MLB' : 'NFL'} player props grouped by matchup</small>
-            `;
-            
-            const matchupCards = Object.entries(matchupData).map(([matchup, props]) => {
-                const propCount = Array.isArray(props) ? props.length : 0;
-                const sportIcon = currentSport === 'mlb' ? 'fas fa-baseball-ball' : 'fas fa-football-ball';
-                
-                // Parse matchup and env label if present (MLB path sometimes has “ — High Scoring”)
-                let displayMatchup = matchup;
-                let environmentLabel = '';
-                let environmentClass = '';
-                
-                if (matchup.includes(' — ')) {
-                    const parts = matchup.split(' — ');
-                    displayMatchup = parts[0];
-                    environmentLabel = parts[1];
-                    if (environmentLabel === 'High Scoring') environmentClass = 'badge-env';
-                    else if (environmentLabel === 'Low Scoring') environmentClass = 'badge-dog';
-                    else environmentClass = 'badge';
-                }
-                
-                // favored team highlight (if available)
-                const teamParts = displayMatchup.split(' @ ');
-                let awayTeam = teamParts[0] || '';
-                let homeTeam = teamParts[1] || '';
-                
-                let favoredTeam = null;
-                if (environmentData && environmentData[displayMatchup]) {
-                    // MLB env may have favored_team; NFL env is normalized by loadNFLProps()
-                    const e = environmentData[displayMatchup] || {};
-                    favoredTeam = e.favored_team || null;
-                }
-                
-                const awayClass = favoredTeam === awayTeam ? 'favored' : '';
-                const homeClass = favoredTeam === homeTeam ? 'favored' : '';
-                
-                const envBadge = environmentLabel
-                    ? `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>`
-                    : ((environmentData && environmentData[displayMatchup] && environmentData[displayMatchup].environment && environmentData[displayMatchup].environment !== 'Neutral')
-                        ? `<span class="badge badge-env ms-2 env-label">${environmentData[displayMatchup].environment}</span>`
-                        : '');
-                
-                return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card bg-dark border-secondary matchup-card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title text-primary">
-                                    <i class="${sportIcon} me-2"></i>
-                                    <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>
-                                    ${envBadge}
-                                </h5>
-                                <p class="card-text text-muted mb-3">${propCount} props available</p>
-                                <button class="btn btn-outline-primary w-100" onclick="showMatchupProps('${matchup}')">
-                                    View Props
-                                </button>
-                            </div>
-                        </div>
+                    <div class="d-flex align-items-center text-muted small mt-1">
+                      Hit Rate <strong class="ms-1">${(hitRate * 100).toFixed(1)}%</strong>
+                      ${envHtml}
                     </div>
-                `;
-            }).join('');
-            
-            const totalProps = allProps.length;
-            document.getElementById('prop-count-display').textContent = `${totalProps} props`;
-            
-            const sportLabel = currentSport === 'mlb' ? 'MLB' : 'NFL';
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="mb-4">
-                    <h4 class="text-center text-muted">Today's ${sportLabel} Games</h4>
-                    <p class="text-center text-muted">Click on any matchup to view player props</p>
-                </div>
-                <div class="row">
-                    ${matchupCards}
-                </div>
-            `;
-        }
-        
-        function showMatchupProps(matchup) {
-            if (!matchupData || !matchupData[matchup]) return;
-            const matchupProps = matchupData[matchup];
-            
-            // restrict allProps to the matchup, then filter
-            allProps = matchupProps;
-            document.getElementById('confidence-filter').value = 'high';
-            applyFilters();
-            currentPropsDisplayed = 50;
-            displayProps();
-            updatePropCount();
-            
-            // header
-            let displayMatchup = matchup;
-            let environmentLabel = '';
-            let environmentClass = '';
-            
-            if (matchup.includes(' — ')) {
-                const parts = matchup.split(' — ');
-                displayMatchup = parts[0];
-                environmentLabel = parts[1];
-                environmentClass = environmentLabel === 'High Scoring' ? 'badge-env'
-                                  : environmentLabel === 'Low Scoring'  ? 'badge-dog'
-                                  : 'badge';
-            }
-            
-            const teamParts = displayMatchup.split(' @ ');
-            let awayTeam = teamParts[0] || '';
-            let homeTeam = teamParts[1] || '';
-            
-            let favoredTeam = null;
-            if (environmentData && environmentData[displayMatchup]) {
-                const e = environmentData[displayMatchup] || {};
-                favoredTeam = e.favored_team || null;
-            }
-            
-            const awayClass = favoredTeam === awayTeam ? 'favored' : '';
-            const homeClass = favoredTeam === homeTeam ? 'favored' : '';
-            
-            const envBadge = environmentLabel
-                ? `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>`
-                : '';
-            
-            document.getElementById('games-header').innerHTML = `
-                <i class="fas fa-arrow-left text-primary me-2" style="cursor: pointer;" onclick="resetToSportHome()"></i>
-                <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${envBadge}
-                <small class="text-muted d-block fs-6 mt-1">${currentSport === 'mlb' ? 'MLB' : 'NFL'} Player Props</small>
-            `;
-        }
-        
-        function displayRegularProps() {
-            allFilteredProps = allProps.slice(0, currentPropsDisplayed);
-            displayProps();
-            updatePropCount();
-        }
-        
-        function updatePropCount() {
-            document.getElementById('prop-count-display').textContent = `${allFilteredProps.length} props`;
-        }
 
-        function getHumanStatName(statType) {
-            const statMap = {
-                'batter_hits': 'Hits',
-                'batter_total_bases': 'Total Bases', 
-                'batter_home_runs': 'Home Runs',
-                'batter_rbis': 'RBIs',
-                'pitcher_strikeouts': 'Strikeouts',
-                'pitcher_earned_runs': 'Earned Runs',
-                'pitcher_outs': 'Pitching Outs',
-                'pitcher_hits_allowed': 'Hits Allowed',
-                'hits': 'Hits',
-                'total_bases': 'Total Bases', 
-                'home_runs': 'Home Runs',
-                'rbis': 'RBIs',
-                'strikeouts': 'Strikeouts',
-                'earned_runs': 'Earned Runs',
-                'outs': 'Pitching Outs',
-                'hits_allowed': 'Hits Allowed'
-            };
-            return statMap[statType] || (statType || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        }
+                    <div class="text-center mt-2">
+                      <small class="text-warning">
+                        <i class="fas fa-building me-1"></i>${bookmaker}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+        })
+        .join("");
 
-        // Load more props
-        document.getElementById('load-more-props').addEventListener('click', function() {
-            currentPropsDisplayed += 50;
-            displayProps();
+      document.getElementById("player-props-container").innerHTML = `
+          <div class="row">
+            ${propCards}
+          </div>
+        `;
+
+      const loadMoreBtn = document.getElementById("load-more-props");
+      loadMoreBtn.style.display = allFilteredProps.length > currentPropsDisplayed ? "block" : "none";
+    }
+
+    function displayTodaysGames() {
+      if (!matchupData) {
+        displayRegularProps();
+        return;
+      }
+
+      // Reset filter controls when returning to games view
+      document.getElementById("confidence-filter").value = "";
+      document.getElementById("player-search").value = "";
+
+      // Reset header back to main view
+      document.getElementById("games-header").innerHTML = `
+          <i class="fas fa-users text-primary me-2"></i>Today's Games
+          <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${
+            currentSport === "mlb" ? "MLB" : "NFL"
+          } player props grouped by matchup</small>
+        `;
+
+      const matchupCards = Object.entries(matchupData)
+        .map(([matchup, props]) => {
+          const propCount = Array.isArray(props) ? props.length : 0;
+          const sportIcon = currentSport === "mlb" ? "fas fa-baseball" : "fas fa-football-ball";
+
+          // Parse matchup + environment label if present (MLB path sometimes has “ — High Scoring”)
+          let displayMatchup = matchup;
+          let environmentLabel = "";
+          let environmentClass = "";
+
+          if (matchup.includes(" — ")) {
+            const parts = matchup.split(" — ");
+            displayMatchup = parts[0];
+            environmentLabel = parts[1];
+            if (environmentLabel === "High Scoring") environmentClass = "badge-env";
+            else if (environmentLabel === "Low Scoring") environmentClass = "badge-dog";
+            else environmentClass = "badge";
+          }
+
+          // Favored team highlighting from environmentData when available (abbr or full)
+          const teamParts = displayMatchup.split(" @ ");
+          let awayTeam = teamParts[0] || "";
+          let homeTeam = teamParts[1] || "";
+
+          let favoredTeam = null;
+          if (environmentData && environmentData[displayMatchup]) {
+            const e = environmentData[displayMatchup] || {};
+            favoredTeam = e.favored_team || null;
+          }
+
+          const awayClass =
+            favoredTeam &&
+            (favoredTeam.toUpperCase() === (awayTeam || "").toUpperCase())
+              ? "favored"
+              : "";
+          const homeClass =
+            favoredTeam &&
+            (favoredTeam.toUpperCase() === (homeTeam || "").toUpperCase())
+              ? "favored"
+              : "";
+
+          // NFL/Generic chips: favored side + environment (pulled from env + props)
+          const chips = envChipsForMatchup(displayMatchup);
+
+          const envBadge = environmentLabel
+            ? `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>`
+            : "";
+
+          return `
+              <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card bg-dark border-secondary matchup-card h-100">
+                  <div class="card-body">
+                    <div class="matchup-title d-flex align-items-center">
+                      <h5 class="card-title text-primary mb-0">
+                        <i class="${sportIcon} me-2"></i>
+                        <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>
+                      </h5>
+                      <span class="ms-2">${chips || envBadge}</span>
+                    </div>
+                    <p class="card-text text-muted mb-3">${propCount} props available</p>
+                    <button class="btn btn-outline-primary w-100" onclick="showMatchupProps('${matchup}')">
+                      View Props
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+        })
+        .join("");
+
+      const totalProps = allProps.length;
+      document.getElementById("prop-count-display").textContent = `${totalProps} props`;
+
+      const sportLabel = currentSport === "mlb" ? "MLB" : "NFL";
+      document.getElementById("player-props-container").innerHTML = `
+          <div class="mb-4">
+            <h4 class="text-center text-muted">Today's ${sportLabel} Games</h4>
+            <p class="text-center text-muted">Click on any matchup to view player props</p>
+          </div>
+          <div class="row">
+            ${matchupCards}
+          </div>
+        `;
+    }
+
+    function showMatchupProps(matchup) {
+      if (!matchupData || !matchupData[matchup]) return;
+
+      const matchupProps = matchupData[matchup];
+
+      // Apply filtering to matchup props to preserve hits filtering
+      allProps = matchupProps;
+
+      // Apply default High Confidence filter
+      document.getElementById("confidence-filter").value = "high";
+      applyFilters();
+
+      currentPropsDisplayed = 50;
+
+      displayProps();
+      updatePropCount();
+
+      // For header display, extract clean matchup + possible label
+      let displayMatchup = matchup;
+      let environmentLabel = "";
+      let environmentClass = "";
+
+      if (matchup.includes(" — ")) {
+        const parts = matchup.split(" — ");
+        displayMatchup = parts[0];
+        environmentLabel = parts[1];
+        environmentClass =
+          environmentLabel === "High Scoring"
+            ? "badge-env"
+            : environmentLabel === "Low Scoring"
+            ? "badge-dog"
+            : "badge";
+      }
+
+      const teamParts = displayMatchup.split(" @ ");
+      let awayTeam = teamParts[0] || "";
+      let homeTeam = teamParts[1] || "";
+
+      let favoredTeam = null;
+      if (environmentData && environmentData[displayMatchup]) {
+        const e = environmentData[displayMatchup] || {};
+        favoredTeam = e.favored_team || null;
+      }
+
+      const awayClass =
+        favoredTeam && favoredTeam.toUpperCase() === (awayTeam || "").toUpperCase() ? "favored" : "";
+      const homeClass =
+        favoredTeam && favoredTeam.toUpperCase() === (homeTeam || "").toUpperCase() ? "favored" : "";
+
+      const envBadge = environmentLabel
+        ? `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>`
+        : "";
+
+      document.getElementById("games-header").innerHTML = `
+          <i class="fas fa-arrow-left text-primary me-2" style="cursor: pointer;" onclick="resetToSportHome()"></i>
+          <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${envBadge}
+          <small class="text-muted d-block fs-6 mt-1">${currentSport === "mlb" ? "MLB" : "NFL"} Player Props</small>
+        `;
+    }
+
+    function displayRegularProps() {
+      allFilteredProps = allProps.slice(0, currentPropsDisplayed);
+      displayProps();
+      updatePropCount();
+    }
+
+    function updatePropCount() {
+      document.getElementById("prop-count-display").textContent = `${allFilteredProps.length} props`;
+    }
+
+    function getHumanStatName(statType) {
+      const statMap = {
+        batter_hits: "Hits",
+        batter_total_bases: "Total Bases",
+        batter_home_runs: "Home Runs",
+        batter_rbis: "RBIs",
+        pitcher_strikeouts: "Strikeouts",
+        pitcher_earned_runs: "Earned Runs",
+        pitcher_outs: "Pitching Outs",
+        pitcher_hits_allowed: "Hits Allowed",
+        hits: "Hits",
+        total_bases: "Total Bases",
+        home_runs: "Home Runs",
+        rbis: "RBIs",
+        strikeouts: "Strikeouts",
+        earned_runs: "Earned Runs",
+        outs: "Pitching Outs",
+        hits_allowed: "Hits Allowed",
+      };
+      return statMap[statType] || (statType || "").replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    }
+
+    // Load more props
+    document.getElementById("load-more-props").addEventListener("click", function () {
+      currentPropsDisplayed += 50;
+      displayProps();
+    });
+
+    // ---------------------
+    // Sport tab management
+    // ---------------------
+
+    console.log("Dashboard loaded successfully");
+
+    let currentSport = "mlb";
+    let mlbProps = [];
+    let currentMatchupData = null;
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const sportTabs = document.querySelectorAll("#sport-tabs button");
+      sportTabs.forEach((tab) => {
+        tab.addEventListener("click", function () {
+          const sport = this.getAttribute("data-sport");
+          switchSport(sport);
         });
+      });
+    });
 
-        // ---------------------
-        // Sport switching
-        // ---------------------
-        function switchSport(sport) {
-            if (currentSport === sport) return;
-            currentSport = sport;
-            
-            document.querySelectorAll('#sport-tabs button').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(`${sport}-tab`).classList.add('active');
-            
-            const propsLabel = document.getElementById('total-props-label');
-            const gamesSubtitle = document.getElementById('games-subtitle');
-            
-            if (sport === 'mlb') {
-                propsLabel.textContent = 'Total MLB Props';
-                gamesSubtitle.textContent = 'MLB player props grouped by matchup';
-                loadMLBProps();
-            } else {
-                propsLabel.textContent = 'Total NFL Props';
-                gamesSubtitle.textContent = 'NFL player props grouped by matchup';
-                loadNFLProps();
-            }
-        }
+    function switchSport(sport) {
+      if (currentSport === sport) return;
 
-        function resetToSportHome() {
-            currentMatchupData = null;
-            document.getElementById('player-search').value = '';
-            document.getElementById('confidence-filter').value = '';
-            if (currentSport === 'mlb') loadMLBProps();
-            else loadNFLProps();
-        }
+      currentSport = sport;
 
-        function loadMLBProps() {
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="loading text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading MLB props...</span>
-                    </div>
-                    <p class="mt-3">Loading MLB player props...</p>
-                </div>
+      document.querySelectorAll("#sport-tabs button").forEach((tab) => tab.classList.remove("active"));
+      document.getElementById(`${sport}-tab`).classList.add("active");
+
+      const propsLabel = document.getElementById("total-props-label");
+      const gamesSubtitle = document.getElementById("games-subtitle");
+
+      if (sport === "mlb") {
+        propsLabel.textContent = "Total MLB Props";
+        gamesSubtitle.textContent = "MLB player props grouped by matchup";
+        loadMLBProps();
+      } else {
+        propsLabel.textContent = "Total NFL Props";
+        gamesSubtitle.textContent = "NFL player props grouped by matchup";
+        loadNFLProps();
+      }
+    }
+
+    function resetToSportHome() {
+      currentMatchupData = null;
+      document.getElementById("player-search").value = "";
+      document.getElementById("confidence-filter").value = "";
+
+      if (currentSport === "mlb") loadMLBProps();
+      else loadNFLProps();
+    }
+
+    function loadMLBProps() {
+      document.getElementById("player-props-container").innerHTML = `
+          <div class="loading text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading MLB props...</span>
+            </div>
+            <p class="mt-3">Loading MLB player props...</p>
+          </div>
+        `;
+      loadPlayerProps(); // Use existing MLB loading function
+    }
+
+    async function loadNFLProps() {
+      document.getElementById("player-props-container").innerHTML = `
+          <div class="loading text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading NFL props...</span>
+            </div>
+            <p class="mt-3">Loading NFL player props...</p>
+          </div>
+        `;
+
+      try {
+        const [propsRes, envRes] = await Promise.all([
+          fetch("/api/nfl/props"),
+          fetch("/api/nfl/environment").catch(() => ({ json: async () => ({}) })),
+        ]);
+
+        nflProps = (await propsRes.json()) || [];
+        const envData = await envRes.json().catch(() => ({}));
+        // Normalize: either { "Away @ Home": {...} } or {environments:{...}}
+        nflEnv = envData.environments || envData || {};
+
+        if (nflProps.length === 0) {
+          document.getElementById("player-props-container").innerHTML = `
+              <div class="alert alert-info text-center">
+                <h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season</h4>
+                <p class="mb-3">NFL player props are not available during the off-season.</p>
+                <p class="mb-0 text-muted">
+                  <strong>NFL Environment Analysis:</strong> 272+ games are still available for futures betting analysis.<br>
+                  Check back during the NFL season for live player props!
+                </p>
+              </div>
             `;
-            loadPlayerProps(); // reuse unified loader
+          document.getElementById("prop-count-display").textContent = "0 props";
+          return;
         }
 
-        // ✅ NFL now normalized to MLB layout (matchupData + environmentData + displayTodaysGames)
-        async function loadNFLProps() {
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="loading text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading NFL props...</span>
+        displayNFLProps(nflProps);
+      } catch (error) {
+        console.error("Error loading NFL props:", error);
+        document.getElementById("player-props-container").innerHTML = `
+            <div class="alert alert-info text-center">
+              <h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season</h4>
+              <p class="mb-3">NFL player props are not available during the off-season.</p>
+              <p class="mb-0 text-muted">
+                <strong>NFL Environment Analysis:</strong> 272+ games are still available for futures betting analysis.<br>
+                Check back during the NFL season for live player props!
+              </p>
+            </div>
+          `;
+        document.getElementById("prop-count-display").textContent = "0 props";
+      }
+    }
+
+    // Build chips for a matchup using nflEnv + nflProps (fav side + scoring bucket)
+    function envChipsForMatchup(matchup) {
+      // If we're on NFL and have nflEnv, use that; otherwise try generic environmentData
+      const e =
+        (currentSport === "nfl" ? nflEnv[matchup] : (environmentData && environmentData[matchup])) ||
+        {};
+      const parts = [];
+
+      // favored team abbr for display
+      let favAbbr = "";
+
+      if (currentSport === "nfl") {
+        const sample = nflProps.find((p) => `${p.away_team} @ ${p.home_team}` === matchup) || {};
+        if (e.favored_side === "home") {
+          favAbbr = sample.home_abbr || sample.home_team || "";
+        } else if (e.favored_side === "away") {
+          favAbbr = sample.away_abbr || sample.away_team || "";
+        }
+      } else {
+        // MLB/generic: try favored_team directly
+        if (e.favored_team) favAbbr = e.favored_team;
+      }
+
+      if (favAbbr) parts.push(`<span class="badge badge-fav ms-1">${favAbbr} FAV</span>`);
+
+      // environment chip
+      const bucket = e.environment || "Neutral";
+      if (bucket === "High Scoring") {
+        parts.push(`<span class="badge badge-env ms-1">High Scoring</span>`);
+      } else if (bucket === "Low Scoring") {
+        parts.push(`<span class="badge badge-dog ms-1">Low Scoring</span>`);
+      }
+      return parts.join("");
+    }
+
+    function displayNFLProps(props) {
+      if (!props || props.length === 0) {
+        document.getElementById("player-props-container").innerHTML = `
+            <div class="alert alert-info text-center">
+              <i class="fas fa-football-ball fa-3x mb-3 text-muted"></i>
+              <h4>NFL Props Updating</h4>
+              <p class="mb-0">NFL props are being updated. Please check back shortly.</p>
+            </div>
+          `;
+        document.getElementById("total-props").textContent = "0";
+        document.getElementById("prop-count-display").textContent = "0 props";
+        return;
+      }
+
+      // Group NFL props by matchup
+      const matchups = {};
+      props.forEach((prop) => {
+        const matchup = `${prop.away_team} @ ${prop.home_team}`;
+        if (!matchups[matchup]) matchups[matchup] = [];
+        matchups[matchup].push(prop);
+      });
+
+      const matchupCards = Object.entries(matchups)
+        .map(([matchup, matchupProps]) => {
+          const chips = envChipsForMatchup(matchup);
+          return `
+              <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card bg-dark border-secondary matchup-card h-100">
+                  <div class="card-body">
+                    <div class="matchup-title d-flex align-items-center">
+                      <h5 class="card-title text-primary mb-0">
+                        <i class="fas fa-football-ball me-2"></i>${matchup}
+                      </h5>
+                      <span class="ms-2">${chips}</span>
                     </div>
-                    <p class="mt-3">Loading NFL player props...</p>
+                    <p class="card-text text-muted mb-3">
+                      ${matchupProps.length} props available
+                    </p>
+                    <button class="btn btn-outline-primary w-100" onclick="showNFLMatchupProps('${matchup}')">
+                      View Props
+                    </button>
+                  </div>
                 </div>
+              </div>
             `;
-            
-            try {
-                const [propsRes, envRes] = await Promise.all([
-                    fetch('/api/nfl/props'),
-                    fetch('/api/nfl/environment').catch(() => ({ json: async () => ({}) }))
-                ]);
+        })
+        .join("");
 
-                nflProps = (await propsRes.json()) || [];
-                const envRaw = await envRes.json().catch(() => ({}));
-                const envMap = envRaw.environments || envRaw || {};
+      document.getElementById("player-props-container").innerHTML = `
+          <div class="mb-4">
+            <h4 class="text-center text-muted">Today's NFL Games</h4>
+            <p class="text-center text-muted">Click on any matchup to view player props</p>
+          </div>
+          <div class="row">
+            ${matchupCards}
+          </div>
+        `;
 
-                if (nflProps.length === 0) {
-                    document.getElementById('player-props-container').innerHTML = `
-                        <div class="alert alert-info text-center">
-                            <h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season</h4>
-                            <p class="mb-3">NFL player props are not available during the off-season.</p>
-                            <p class="mb-0 text-muted">
-                                <strong>NFL Environment Analysis:</strong> 272+ games are still available for futures betting analysis.<br>
-                                Check back during the NFL season for live player props!
-                            </p>
-                        </div>
-                    `;
-                    document.getElementById('prop-count-display').textContent = '0 props';
-                    return;
-                }
+      document.getElementById("total-props").textContent = props.length;
+      document.getElementById("prop-count-display").textContent = `${props.length} props`;
+    }
 
-                // Build grouped matchupData just like MLB
-                const grouped = {};
-                nflProps.forEach(p => {
-                    const key = `${p.away_team} @ ${p.home_team}`;
-                    (grouped[key] ||= []).push(p);
-                });
-                matchupData = grouped;
-                allProps = nflProps.slice();
+    function showNFLMatchupProps(matchup) {
+      const matchupProps = nflProps.filter((p) => `${p.away_team} @ ${p.home_team}` === matchup);
 
-                // Normalize env to MLB-like: favored_team + environment
-                const normalizedEnv = {};
-                for (const matchup of Object.keys(grouped)) {
-                    const e = envMap[matchup] || {};
-                    const sample = grouped[matchup][0]; // one prop to resolve teams/abbr
-                    let favored_team = null;
-                    if (sample && e.favored_side) {
-                        favored_team = e.favored_side === 'home'
-                          ? (sample.home_abbr || sample.home_team)
-                          : (sample.away_abbr || sample.away_team);
-                    }
-                    normalizedEnv[matchup] = {
-                        favored_team,
-                        environment: e.environment || 'Neutral'
-                    };
-                }
-                environmentData = normalizedEnv;
+      document.getElementById("games-header").innerHTML = `
+          <i class="fas fa-arrow-left text-primary me-2" style="cursor: pointer;" onclick="resetToSportHome()"></i>
+          ${matchup}
+          <small class="text-muted d-block fs-6 mt-1">NFL Player Props</small>
+        `;
 
-                // Reuse the same UI
-                displayTodaysGames();
+      displayNFLPropsGrid(matchupProps);
+    }
 
-                // labels
-                document.getElementById('total-props-label').textContent = 'Total NFL Props';
-                document.getElementById('games-subtitle').textContent = 'NFL player props grouped by matchup';
-                document.getElementById('prop-count-display').textContent = `${nflProps.length} props`;
-            } catch (error) {
-                console.error('Error loading NFL props:', error);
-                document.getElementById('player-props-container').innerHTML = `
-                    <div class="alert alert-info text-center">
-                        <h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season</h4>
-                        <p class="mb-3">NFL player props are not available during the off-season.</p>
-                        <p class="mb-0 text-muted">
-                            <strong>NFL Environment Analysis:</strong> 272+ games are still available for futures betting analysis.<br>
-                            Check back during the NFL season for live player props!
-                        </p>
+    function displayNFLPropsGrid(props) {
+      if (!props || props.length === 0) {
+        document.getElementById("player-props-container").innerHTML = `
+            <div class="alert alert-warning text-center">
+              <h4>No Props Available</h4>
+              <p>No props available for this matchup.</p>
+            </div>
+          `;
+        return;
+      }
+
+      const propCards = props
+        .map((prop) => {
+          const hitRate = prop.hit_probability || 0.5;
+          const confidenceClass =
+            hitRate >= 0.7 ? "confidence-high" : hitRate >= 0.5 ? "confidence-medium" : "confidence-low";
+          const confidenceText = hitRate >= 0.7 ? "High" : hitRate >= 0.5 ? "Medium" : "Low";
+
+          // --- BADGES (NFL card header) ---
+          let badgesHtml = "";
+
+          // Matchup-level favored team badge from context
+          const fav = (prop.context && prop.context.fav_team_abbr) || "";
+          if (fav) {
+            badgesHtml += `<span class="badge badge-fav ms-2">${fav} FAV</span>`;
+          }
+
+          // Optional player-team status badge
+          const teamStatus = prop.team_status || "unknown";
+          const teamAbbr = prop.team_abbr || prop.team || "";
+          if (teamAbbr && (teamStatus === "favored" || teamStatus === "underdog")) {
+            const cls = teamStatus === "favored" ? "badge-fav" : "badge-dog";
+            const label = teamStatus === "favored" ? "FAV" : "DOG";
+            badgesHtml += `<span class="badge ${cls} ms-2">${teamAbbr} ${label}</span>`;
+          }
+
+          // Optional environment next to Hit Rate
+          const env = (prop.context && prop.context.environment) || "Neutral";
+          const envHtml = env !== "Neutral" ? `<span class="badge badge-env ms-2">${env}</span>` : "";
+
+          return `
+              <div class="col-md-6 col-lg-4 mb-3">
+                <div class="prop-card card bg-dark border-secondary">
+                  <div class="card-body">
+                    <div class="mb-2 d-flex align-items-center justify-content-between">
+                      <div>
+                        <h6 class="mb-0">${prop.player_name}</h6>
+                        <small class="text-muted">${prop.team || ""}</small>
+                      </div>
+                      ${badgesHtml}
                     </div>
-                `;
-                document.getElementById('prop-count-display').textContent = '0 props';
-            }
-        }
 
-        // (Legacy NFL renderers kept for reference; now unused)
-        // function displayNFLProps(...) {}
-        // function showNFLMatchupProps(...) {}
-        // function displayNFLPropsGrid(...) {}
+                    <div class="mb-2">
+                      <strong>${prop.market}</strong>
+                      <span class="float-end">
+                        <span class="badge bg-primary">${prop.point}</span>
+                      </span>
+                    </div>
 
-        // ---------------------
-        // Console
-        // ---------------------
-        console.log('Dashboard loaded successfully');
-    </script>
+                    <div class="d-flex align-items-center text-muted small mt-1">
+                      Hit Rate <strong class="ms-1">${(hitRate * 100).toFixed(1)}%</strong>
+                      ${envHtml}
+                    </div>
+
+                    <div class="text-center mt-2">
+                      <small class="text-warning">
+                        <i class="fas fa-building me-1"></i>${prop.bookmaker}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+        })
+        .join("");
+
+      document.getElementById("player-props-container").innerHTML = `
+          <div class="row">
+            ${propCards}
+          </div>
+        `;
+
+      document.getElementById("prop-count-display").textContent = `${props.length} props`;
+    }
+  </script>
 </body>
 </html>
