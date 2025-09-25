@@ -5,6 +5,12 @@ import time
 import requests
 import stripe
 import uuid
+import sys
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+                    stream=sys.stdout)
+logger = logging.getLogger("app")
+
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from flask_cors import CORS
@@ -982,11 +988,12 @@ def get_enhanced_mlb_props():
     except Exception as e:
         logger.error(f"Error in enhanced MLB props endpoint: {e}")
         return jsonify({"error": "Failed to retrieve enhanced MLB props"}), 500
-
+        
 @app.route("/api/nfl/props")
 def get_nfl_props():
     """Get NFL player props (mirrors MLB shape; env + form enrichment)."""
     try:
+        logger.info("[NFL] /api/nfl/props called")
         from nfl_odds_api import fetch_nfl_props
 
         # 1) Fetch raw events (graceful off-season handling)
@@ -994,16 +1001,17 @@ def get_nfl_props():
             events = fetch_nfl_props()  # list of event dicts with bookmakers/markets/outcomes
         except RuntimeError as e:
             if "422" in str(e) or "INVALID_MARKET" in str(e):
-                logger.info("NFL off-season: No player props available")
+                logger.info("[NFL] Off-season: no player props")
                 return jsonify([])
             raise
         if not events:
+            logger.info("[NFL] odds API returned 0 events")
             return jsonify([])
 
         # 2) Normalize to MLB-like rows
         enhanced_props: list[dict] = []
 
-        # Normalize: pair Over/Under into one row per (player, market, line)
+        # Pair Over/Under into one row per (player, market, line)
         for event in (events or []):
             home_team = (event.get("home_team") or "").strip()
             away_team = (event.get("away_team") or "").strip()
@@ -1014,9 +1022,7 @@ def get_nfl_props():
                 for market in (bookmaker.get("markets") or []):
                     market_key = market.get("key", "") or ""
 
-                    # Pair Over/Under outcomes for same (player_name, point, market)
                     pairs: dict[tuple, dict] = {}
-
                     for oc in (market.get("outcomes") or []):
                         player_name = oc.get("description", "") or ""
                         point = oc.get("point", None)
@@ -1037,46 +1043,44 @@ def get_nfl_props():
 
                     # Build one prop row per player/line with both sides attached
                     for (player_name, point, mk), ou in pairs.items():
-                        prop = {
+                        enhanced_props.append({
                             "player": player_name,
                             "player_name": player_name,
-
                             "stat": mk,
                             "stat_type": mk,
                             "market": mk,
-
                             "line": point,
                             "point": point,
-
                             "bookmaker": book_title,
                             "sportsbook": book_title,
-
                             "home_team": home_team,
                             "away_team": away_team,
                             "home_abbr": get_team_abbreviation(home_team),
                             "away_abbr": get_team_abbreviation(away_team),
                             "matchup": f"{away_team} @ {home_team}",
-
                             "over_odds": ou.get("over_odds"),
                             "under_odds": ou.get("under_odds"),
-
                             # defaults (enrichment will overwrite)
                             "confidence": "Medium",
                             "team": "",
                             "team_abbr": "",
                             "team_status": "",
                             "hit_probability": 0.5,
-                        }
-                        enhanced_props.append(prop)
-                        
-        # 3) Build environment + 4) enrich and return
+                        })
+
+        logger.info("[NFL] normalized %d props", len(enhanced_props))
+
+        # 3) Build environment + 4) Enrich and return
         env_map = build_nfl_environment_map(events)
+        logger.info("[NFL] built env for %d matchups", len(env_map))
+
         enriched = enrich_nfl_props_with_context(enhanced_props, env_map)
+        logger.info("[NFL] enriched %d props", len(enriched))
+
         return jsonify(enriched)
 
     except Exception as e:
-        logger.error(f"Error in NFL props endpoint: {e}")
-        # Keep frontend stable even if a single event fails
+        logger.error("[NFL] Error in props endpoint: %s", e)
         return jsonify([])
 
 
