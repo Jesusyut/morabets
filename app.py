@@ -73,6 +73,18 @@ memory_cache = {}  # In-memory fallback cache
 redis_healthy = False
 redis_last_check = 0
 
+# ---- NFL prop filtering (FanDuel + odds gate) ----
+VALID_BOOK_TITLES = {"fanduel"}   # case-insensitive match on bookmaker.title
+ODDS_MIN, ODDS_MAX = -300, 250
+
+def _valid_price(p):
+    try:
+        if p is None: 
+            return False
+        return ODDS_MIN <= int(p) <= ODDS_MAX
+    except Exception:
+        return False
+      
 def init_redis():
     """Initialize Redis connection with proper ping validation"""
     global redis, redis_healthy
@@ -991,58 +1003,101 @@ def get_enhanced_mlb_props():
         
 @app.route("/api/nfl/props")
 def get_nfl_props():
-    """Get NFL player props (mirrors MLB shape; env + form enrichment)."""
+    """
+    NFL player props endpoint
+    - Keeps off-season handling (422/INVALID_MARKET -> [])
+    - Filters to VALID_BOOK_TITLES and odds window via _valid_price
+    - Normalizes to MLB-like rows
+    - Enriches with environment map
+    """
     try:
         logger.info("[NFL] /api/nfl/props called")
-        from nfl_odds_api import fetch_nfl_props
 
-        # 1) Fetch raw events (graceful off-season handling)
+        # --- required imports ---
+        from nfl_odds_api import fetch_nfl_props
+        from nfl_game_enrichment import (
+            build_nfl_environment_map,
+            enrich_nfl_props_with_context,
+        )
+        # If get_team_abbreviation is in another module, import it:
+        # from teams import get_team_abbreviation
+
+        # --- fetch with off-season guard ---
         try:
-            events = fetch_nfl_props()  # list of event dicts with bookmakers/markets/outcomes
+            events = fetch_nfl_props() or []
         except RuntimeError as e:
-            if "422" in str(e) or "INVALID_MARKET" in str(e):
+            msg = str(e)
+            if "422" in msg or "INVALID_MARKET" in msg:
                 logger.info("[NFL] Off-season: no player props")
                 return jsonify([])
             raise
+
         if not events:
             logger.info("[NFL] odds API returned 0 events")
             return jsonify([])
 
-        # 2) Normalize to MLB-like rows
         enhanced_props: list[dict] = []
 
-        # Pair Over/Under into one row per (player, market, line)
-        for event in (events or []):
+        for event in events:
             home_team = (event.get("home_team") or "").strip()
             away_team = (event.get("away_team") or "").strip()
 
             for bookmaker in (event.get("bookmakers") or []):
-                book_title = bookmaker.get("title", "Multiple Books")
+                title = (bookmaker.get("title") or "").strip()
+                # If VALID_BOOK_TITLES is defined as {"fanduel"} and is case-insensitive:
+                try:
+                    if title.lower() not in VALID_BOOK_TITLES:
+                        continue
+                except NameError:
+                    # Fallback: allow all books if not configured
+                    pass
 
                 for market in (bookmaker.get("markets") or []):
-                    market_key = market.get("key", "") or ""
+                    market_key = (market.get("key") or "").strip()
 
+                    # Optional: limit to a subset of markets
+                    # if market_key not in DESIRED_MARKETS:
+                    #     continue
+
+                    # Pair outcomes by (player, line, market)
                     pairs: dict[tuple, dict] = {}
                     for oc in (market.get("outcomes") or []):
-                        player_name = oc.get("description", "") or ""
+                        price = oc.get("price")
+                        # Enforce odds window if helper exists; otherwise accept as-is
+                        try:
+                            if not _valid_price(price):
+                                continue
+                        except NameError:
+                            pass  # no odds window configured
+
+                        player_name = (oc.get("description") or "").strip()
                         point = oc.get("point", None)
-                        side = (oc.get("name", "") or "").lower()  # "over"/"under"
+
+                        side = (oc.get("name") or "").strip().lower()  # "over"/"under"
                         key = (player_name, point, market_key)
+
                         entry = pairs.setdefault(key, {"over_odds": None, "under_odds": None})
-                        price = oc.get("price", None)
+
                         if "over" in side:
                             entry["over_odds"] = price
                         elif "under" in side:
                             entry["under_odds"] = price
                         else:
-                            # if side omitted, default first one to over
-                            if entry["over_odds"] is None:
-                                entry["over_odds"] = price
-                            else:
-                                entry["under_odds"] = price
+                            # Skip unlabeled sides; don’t guess
+                            continue
 
-                    # Build one prop row per player/line with both sides attached
                     for (player_name, point, mk), ou in pairs.items():
+                        if ou.get("over_odds") is None and ou.get("under_odds") is None:
+                            continue  # nothing valid within window
+
+                        # Team abbreviations with safe fallback
+                        try:
+                            home_abbr = get_team_abbreviation(home_team)
+                            away_abbr = get_team_abbreviation(away_team)
+                        except NameError:
+                            home_abbr = ""
+                            away_abbr = ""
+
                         enhanced_props.append({
                             "player": player_name,
                             "player_name": player_name,
@@ -1051,16 +1106,16 @@ def get_nfl_props():
                             "market": mk,
                             "line": point,
                             "point": point,
-                            "bookmaker": book_title,
-                            "sportsbook": book_title,
+                            "bookmaker": title,
+                            "sportsbook": title,
                             "home_team": home_team,
                             "away_team": away_team,
-                            "home_abbr": get_team_abbreviation(home_team),
-                            "away_abbr": get_team_abbreviation(away_team),
+                            "home_abbr": home_abbr,
+                            "away_abbr": away_abbr,
                             "matchup": f"{away_team} @ {home_team}",
                             "over_odds": ou.get("over_odds"),
                             "under_odds": ou.get("under_odds"),
-                            # defaults (enrichment will overwrite)
+                            # defaults; enrichment overwrites
                             "confidence": "Medium",
                             "team": "",
                             "team_abbr": "",
@@ -1068,20 +1123,24 @@ def get_nfl_props():
                             "hit_probability": 0.5,
                         })
 
-        logger.info("[NFL] normalized %d props", len(enhanced_props))
+        logger.info("[NFL] normalized (post-filter) %d props", len(enhanced_props))
 
-        # 3) Build environment + 4) Enrich and return
+        # Build environment from the full events (book-agnostic)
         env_map = build_nfl_environment_map(events)
         logger.info("[NFL] built env for %d matchups", len(env_map))
 
         enriched = enrich_nfl_props_with_context(enhanced_props, env_map)
         logger.info("[NFL] enriched %d props", len(enriched))
 
+        # Optional global cap for payload safety
+        # MAX_PROPS_TOTAL = 400
+        # enriched = enriched[:MAX_PROPS_TOTAL]
+
         return jsonify(enriched)
 
     except Exception as e:
-        logger.error("[NFL] Error in props endpoint: %s", e)
-        return jsonify([])
+        logger.error("[NFL] Error in props endpoint: %s", e, exc_info=True)
+        return jsonify([]), 200  # keep shape stable
 
 
 @app.route("/api/matchups")
