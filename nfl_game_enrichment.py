@@ -122,8 +122,13 @@ _API_PLAYERS = "https://v1.american-football.api-sports.io/players"
 _API_STATS   = "https://v1.american-football.api-sports.io/players/statistics"
 
 def _api_key() -> Optional[str]:
-    # Primary: APISPORTS_KEY ; others are optional fallbacks if you ever add them
-    return os.getenv("APISPORTS_KEY") or os.getenv("API_SPORTS_KEY") or os.getenv("API_SPORTS_NFL_KEY")
+    k = (
+        os.getenv("APISPORTS_KEY")
+        or os.getenv("APISPORTS_KEY")
+        or os.getenv("APISPORTS_KEY")
+        or ""
+    ).strip()   # <- removes stray newline/space that caused "Invalid header value ...\n"
+    return k or None
 
 def _api_headers() -> Optional[Dict[str, str]]:
     k = _api_key()
