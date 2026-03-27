@@ -630,56 +630,77 @@ def group_props_by_matchup(props_data):
         
         print(f"[DEBUG] Starting strict matchup filtering for {len(props_data)} props")
         print(f"[DEBUG] Available matchups: {list(matchup_teams.keys())}")
-        
-        for prop in props_data:
-            if not isinstance(prop, dict):
-                continue
-                
-            player_name = prop.get('player', '')
-            if not player_name:
-                continue
-            
-            # Find player's team using exact or fuzzy matching
-            player_team = None
-            
-            # Exact match first
+
+        # Helper: resolve a player name to their team (exact then fuzzy)
+        def resolve_player_team(player_name):
             if player_name in player_team_map:
-                player_team = player_team_map[player_name]
-            else:
-                # Fuzzy matching for name variations (last name + first initial)
-                for mapped_name, team in player_team_map.items():
-                    if len(player_name.split()) >= 2 and len(mapped_name.split()) >= 2:
-                        prop_last = player_name.split()[-1].lower()
-                        prop_first_initial = player_name.split()[0][0].lower()
-                        mapped_last = mapped_name.split()[-1].lower()
-                        mapped_first_initial = mapped_name.split()[0][0].lower()
-                        
-                        if (prop_last == mapped_last and 
-                            prop_first_initial == mapped_first_initial and 
+                return player_team_map[player_name], False
+            for mapped_name, team in player_team_map.items():
+                if len(player_name.split()) >= 2 and len(mapped_name.split()) >= 2:
+                    prop_last = player_name.split()[-1].lower()
+                    prop_first_initial = player_name.split()[0][0].lower()
+                    mapped_last = mapped_name.split()[-1].lower()
+                    mapped_first_initial = mapped_name.split()[0][0].lower()
+                    if (prop_last == mapped_last and
+                            prop_first_initial == mapped_first_initial and
                             len(prop_last) > 3):
-                            player_team = team
-                            print(f"[FUZZY] {player_name} -> {mapped_name} ({team})")
-                            break
-            
-            if not player_team:
-                skipped_count += 1
-                continue
-            
-            # Find which matchup this player's team belongs to
-            matched_matchup = None
-            for matchup_key, teams_in_matchup in matchup_teams.items():
-                if player_team in teams_in_matchup:
-                    matched_matchup = matchup_key
-                    break
-            
-            # Only include prop if player's team is in a real matchup
-            if matched_matchup:
-                if matched_matchup not in grouped:
-                    grouped[matched_matchup] = []
-                grouped[matched_matchup].append(prop)
+                        print(f"[FUZZY] {player_name} -> {mapped_name} ({team})")
+                        return team, True
+            return None, False
+
+        if not matchup_teams:
+            # No live game data yet (cold cache / startup race).
+            # Fall back: group every prop whose player we can identify by team name.
+            # Build synthetic per-team groupings so the UI always has something to show.
+            print(f"[DEBUG] No live matchups available — falling back to team-based grouping")
+            team_groups = {}
+            for prop in props_data:
+                if not isinstance(prop, dict):
+                    continue
+                player_name = prop.get('player', '')
+                if not player_name:
+                    continue
+                player_team, _ = resolve_player_team(player_name)
+                if not player_team:
+                    skipped_count += 1
+                    continue
+                abbr = TEAM_ABBREVIATIONS.get(player_team, player_team[:3].upper())
+                key = abbr
+                if key not in team_groups:
+                    team_groups[key] = []
+                team_groups[key].append(prop)
                 matched_count += 1
-            else:
-                skipped_count += 1
+            grouped = team_groups
+        else:
+            for prop in props_data:
+                if not isinstance(prop, dict):
+                    continue
+                    
+                player_name = prop.get('player', '')
+                if not player_name:
+                    continue
+                
+                player_team, _ = resolve_player_team(player_name)
+                
+                if not player_team:
+                    skipped_count += 1
+                    continue
+                
+                # Find which matchup this player's team belongs to
+                matched_matchup = None
+                for matchup_key, teams_in_matchup in matchup_teams.items():
+                    if player_team in teams_in_matchup:
+                        matched_matchup = matchup_key
+                        break
+                
+                # Only include prop if player's team is in a real matchup
+                if matched_matchup:
+                    if matched_matchup not in grouped:
+                        grouped[matched_matchup] = []
+                    grouped[matched_matchup].append(prop)
+                    matched_count += 1
+                else:
+                    skipped_count += 1
         
         # Get game environment classifications with favored team info
         try:
