@@ -13,6 +13,18 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://api.the-odds-api.com/v4"
 ODDS_API_KEY = os.getenv("ODDS_API_KEY")
 
+# Simple in-process TTL caches to avoid re-hitting rate-limited endpoints
+_cache_store = {}
+
+def _cache_get(key, ttl_seconds=3600):
+    entry = _cache_store.get(key)
+    if entry and (time.time() - entry["ts"]) < ttl_seconds:
+        return entry["data"]
+    return None
+
+def _cache_set(key, data):
+    _cache_store[key] = {"data": data, "ts": time.time()}
+
 # Preferred sportsbooks for filtering
 PREFERRED_SPORTSBOOKS = ["draftkings", "fanduel", "betmgm"]
 VALID_BOOKS = {"DraftKings", "FanDuel", "BetMGM"}
@@ -192,11 +204,182 @@ def get_mlb_totals_odds():
         print(f"[ERROR] Failed to fetch totals odds: {e}")
         return []
 
+def fetch_mlb_events():
+    """
+    Fetch just the MLB event list (home/away team names).
+    This endpoint is free-tier and works even when the odds endpoints are at quota.
+    Returns a list of event dicts with 'home_team' and 'away_team'.
+    Cached for 30 minutes to avoid repeated hits when rate-limited.
+    """
+    cached = _cache_get("mlb_events", ttl_seconds=1800)
+    if cached is not None:
+        print(f"[EVENTS] Returning {len(cached)} MLB events from cache")
+        return cached
+
+    now = datetime.utcnow()
+    future = now + timedelta(hours=48)
+    resp = requests.get(
+        f"{BASE_URL}/sports/baseball_mlb/events",
+        params={
+            "apiKey": ODDS_API_KEY,
+            "commenceTimeFrom": now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "commenceTimeTo": future.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        },
+        timeout=15
+    )
+    resp.raise_for_status()
+    events = resp.json()
+    print(f"[EVENTS] Fetched {len(events)} MLB events")
+    _cache_set("mlb_events", events)
+    return events
+
+
+def get_mlb_stats_environment_map():
+    """
+    Fallback environment map using free data sources:
+    - Odds API events endpoint (free tier) for home/away team names
+    - MLB Stats API (completely free, no key) for win% and runs-per-game
+
+    Favorite = team with higher win percentage (home gets +3% edge).
+    Scoring label = estimated total derived from team offensive/defensive stats.
+    Returns the same dict format as get_mlb_game_environment_map().
+    """
+    cached = _cache_get("mlb_stats_env_map", ttl_seconds=3600)
+    if cached is not None:
+        print(f"[STATS ENV] Returning {len(cached)} environments from cache")
+        return cached
+
+    from team_abbreviations import TEAM_ABBREVIATIONS
+
+    # Additional name mappings for teams that changed names/locations
+    EXTRA_ABBR = {
+        "Athletics": "ATH",        # Moved from Oakland; events API drops city name
+        "Oakland Athletics": "OAK",
+    }
+
+    def team_to_abbr(full_name):
+        if full_name in EXTRA_ABBR:
+            return EXTRA_ABBR[full_name]
+        if full_name in TEAM_ABBREVIATIONS:
+            return TEAM_ABBREVIATIONS[full_name]
+        return full_name[:3].upper()
+
+    # --- Step 1: Get today's matchups from events endpoint ---
+    try:
+        events = fetch_mlb_events()
+    except Exception as e:
+        print(f"[STATS ENV] Events fetch failed: {e}")
+        return {}
+
+    # --- Step 2: MLB Stats API standings (free, no auth required) ---
+    team_stats = {}
+    try:
+        r = requests.get(
+            "https://statsapi.mlb.com/api/v1/standings",
+            params={"leagueId": "103,104", "season": "2025", "standingsTypes": "regularSeason"},
+            timeout=10
+        )
+        r.raise_for_status()
+        for division in r.json().get("records", []):
+            for tr in division.get("teamRecords", []):
+                name = tr.get("team", {}).get("name", "")
+                games = max(tr.get("gamesPlayed", 1) or 1, 1)
+                win_pct = float(tr.get("winningPercentage", "0.500") or "0.500")
+                rs = tr.get("runsScored", 0) or 0
+                ra = tr.get("runsAllowed", 0) or 0
+                if name:
+                    team_stats[name] = {
+                        "win_pct": win_pct,
+                        "rs_pg": rs / games,
+                        "ra_pg": ra / games,
+                    }
+        print(f"[STATS ENV] Loaded stats for {len(team_stats)} teams from MLB Stats API")
+    except Exception as e:
+        print(f"[STATS ENV] MLB Stats API failed: {e}")
+
+    def find_stats(event_name):
+        """Match an events-API team name to stats-API team name."""
+        if event_name in team_stats:
+            return team_stats[event_name]
+        for stat_name, s in team_stats.items():
+            if event_name in stat_name or stat_name in event_name:
+                return s
+            # Last-word match (e.g. "Blue Jays" vs "Blue Jays")
+            if (event_name.split()[-1] == stat_name.split()[-1]
+                    and len(event_name.split()[-1]) > 4):
+                return s
+        return None
+
+    env_map = {}
+    for event in events:
+        home_name = event.get("home_team", "")
+        away_name = event.get("away_team", "")
+        if not home_name or not away_name:
+            continue
+
+        home_abbr = team_to_abbr(home_name)
+        away_abbr = team_to_abbr(away_name)
+        matchup_key = f"{away_abbr} @ {home_abbr}"
+
+        home_s = find_stats(home_name)
+        away_s = find_stats(away_name)
+
+        # Favorite: higher win% wins; home team gets +3% advantage
+        favored_team = None
+        if home_s and away_s:
+            if (home_s["win_pct"] + 0.03) >= away_s["win_pct"]:
+                favored_team = home_abbr
+            else:
+                favored_team = away_abbr
+
+        # Scoring estimate: expected runs each side, summed
+        environment_label = "Neutral"
+        estimated_total = None
+        if home_s and away_s:
+            away_exp = (away_s["rs_pg"] + home_s["ra_pg"]) / 2
+            home_exp = (home_s["rs_pg"] + away_s["ra_pg"]) / 2
+            estimated_total = round(away_exp + home_exp, 1)
+            if estimated_total >= 9.5:
+                environment_label = "High Scoring"
+            elif estimated_total <= 8.0:
+                environment_label = "Low Scoring"
+
+        underdog_team = None
+        if favored_team == home_abbr:
+            underdog_team = away_abbr
+        elif favored_team == away_abbr:
+            underdog_team = home_abbr
+
+        fav_str = f" (Fav: {favored_team})" if favored_team else ""
+        total_str = f" Total~{estimated_total}" if estimated_total else ""
+        print(f"[ENV] {matchup_key}: {environment_label}{total_str}{fav_str} [stats-based]")
+
+        env_map[matchup_key] = {
+            "environment": environment_label,
+            "total": estimated_total,
+            "favored_team": favored_team,
+            "home_team": home_abbr,
+            "away_team": away_abbr,
+            "underdog_team": underdog_team,
+            "source": "mlb_stats_api",
+        }
+
+    print(f"[STATS ENV] Built environment map for {len(env_map)} games")
+    if env_map:
+        _cache_set("mlb_stats_env_map", env_map)
+    return env_map
+
+
 def get_mlb_game_environment_map():
     """Get environment classification and favored team for each MLB game"""
+    cached = _cache_get("mlb_env_map", ttl_seconds=3600)
+    if cached is not None:
+        print(f"[ENV] Returning {len(cached)} game environments from cache")
+        return cached
+
     from mlb_game_enrichment import classify_game_environment
     from team_abbreviations import TEAM_ABBREVIATIONS
-    
+
     totals_data = get_mlb_totals_odds()
     moneyline_data = parse_game_data()  # Get moneylines for favored team calculation
     env_map = {}
@@ -298,59 +481,16 @@ def get_mlb_game_environment_map():
             continue
 
     print(f"[INFO] Classified {len(env_map)} game environments with favored teams")
+
+    # If Odds API returned no data (quota hit, 401, etc.), fall back to stats-based approach
+    if not env_map:
+        print("[INFO] Odds API returned no environment data — using stats-based fallback")
+        env_map = get_mlb_stats_environment_map()
+
+    if env_map:
+        _cache_set("mlb_env_map", env_map)
+
     return env_map
-
-    # Try preferred sportsbooks first
-    try:
-        print(f"[DEBUG] Fetching moneylines from preferred sportsbooks: {PREFERRED_SPORTSBOOKS}")
-        response = requests.get(
-            f"{BASE_URL}/sports/baseball_mlb/odds",
-            params={
-                "apiKey": ODDS_API_KEY,
-                "regions": "us",
-                "markets": "h2h",
-                "oddsFormat": "american",
-                "commenceTimeFrom": start_time,
-                "commenceTimeTo": end_time,
-                "bookmakers": ",".join(PREFERRED_SPORTSBOOKS)
-            },
-            timeout=20
-        )
-        response.raise_for_status()
-        data = response.json()
-        print(f"[INFO] Retrieved {len(data)} moneyline matchups from preferred sportsbooks")
-        
-        # If we got good data, return it
-        if data and len(data) > 0:
-            return data
-        else:
-            print("[WARNING] No moneylines from preferred sportsbooks, falling back to all sportsbooks")
-            
-    except Exception as e:
-        print(f"[ERROR] Failed to fetch odds from preferred sportsbooks: {e}, falling back to all sportsbooks")
-
-    # Fallback to all sportsbooks
-    try:
-        print("[DEBUG] Fetching moneylines from all sportsbooks")
-        response = requests.get(
-            f"{BASE_URL}/sports/baseball_mlb/odds",
-            params={
-                "apiKey": ODDS_API_KEY,
-                "regions": "us",
-                "markets": "h2h",
-                "oddsFormat": "american",
-                "commenceTimeFrom": start_time,
-                "commenceTimeTo": end_time
-            },
-            timeout=20
-        )
-        response.raise_for_status()
-        data = response.json()
-        print(f"[INFO] Retrieved {len(data)} moneyline matchups from all sportsbooks")
-        return data
-    except Exception as e:
-        print(f"[ERROR] Failed to fetch odds from all sportsbooks: {e}")
-        return []
 
 def fetch_player_props():
     """Fetch player props with preferred sportsbooks first, fallback to all if needed"""

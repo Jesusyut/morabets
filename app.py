@@ -649,7 +649,27 @@ def group_props_by_matchup(props_data):
             return None, False
 
         if not matchup_teams:
-            # No live game data yet (cold cache / startup race).
+            # Cache is cold — try the events endpoint (free tier, no odds quota needed)
+            # to build proper "AWAY @ HOME" matchup keys before falling back.
+            try:
+                from odds_api import fetch_mlb_events
+                events = fetch_mlb_events()
+                for ev in events:
+                    home_team = ev.get("home_team", "")
+                    away_team = ev.get("away_team", "")
+                    if not home_team or not away_team:
+                        continue
+                    matchup_key = format_matchup(away_team, home_team)
+                    if matchup_key not in matchup_teams:
+                        matchup_teams[matchup_key] = {home_team, away_team}
+                    team_to_matchup[home_team] = matchup_key
+                    team_to_matchup[away_team] = matchup_key
+                print(f"[DEBUG] Built {len(matchup_teams)} matchups from events endpoint")
+            except Exception as _ev_err:
+                print(f"[DEBUG] Events endpoint unavailable: {_ev_err}")
+
+        if not matchup_teams:
+            # No live game data and events endpoint failed too.
             # Fall back: group every prop whose player we can identify by team name.
             # Build synthetic per-team groupings so the UI always has something to show.
             print(f"[DEBUG] No live matchups available — falling back to team-based grouping")
