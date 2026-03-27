@@ -106,7 +106,7 @@
         <div class="platform-header p-4 text-white">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <h1 class="display-6 fw-bold mb-2">
+                    <h1 class="display-6 fw-bold mb-2" style="cursor: pointer;" onclick="resetToSportHome()" title="Back to Today's Games">
                         <i class="fas fa-chart-line me-2"></i>Mora Bets
                     </h1>
                     <p class="mb-0 fs-5">Real-Time Prop Betting Edge Tool</p>
@@ -132,6 +132,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Universal Back Arrow (shown when inside a matchup view) -->
+        <div id="global-back-bar" class="text-center mb-2" style="display: none;">
+            <button class="btn btn-outline-primary btn-sm" onclick="resetToSportHome()">
+                <i class="fas fa-arrow-left me-2"></i>Back to Today's Games
+            </button>
         </div>
 
         <!-- Main Navigation -->
@@ -347,6 +354,7 @@
             allFilteredProps = [];
             document.getElementById('player-search').value = '';
             document.getElementById('confidence-filter').value = '';
+            document.getElementById('global-back-bar').style.display = 'none';
 
             if (currentSport === 'mlb') loadMLBProps();
             else loadNFLProps();
@@ -699,6 +707,7 @@
         function showMatchupProps(matchup) {
             if (!matchupData || !matchupData[matchup]) return;
             const matchupProps = matchupData[matchup];
+            document.getElementById('global-back-bar').style.display = 'block';
 
             // Normalize props for shared card renderer
             allProps = matchupProps.map(p => ({
