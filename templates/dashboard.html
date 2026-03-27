@@ -98,9 +98,53 @@
         .analysis-content { background: rgba(255,255,255,0.03); border-left: 4px solid #8b5cf6; padding: 1.5rem; border-radius: 0.5rem; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; }
         .env-label { font-size: 0.8rem; font-weight: 500; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .favored { color: #00FF95; font-weight: bold; text-shadow: 0 0 8px rgba(0,255,149,0.3); }
+        /* Sticky back header */
+        #sticky-back-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1050;
+            background: linear-gradient(90deg, #1e3a8a 0%, #3730a3 60%, #581c87 100%);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            padding: 0.6rem 1.5rem;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+        }
+        #sticky-back-header .back-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            border-radius: 50rem;
+            padding: 0.35rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        #sticky-back-header .back-btn:hover { background: rgba(255,255,255,0.28); }
+        #sticky-back-header .matchup-label {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.95rem;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        body.sticky-header-visible { padding-top: 48px; }
     </style>
 </head>
 <body>
+    <!-- Sticky Back Header (shown when inside a matchup) -->
+    <div id="sticky-back-header">
+        <button class="back-btn" onclick="resetToSportHome()">
+            <i class="fas fa-arrow-left me-1"></i> Today's Games
+        </button>
+        <span class="matchup-label" id="sticky-matchup-label"></span>
+    </div>
+
     <div class="container-fluid py-4">
         <!-- Platform Header -->
         <div class="platform-header p-4 text-white">
@@ -132,13 +176,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Universal Back Arrow (shown when inside a matchup view) -->
-        <div id="global-back-bar" class="text-center mb-2" style="display: none;">
-            <button class="btn btn-outline-primary btn-sm" onclick="resetToSportHome()">
-                <i class="fas fa-arrow-left me-2"></i>Back to Today's Games
-            </button>
         </div>
 
         <!-- Main Navigation -->
@@ -304,9 +341,9 @@
         // ---------- Utilities ----------
         function setPropsLabel() {
             const propsLabel = document.getElementById('total-props-label');
-            propsLabel.textContent = currentSport === 'mlb' ? 'Total MLB Props' : 'Total NFL Props';
+            if (propsLabel) propsLabel.textContent = currentSport === 'mlb' ? 'Total MLB Props' : 'Total NFL Props';
             const gamesSubtitle = document.getElementById('games-subtitle');
-            gamesSubtitle.textContent = currentSport === 'mlb' ? 'MLB player props grouped by matchup' : 'NFL player props grouped by matchup';
+            if (gamesSubtitle) gamesSubtitle.textContent = currentSport === 'mlb' ? 'MLB player props grouped by matchup' : 'NFL player props grouped by matchup';
         }
 
         // Auto-refresh platform status every 5 minutes
@@ -354,7 +391,17 @@
             allFilteredProps = [];
             document.getElementById('player-search').value = '';
             document.getElementById('confidence-filter').value = '';
-            document.getElementById('global-back-bar').style.display = 'none';
+            const stickyBar = document.getElementById('sticky-back-header');
+            stickyBar.style.display = 'none';
+            document.body.classList.remove('sticky-header-visible');
+            // Restore the games header immediately (it may have been replaced by a matchup header)
+            const gamesHeader = document.getElementById('games-header');
+            if (gamesHeader) {
+                gamesHeader.innerHTML = `
+                    <i class="fas fa-users text-primary me-2"></i>Today's Games
+                    <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${currentSport === 'mlb' ? 'MLB' : 'NFL'} player props grouped by matchup</small>
+                `;
+            }
 
             if (currentSport === 'mlb') loadMLBProps();
             else loadNFLProps();
@@ -707,7 +754,11 @@
         function showMatchupProps(matchup) {
             if (!matchupData || !matchupData[matchup]) return;
             const matchupProps = matchupData[matchup];
-            document.getElementById('global-back-bar').style.display = 'block';
+            const stickyBar = document.getElementById('sticky-back-header');
+            const displayName = matchup.includes(' — ') ? matchup.split(' — ')[0] : matchup;
+            document.getElementById('sticky-matchup-label').textContent = displayName;
+            stickyBar.style.display = 'flex';
+            document.body.classList.add('sticky-header-visible');
 
             // Normalize props for shared card renderer
             allProps = matchupProps.map(p => ({
