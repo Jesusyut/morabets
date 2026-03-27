@@ -245,9 +245,6 @@
     </div>
 
     <script>
-        // Monthly price ID (only plan available)
-        const PRICE_MONTHLY = 'price_1RtyVnIzLEeC8QTzhOrtq2CO';
-
         // Check for error/cancel message in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const message = urlParams.get('message');
@@ -264,34 +261,11 @@
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Handle subscription — always monthly
-        async function handleSubscription() {
-            const btn = document.getElementById('subscribeBtn');
-            btn.textContent = 'Loading...';
-            btn.disabled = true;
-            try {
-                const response = await fetch('/create-checkout-session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ price_id: PRICE_MONTHLY })
-                });
-                const data = await response.json();
-                if (data.url) {
-                    window.location.href = data.url;
-                } else {
-                    throw new Error(data.error || 'No checkout URL returned');
-                }
-            } catch (error) {
-                console.error('Subscription error:', error);
-                btn.textContent = 'Start Trial';
-                btn.disabled = false;
-                alert('Failed to start checkout. Please try again.');
-            }
-        }
-
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('subscribeBtn').addEventListener('click', handleSubscription);
+            document.getElementById('subscribeBtn').addEventListener('click', function() {
+                window.location.href = 'https://buy.stripe.com/fZu9AM7L1a9H6cOcTb4Vy03';
+            });
         });
 
         // FAQ toggle functionality
