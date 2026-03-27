@@ -302,7 +302,7 @@ def create_checkout_session():
             'line_items': [{'price': price_id, 'quantity': 1}],
             'mode': 'subscription',
             'allow_promotion_codes': True,
-            'success_url': f'{APP_BASE_URL}/dashboard?session_id={{CHECKOUT_SESSION_ID}}',
+            'success_url': f'{APP_BASE_URL}/verify?session_id={{CHECKOUT_SESSION_ID}}',
             'cancel_url': f'{APP_BASE_URL}/paywall?canceled=true',
         }
         
@@ -344,6 +344,61 @@ def create_checkout_session():
             return jsonify({"error": str(e)}), 400
         else:
             return f"Checkout failed: {str(e)}", 500
+
+
+def generate_access_key():
+    """Generate a Mora Bets access key in MB-XXXX-XXXX-XXXX-XXXX format"""
+    import random, string
+    chars = string.ascii_uppercase + string.digits
+    return 'MB-' + '-'.join(''.join(random.choices(chars, k=4)) for _ in range(4))
+
+
+@app.route("/webhook", methods=['POST'])
+def stripe_webhook():
+    """Handle Stripe webhook events"""
+    payload = request.get_data()
+    sig_header = request.headers.get('Stripe-Signature')
+    endpoint_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
+
+    try:
+        if endpoint_secret:
+            event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+        else:
+            # No webhook secret configured — parse raw payload (dev mode only)
+            import json as _json
+            event = _json.loads(payload)
+            logger.warning("[WEBHOOK] No STRIPE_WEBHOOK_SECRET set — skipping signature verification")
+    except Exception as e:
+        logger.error(f"[WEBHOOK] Invalid payload or signature: {e}")
+        return jsonify({"error": str(e)}), 400
+
+    event_type = event.get('type') if isinstance(event, dict) else event['type']
+
+    if event_type == 'checkout.session.completed':
+        session_obj = event['data']['object']
+        customer_details = session_obj.get('customer_details') or {}
+        email = customer_details.get('email', 'unknown')
+        access_key = generate_access_key()
+
+        # Store the key in the license database
+        try:
+            try:
+                with open(LICENSE_DB, 'r') as f:
+                    keys = json.load(f)
+            except Exception:
+                keys = {}
+            keys[access_key.lower()] = {'email': email, 'plan': 'monthly', 'source': 'webhook'}
+            with open(LICENSE_DB, 'w') as f:
+                json.dump(keys, f)
+            logger.info(f"[WEBHOOK] Generated key {access_key} for {email}")
+        except Exception as e:
+            logger.error(f"[WEBHOOK] Failed to store access key: {e}")
+
+    elif event_type == 'customer.subscription.deleted':
+        logger.info(f"[WEBHOOK] Subscription canceled: {event['data']['object'].get('id')}")
+
+    return jsonify({"status": "ok"})
+
 
 @app.route("/dashboard")
 def dashboard():
@@ -507,8 +562,8 @@ def require_license():
     """Protect dashboard routes except public pages and API endpoints"""
     # Allow access to public pages, verification, health checks, API endpoints, and static files
     public_endpoints = [
-        "home", "how_it_works", "paywall", "paywall_config", "tool", "verify", "verify_key", "validate_key", "create_checkout_session", 
-        "billing_portal", "health", "ping", "static", "api_status", "get_props", "filtered_moneylines", 
+        "home", "how_it_works", "paywall", "paywall_config", "tool", "verify", "verify_key", "validate_key", "create_checkout_session",
+        "stripe_webhook", "billing_portal", "health", "ping", "static", "api_status", "get_props", "filtered_moneylines",
         "logout", "dashboard", "analytics"
     ]
     

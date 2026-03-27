@@ -68,19 +68,6 @@
 
         <!-- Pricing Cards -->
         <div class="max-w-2xl mx-auto">
-            <!-- Billing Toggle -->
-            <div class="flex justify-center mb-8">
-                <div class="bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
-                    <div class="flex">
-                        <button id="monthlyBtn" class="px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 bg-brand-cta text-white">
-                            Monthly
-                        </button>
-                        <button id="yearlyBtn" class="px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 text-gray-600 hover:text-brand-text">
-                            Yearly
-                        </button>
-                    </div>
-                </div>
-            </div>
 
             <!-- Single Pricing Card -->
             <div class="bg-white rounded-2xl p-8 border-2 border-brand-cta hover:border-brand-cta transition-all duration-300 hover:shadow-2xl relative shadow-lg">
@@ -89,14 +76,9 @@
                     <span class="bg-brand-cta text-white px-4 py-2 rounded-full text-sm font-bold">MOST POPULAR</span>
                 </div>
                 
-                <!-- Trial Badge (Monthly Only) -->
-                <div id="trialBadge" class="bg-brand-gold text-brand-text px-3 py-1 rounded-full text-sm font-bold mb-4 text-center">
+                <!-- Trial Badge -->
+                <div class="bg-brand-gold text-brand-text px-3 py-1 rounded-full text-sm font-bold mb-4 text-center">
                     3-DAY TRIAL INCLUDED
-                </div>
-                
-                <!-- Savings Badge (Yearly Only) -->
-                <div id="savingsBadge" class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold mb-4 text-center hidden">
-                    SAVE 73% VS MONTHLY
                 </div>
                 
                 <div class="text-center">
@@ -107,12 +89,12 @@
                     </div>
                     <h3 class="text-2xl font-bold mb-2 text-brand-text">Mora Bets Tool</h3>
                     
-                    <!-- Dynamic Pricing -->
+                    <!-- Fixed Monthly Pricing -->
                     <div class="text-4xl font-bold mb-1 text-brand-text">
-                        $<span id="priceAmount">24.99</span>
+                        $24.99
                     </div>
                     <div class="text-gray-600 mb-6">
-                        per <span id="billingPeriod">month</span>
+                        per month
                     </div>
                     
                     <div class="text-left mb-6">
@@ -263,133 +245,53 @@
     </div>
 
     <script>
-        // Configuration variables
-        let config = {
-            priceMonthly: 'price_1RtyVnIzLEeC8QTzhOrtq2CO',
-            priceYearly: 'price_1RtyYYIzLEeC8QTzw8JsGH39',
-            trialDays: 3
-        };
-        
-        let currentPlan = 'monthly';
-        const monthlyAmount = 24.99;
-        const yearlyAmount = 79.99;
+        // Monthly price ID (only plan available)
+        const PRICE_MONTHLY = 'price_1RtyVnIzLEeC8QTzhOrtq2CO';
 
-        // Check for error message in URL parameters
+        // Check for error/cancel message in URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const message = urlParams.get('message');
         if (message) {
             const errorDiv = document.getElementById('errorMessage');
             errorDiv.textContent = message;
             errorDiv.classList.remove('hidden');
-            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        if (urlParams.get('canceled')) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = 'Checkout was canceled. You can try again anytime.';
+            errorDiv.classList.remove('hidden');
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Load configuration from backend
-        async function loadConfig() {
-            try {
-                const response = await fetch('/config');
-                if (response.ok) {
-                    config = await response.json();
-                }
-            } catch (error) {
-                console.error('Failed to load config:', error);
-            }
-        }
-
-        // Update pricing display
-        function updatePricing(plan) {
-            currentPlan = plan;
-            const priceAmount = document.getElementById('priceAmount');
-            const billingPeriod = document.getElementById('billingPeriod');
-            const subscribeBtn = document.getElementById('subscribeBtn');
-            const trialBadge = document.getElementById('trialBadge');
-            const savingsBadge = document.getElementById('savingsBadge');
-            const monthlyBtn = document.getElementById('monthlyBtn');
-            const yearlyBtn = document.getElementById('yearlyBtn');
-
-            if (plan === 'monthly') {
-                priceAmount.textContent = monthlyAmount.toFixed(2);
-                billingPeriod.textContent = 'month';
-                subscribeBtn.textContent = 'Start Trial';
-                trialBadge.classList.remove('hidden');
-                savingsBadge.classList.add('hidden');
-                
-                // Update button styles
-                monthlyBtn.classList.add('bg-brand-cta', 'text-white');
-                monthlyBtn.classList.remove('text-gray-600', 'hover:text-brand-text');
-                yearlyBtn.classList.remove('bg-brand-cta', 'text-white');
-                yearlyBtn.classList.add('text-gray-600', 'hover:text-brand-text');
-            } else {
-                priceAmount.textContent = yearlyAmount.toFixed(2);
-                billingPeriod.textContent = 'year';
-                subscribeBtn.textContent = 'Subscribe';
-                trialBadge.classList.add('hidden');
-                savingsBadge.classList.remove('hidden');
-                
-                // Update button styles
-                yearlyBtn.classList.add('bg-brand-cta', 'text-white');
-                yearlyBtn.classList.remove('text-gray-600', 'hover:text-brand-text');
-                monthlyBtn.classList.remove('bg-brand-cta', 'text-white');
-                monthlyBtn.classList.add('text-gray-600', 'hover:text-brand-text');
-            }
-        }
-
-        // Handle subscription
+        // Handle subscription — always monthly
         async function handleSubscription() {
-            const priceId = currentPlan === 'monthly' ? config.priceMonthly : config.priceYearly;
-            
+            const btn = document.getElementById('subscribeBtn');
+            btn.textContent = 'Loading...';
+            btn.disabled = true;
             try {
                 const response = await fetch('/create-checkout-session', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        price_id: priceId
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price_id: PRICE_MONTHLY })
                 });
-
                 const data = await response.json();
                 if (data.url) {
                     window.location.href = data.url;
                 } else {
-                    console.error('No checkout URL returned');
+                    throw new Error(data.error || 'No checkout URL returned');
                 }
             } catch (error) {
                 console.error('Subscription error:', error);
-                alert('Failed to start subscription. Please try again.');
-            }
-        }
-
-        // Update bonus text based on plan
-        function updateBonusText(plan) {
-            const bonusText = document.getElementById('bonusText');
-            if (plan === 'monthly') {
-                bonusText.textContent = 'Try the Tool free for 3 days. Cancel anytime.';
-            } else {
-                bonusText.textContent = 'Get instant access with yearly billing. Cancel anytime.';
+                btn.textContent = 'Start Trial';
+                btn.disabled = false;
+                alert('Failed to start checkout. Please try again.');
             }
         }
 
         // Initialize page
-        document.addEventListener('DOMContentLoaded', async function() {
-            await loadConfig();
-            
-            // Set up event listeners
-            document.getElementById('monthlyBtn').addEventListener('click', () => {
-                updatePricing('monthly');
-                updateBonusText('monthly');
-            });
-            document.getElementById('yearlyBtn').addEventListener('click', () => {
-                updatePricing('yearly');
-                updateBonusText('yearly');
-            });
+        document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('subscribeBtn').addEventListener('click', handleSubscription);
-            
-            // Initialize with monthly pricing
-            updatePricing('monthly');
-            updateBonusText('monthly');
         });
 
         // FAQ toggle functionality
@@ -406,31 +308,36 @@
             }
         }
 
-        // License key form functionality
-        document.getElementById('keyForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const key = document.getElementById('licenseKey').value.trim();
-            if (key) {
-                window.location.href = `/dashboard?key=${encodeURIComponent(key)}`;
+        // License key form + modal submit
+        document.addEventListener('DOMContentLoaded', function() {
+            const keyForm = document.getElementById('keyForm');
+            if (keyForm) {
+                keyForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const key = document.getElementById('licenseKey').value.trim();
+                    if (key) {
+                        window.location.href = `/dashboard?key=${encodeURIComponent(key)}`;
+                    }
+                });
             }
+            const submitKeyBtn = document.getElementById('submitKey');
+            if (submitKeyBtn) {
+                submitKeyBtn.onclick = function() {
+                    const key = document.getElementById('licenseKeyInput').value.trim();
+                    if (key) {
+                        window.location.href = `/dashboard?key=${encodeURIComponent(key)}`;
+                    }
+                };
+            }
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('keyModal');
+                if (modal && event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
         });
 
-        // Key modal functionality removed - button no longer exists
-        
-        document.getElementById('submitKey').onclick = function () {
-            const key = document.getElementById('licenseKeyInput').value.trim();
-            if (key) {
-                window.location.href = `/dashboard?key=${encodeURIComponent(key)}`;
-            }
-        };
-        
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('keyModal');
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        }
     </script>
 
     <!-- Key Entry Modal -->
