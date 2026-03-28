@@ -101,6 +101,23 @@
     .pending-box p { font-size: 14px; color: #555; line-height: 1.6; }
     .pending-box strong { color: #1B6B3A; font-size: 16px; display: block; margin-bottom: 8px; }
   </style>
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1688269505510635');
+  fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1688269505510635&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Meta Pixel Code -->
 </head>
 <body>
 <div class="card">
@@ -181,5 +198,17 @@ function copyToken() {
   });
 }
 </script>
+{% if not pending %}
+<!-- Meta Pixel Purchase Event — fires only on successful payment -->
+<script>
+  fbq('track', 'Purchase', {
+    value: 24.99,
+    currency: 'USD',
+    content_name: 'Mora Bets Monthly Subscription',
+    content_type: 'product'
+  });
+</script>
+<!-- End Purchase Event -->
+{% endif %}
 </body>
 </html>
