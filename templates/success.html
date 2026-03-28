@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Mora Bets</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0f1a14;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      max-width: 480px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .card-header {
+      background: #1B6B3A;
+      padding: 24px 32px;
+      text-align: center;
+    }
+    .logo { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+    .logo-sub { font-size: 11px; color: rgba(255,255,255,0.65); letter-spacing: 0.5px; margin-top: 2px; }
+    .card-body { padding: 32px; }
+    .check-wrap { text-align: center; margin-bottom: 20px; }
+    .check-circle {
+      width: 60px; height: 60px; border-radius: 50%;
+      background: #E8F5EE; display: inline-flex;
+      align-items: center; justify-content: center;
+    }
+    .check-circle svg { width: 30px; height: 30px; }
+    h1 { font-size: 22px; font-weight: 800; color: #1a1a1a; text-align: center; margin-bottom: 8px; }
+    .sub { font-size: 13px; color: #666; text-align: center; line-height: 1.6; margin-bottom: 28px; }
+
+    .token-label { font-size: 10px; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: #1B6B3A; margin-bottom: 8px; }
+    .token-box {
+      background: #F5FAF7; border: 2px solid #C8E6D4;
+      border-radius: 12px; padding: 18px 20px; margin-bottom: 10px;
+    }
+    .token-value {
+      font-size: 22px; font-weight: 800; color: #1a1a1a;
+      letter-spacing: 3px; text-align: center; font-family: monospace;
+      word-break: break-all;
+    }
+    .copy-btn {
+      width: 100%; background: #1B6B3A; color: #fff;
+      border: none; border-radius: 10px; padding: 14px;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      margin-bottom: 10px; font-family: inherit;
+      transition: background 0.15s;
+    }
+    .copy-btn:hover { background: #14522D; }
+    .copy-btn.copied { background: #0a3d20; }
+
+    .warning {
+      background: #FFF8F0; border-left: 3px solid #E8A020;
+      padding: 10px 14px; margin-bottom: 20px;
+      border-radius: 0 8px 8px 0;
+    }
+    .warning p { font-size: 11px; color: #8B5500; line-height: 1.5; }
+
+    .dash-btn {
+      display: block; width: 100%; background: transparent;
+      color: #1B6B3A; border: 2px solid #1B6B3A;
+      border-radius: 10px; padding: 13px; font-size: 14px;
+      font-weight: 700; cursor: pointer; text-align: center;
+      text-decoration: none; margin-bottom: 24px;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .dash-btn:hover { background: #F5FAF7; }
+
+    .divider { height: 0.5px; background: #ECEAE5; margin-bottom: 20px; }
+
+    .steps-label { font-size: 11px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: #888; margin-bottom: 12px; }
+    .step { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #1B6B3A; color: #fff; font-size: 10px;
+      font-weight: 700; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0; margin-top: 1px;
+    }
+    .step p { font-size: 13px; color: #333; line-height: 1.5; margin: 0; }
+
+    .email-note { font-size: 11px; color: #999; text-align: center; margin-top: 16px; line-height: 1.6; }
+
+    .pending-box {
+      background: #F5FAF7; border: 2px dashed #C8E6D4;
+      border-radius: 12px; padding: 24px; text-align: center;
+      margin-bottom: 20px;
+    }
+    .pending-box p { font-size: 14px; color: #555; line-height: 1.6; }
+    .pending-box strong { color: #1B6B3A; font-size: 16px; display: block; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="card-header">
+    <div class="logo">MORA BETS</div>
+    <div class="logo-sub">DAILY EDGE · LIVE PROPS · TRUE PROBABILITY</div>
+  </div>
+  <div class="card-body">
+
+    <div class="check-wrap">
+      <div class="check-circle">
+        <svg viewBox="0 0 30 30" fill="none">
+          <path d="M6 15L12 21L24 9" stroke="#1B6B3A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+    {% if pending %}
+      <h1>Payment confirmed.</h1>
+      <p class="sub">Your subscription is active. Your access key is on its way.</p>
+      <div class="pending-box">
+        <strong>Check your email.</strong>
+        <p>Your unique Mora Bets access key has been sent to the email you used at checkout. It arrives within 1–2 minutes.</p>
+      </div>
+      <a href="/" class="dash-btn">Go to Dashboard — Enter Your Key →</a>
+
+    {% else %}
+      <h1>You're in{% if customer_name %}, {{ customer_name.split()[0] }}{% endif %}.</h1>
+      <p class="sub">Your subscription is active. Save your access key below — this is your key into the dashboard every day.</p>
+
+      <div class="token-label">Your Access Key</div>
+      <div class="token-box">
+        <div class="token-value" id="tokenVal">{{ access_token }}</div>
+      </div>
+
+      <button class="copy-btn" id="copyBtn" onclick="copyToken()">Copy Access Key</button>
+
+      <div class="warning">
+        <p><strong>One key per account.</strong> Do not share this key. Accounts found sharing access are permanently banned without refund.</p>
+      </div>
+
+      <a href="/dashboard?key={{ access_token }}" class="dash-btn">Go to Dashboard →</a>
+    {% endif %}
+
+    <div class="divider"></div>
+    <div class="steps-label">How to use your key</div>
+    <div class="step">
+      <div class="step-num">1</div>
+      <p>Go to morabets.com — enter your key on the access screen to reach your dashboard</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <p>Check your dashboard every morning before the slate — props are updated fresh daily</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <p>Follow the 7 Golden Rules — let the edge compound over 162 games</p>
+    </div>
+
+    {% if not pending %}
+    <p class="email-note">A copy of your key was sent to {{ customer_email }}.<br>Questions? Reply to that email anytime.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+function copyToken() {
+  const token = document.getElementById('tokenVal').textContent.trim();
+  navigator.clipboard.writeText(token).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy Access Key';
+      btn.classList.remove('copied');
+    }, 2500);
+  });
+}
+</script>
+</body>
+</html>

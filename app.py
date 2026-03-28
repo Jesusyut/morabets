@@ -2,10 +2,15 @@ import os
 import json
 import logging
 import time
+import random
+import string
+import smtplib
 import requests
 import stripe
 import uuid
 import sys
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
                     stream=sys.stdout)
@@ -47,9 +52,167 @@ app.secret_key = os.environ.get("SESSION_SECRET", "mora-bets-secret-key-change-i
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 CORS(app)
 
+# IMPORTANT: In Stripe Dashboard → Payment Links → Edit your $24.99 link
+# → After payment section → Confirmation page → select "Don't show confirmation page"
+# → Redirect URL: https://morabets.com/success?session_id={CHECKOUT_SESSION_ID}
+#
+# Also register webhook at: https://morabets.com/webhook
+# Events: checkout.session.completed, customer.subscription.deleted, invoice.payment_failed
+
 # Stripe configuration
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
 LICENSE_DB = 'license_keys.json'
+TOKENS_FILE = 'access_tokens.json'
+
+
+# ── Token system ───────────────────────────────────────────────────────────────
+
+def load_tokens():
+    """Load all access tokens from persistent file."""
+    if os.path.exists(TOKENS_FILE):
+        try:
+            with open(TOKENS_FILE, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_tokens(tokens):
+    """Save all access tokens and sync active ones to LICENSE_DB for dashboard compatibility."""
+    try:
+        with open(TOKENS_FILE, 'w') as f:
+            json.dump(tokens, f, indent=2)
+    except Exception as e:
+        logger.error(f'[TOKEN] Could not save tokens: {e}')
+    # Sync to license_keys.json so existing dashboard validation works
+    try:
+        try:
+            with open(LICENSE_DB, 'r') as f:
+                keys = json.load(f)
+        except Exception:
+            keys = {}
+        for token, data in tokens.items():
+            keys[token.lower()] = {'email': data.get('email', ''), 'plan': 'monthly', 'active': data.get('active', True)}
+        with open(LICENSE_DB, 'w') as f:
+            json.dump(keys, f, indent=2)
+    except Exception as e:
+        logger.error(f'[TOKEN] Could not sync to LICENSE_DB: {e}')
+
+
+def generate_access_token(customer_name, customer_email):
+    """Generate unique access token in MB-XX-XXXX-XXXX format. One token per email."""
+    tokens = load_tokens()
+    for t, data in tokens.items():
+        if data.get('email') == customer_email and data.get('active'):
+            logger.info(f'[TOKEN] Existing token found for {customer_email}')
+            return t
+    if customer_name and customer_name.strip():
+        parts = customer_name.strip().split()
+        initials = (parts[0][0] + parts[-1][0]).upper() if len(parts) >= 2 else parts[0][:2].upper()
+    else:
+        initials = customer_email.split('@')[0][:2].upper()
+    chars = string.ascii_uppercase + string.digits
+    while True:
+        seg1 = ''.join(random.choices(chars, k=4))
+        seg2 = ''.join(random.choices(chars, k=4))
+        token = f'MB-{initials}-{seg1}-{seg2}'
+        if token not in tokens:
+            break
+    logger.info(f'[TOKEN] Generated {token} for {customer_email}')
+    return token
+
+
+def get_token_by_email(email):
+    """Look up active token for a given email."""
+    tokens = load_tokens()
+    for t, data in tokens.items():
+        if data.get('email') == email and data.get('active'):
+            return t
+    return None
+
+
+def deactivate_token_by_subscription(subscription_id):
+    """Deactivate token when subscription is cancelled."""
+    tokens = load_tokens()
+    for t, data in tokens.items():
+        if data.get('subscription_id') == subscription_id:
+            tokens[t]['active'] = False
+            tokens[t]['deactivated_at'] = datetime.utcnow().isoformat()
+            save_tokens(tokens)
+            logger.info(f'[TOKEN] Deactivated {t} (subscription {subscription_id} cancelled)')
+            return t
+    return None
+
+
+def validate_token(token):
+    """Check if a token is valid and active."""
+    tokens = load_tokens()
+    if token in tokens:
+        return tokens[token].get('active', False)
+    return False
+
+
+# ── Email delivery ─────────────────────────────────────────────────────────────
+
+def send_access_key_email(to_email, customer_name, access_token):
+    """Send access key to customer immediately after payment."""
+    from_email = os.environ.get('EMAIL_FROM')
+    password = os.environ.get('EMAIL_PASSWORD')
+    if not from_email or not password:
+        logger.info(f'[EMAIL] Credentials not set — skipping email to {to_email}. Add EMAIL_FROM and EMAIL_PASSWORD.')
+        return False
+    first_name = customer_name.split()[0] if customer_name else 'there'
+    subject = f'Your Mora Bets Access Key — {access_token}'
+    html_body = f"""<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Inter,-apple-system,sans-serif;">
+<div style="max-width:520px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+  <div style="background:#1B6B3A;padding:28px 32px;text-align:center;">
+    <div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:1px;">MORA BETS</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px;letter-spacing:0.5px;">DAILY EDGE · LIVE PROPS · TRUE PROBABILITY</div>
+  </div>
+  <div style="padding:32px;">
+    <h1 style="font-size:22px;font-weight:700;color:#1a1a1a;margin:0 0 8px;">You're in, {first_name}.</h1>
+    <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 28px;">Your Mora Bets subscription is active and your access key is ready below. Save it — this is your key into the dashboard every single day.</p>
+    <div style="background:#F5FAF7;border:2px solid #C8E6D4;border-radius:12px;padding:20px 24px;text-align:center;margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#1B6B3A;margin-bottom:10px;">Your Access Key</div>
+      <div style="font-size:26px;font-weight:800;color:#1a1a1a;letter-spacing:3px;font-family:monospace;">{access_token}</div>
+    </div>
+    <div style="background:#FFF8F0;border-left:3px solid #E8A020;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:24px;">
+      <p style="font-size:12px;color:#8B5500;margin:0;line-height:1.5;"><strong>Important:</strong> This key is issued once per account. Do not share it. Accounts found sharing access keys will be permanently banned without refund.</p>
+    </div>
+    <a href="https://morabets.com/dashboard?key={access_token}" style="display:block;background:#1B6B3A;color:#fff;text-align:center;padding:15px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;margin-bottom:28px;">Go to Your Dashboard →</a>
+    <div style="border-top:1px solid #ECEAE5;padding-top:24px;">
+      <p style="font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 14px;">How to use your key</p>
+      <p style="font-size:13px;color:#555;margin:0 0 8px;line-height:1.5;">1. Go to morabets.com — enter your key to access the dashboard</p>
+      <p style="font-size:13px;color:#555;margin:0 0 8px;line-height:1.5;">2. Check your dashboard every morning — props update fresh daily before first pitch</p>
+      <p style="font-size:13px;color:#555;margin:0 0 0;line-height:1.5;">3. Follow the 7 Golden Rules — let the math compound over the season</p>
+    </div>
+  </div>
+  <div style="background:#F7F6F3;padding:20px 32px;text-align:center;">
+    <p style="font-size:11px;color:#999;margin:0;line-height:1.7;">Questions? Reply to this email anytime.<br>
+    <a href="https://morabets.com/cancel" style="color:#1B6B3A;">Manage subscription</a> · <a href="https://morabets.com" style="color:#1B6B3A;">morabets.com</a><br><br>
+    © 2026 Mora Bets. For informational and entertainment purposes only.<br>Please bet responsibly. ncpgambling.org</p>
+  </div>
+</div>
+</body>
+</html>"""
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = f'Mora Bets <{from_email}>'
+    msg['To'] = to_email
+    msg.attach(MIMEText(html_body, 'html'))
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(from_email, password)
+            server.sendmail(from_email, to_email, msg.as_string())
+        logger.info(f'[EMAIL] Sent access key to {to_email}')
+        return True
+    except Exception as e:
+        logger.error(f'[EMAIL ERROR] Failed for {to_email}: {e}')
+        return False
+
 
 # Updated Stripe configuration for monthly/yearly pricing
 PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
@@ -346,58 +509,128 @@ def create_checkout_session():
             return f"Checkout failed: {str(e)}", 500
 
 
-def generate_access_key():
-    """Generate a Mora Bets access key in MB-XXXX-XXXX-XXXX-XXXX format"""
-    import random, string
-    chars = string.ascii_uppercase + string.digits
-    return 'MB-' + '-'.join(''.join(random.choices(chars, k=4)) for _ in range(4))
-
-
 @app.route("/webhook", methods=['POST'])
 def stripe_webhook():
     """Handle Stripe webhook events"""
     payload = request.get_data()
     sig_header = request.headers.get('Stripe-Signature')
-    endpoint_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
+    webhook_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
 
     try:
-        if endpoint_secret:
-            event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+        if webhook_secret:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
         else:
-            # No webhook secret configured — parse raw payload (dev mode only)
-            import json as _json
-            event = _json.loads(payload)
-            logger.warning("[WEBHOOK] No STRIPE_WEBHOOK_SECRET set — skipping signature verification")
+            event = json.loads(payload)
+            logger.warning('[WEBHOOK] No STRIPE_WEBHOOK_SECRET set — skipping signature verification')
+    except stripe.error.SignatureVerificationError as e:
+        logger.error(f'[WEBHOOK] Signature failed: {e}')
+        return jsonify({'error': 'Invalid signature'}), 400
     except Exception as e:
-        logger.error(f"[WEBHOOK] Invalid payload or signature: {e}")
-        return jsonify({"error": str(e)}), 400
+        logger.error(f'[WEBHOOK] Error: {e}')
+        return jsonify({'error': str(e)}), 400
 
     event_type = event.get('type') if isinstance(event, dict) else event['type']
+    logger.info(f'[WEBHOOK] Event received: {event_type}')
 
     if event_type == 'checkout.session.completed':
         session_obj = event['data']['object']
         customer_details = session_obj.get('customer_details') or {}
-        email = customer_details.get('email', 'unknown')
-        access_key = generate_access_key()
+        customer_email = customer_details.get('email', '')
+        customer_name = customer_details.get('name', '') or ''
+        subscription_id = session_obj.get('subscription', '')
+        customer_id = session_obj.get('customer', '')
 
-        # Store the key in the license database
-        try:
-            try:
-                with open(LICENSE_DB, 'r') as f:
-                    keys = json.load(f)
-            except Exception:
-                keys = {}
-            keys[access_key.lower()] = {'email': email, 'plan': 'monthly', 'source': 'webhook'}
-            with open(LICENSE_DB, 'w') as f:
-                json.dump(keys, f)
-            logger.info(f"[WEBHOOK] Generated key {access_key} for {email}")
-        except Exception as e:
-            logger.error(f"[WEBHOOK] Failed to store access key: {e}")
+        if customer_email:
+            tokens = load_tokens()
+            existing = get_token_by_email(customer_email)
+            if existing:
+                logger.info(f'[WEBHOOK] Token already exists for {customer_email}: {existing}')
+                if subscription_id and not tokens[existing].get('subscription_id'):
+                    tokens[existing]['subscription_id'] = subscription_id
+                    save_tokens(tokens)
+            else:
+                token = generate_access_token(customer_name, customer_email)
+                tokens[token] = {
+                    'email': customer_email,
+                    'name': customer_name,
+                    'stripe_customer_id': customer_id,
+                    'subscription_id': subscription_id,
+                    'created_at': datetime.utcnow().isoformat(),
+                    'active': True
+                }
+                save_tokens(tokens)
+                send_access_key_email(customer_email, customer_name, token)
+                logger.info(f'[WEBHOOK] New subscriber processed: {customer_email}')
 
     elif event_type == 'customer.subscription.deleted':
-        logger.info(f"[WEBHOOK] Subscription canceled: {event['data']['object'].get('id')}")
+        subscription = event['data']['object']
+        sub_id = subscription.get('id')
+        deactivated = deactivate_token_by_subscription(sub_id)
+        if deactivated:
+            logger.info(f'[WEBHOOK] Token deactivated for subscription {sub_id}')
 
-    return jsonify({"status": "ok"})
+    elif event_type == 'invoice.payment_failed':
+        invoice = event['data']['object']
+        customer_email = invoice.get('customer_email', 'unknown')
+        logger.warning(f'[WEBHOOK] Payment failed for {customer_email}')
+
+    return jsonify({'status': 'ok'}), 200
+
+
+@app.route('/success')
+def success():
+    """Post-payment success page — displays access key to new subscriber."""
+    session_id = request.args.get('session_id')
+    if not session_id:
+        return render_template('success.html', access_token=None, customer_name=None, customer_email=None, pending=True)
+    try:
+        stripe_session = stripe.checkout.Session.retrieve(session_id)
+        customer_email = stripe_session.customer_details.email
+        customer_name = stripe_session.customer_details.name or ''
+        tokens = load_tokens()
+        token = None
+        for t, data in tokens.items():
+            if data.get('email') == customer_email and data.get('active'):
+                token = t
+                break
+        if not token:
+            token = generate_access_token(customer_name, customer_email)
+            tokens[token] = {
+                'email': customer_email,
+                'name': customer_name,
+                'stripe_customer_id': stripe_session.get('customer'),
+                'subscription_id': stripe_session.get('subscription'),
+                'created_at': datetime.utcnow().isoformat(),
+                'active': True,
+                'session_id': session_id
+            }
+            save_tokens(tokens)
+            send_access_key_email(customer_email, customer_name, token)
+        return render_template('success.html', access_token=token, customer_name=customer_name, customer_email=customer_email, pending=False)
+    except Exception as e:
+        logger.error(f'[SUCCESS] Error: {e}')
+        return render_template('success.html', access_token=None, customer_name=None, customer_email=None, pending=True)
+
+
+@app.route('/admin/health')
+def admin_health():
+    """Admin health check — shows token count and system status."""
+    admin_key = request.args.get('key')
+    if admin_key != os.environ.get('ADMIN_KEY', 'mora-admin-2026'):
+        return jsonify({'error': 'unauthorized'}), 401
+    tokens = load_tokens()
+    active = [t for t, d in tokens.items() if d.get('active')]
+    inactive = [t for t, d in tokens.items() if not d.get('active')]
+    return jsonify({
+        'status': 'running',
+        'total_tokens': len(tokens),
+        'active_subscribers': len(active),
+        'cancelled': len(inactive),
+        'stripe_key_set': bool(os.environ.get('STRIPE_SECRET_KEY')),
+        'webhook_secret_set': bool(os.environ.get('STRIPE_WEBHOOK_SECRET')),
+        'email_configured': bool(os.environ.get('EMAIL_FROM')),
+        'timestamp': datetime.utcnow().isoformat()
+    })
 
 
 @app.route("/dashboard")
@@ -564,7 +797,7 @@ def require_license():
     public_endpoints = [
         "home", "how_it_works", "paywall", "paywall_config", "tool", "verify", "verify_key", "validate_key", "create_checkout_session",
         "stripe_webhook", "billing_portal", "health", "ping", "static", "api_status", "get_props", "filtered_moneylines",
-        "logout", "dashboard", "analytics"
+        "logout", "dashboard", "analytics", "success", "admin_health"
     ]
     
     # Also allow access to any route starting with /api/
