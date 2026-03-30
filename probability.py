@@ -64,6 +64,42 @@ def kelly_bet_size(prob, odds, bankroll):
         logger.error(f"Error calculating Kelly bet size: {e}")
         return 0.0
 
+def no_vig_probability(over_price, under_price):
+    """Strip vig and return true probability for the OVER side. Both inputs are American odds."""
+    def to_implied(american):
+        if american > 0:
+            return 100 / (american + 100)
+        else:
+            return abs(american) / (abs(american) + 100)
+    try:
+        raw_over = to_implied(over_price)
+        raw_under = to_implied(under_price)
+        total = raw_over + raw_under
+        if total == 0:
+            return 50.0
+        return round((raw_over / total) * 100, 1)
+    except Exception:
+        return 50.0
+
+def get_confidence_tier(no_vig_prob):
+    """Return LOCK, FIRE, or LOW based on no-vig probability."""
+    if no_vig_prob >= 70:
+        return "LOCK"
+    elif no_vig_prob >= 50:
+        return "FIRE"
+    else:
+        return "LOW"
+
+TIER_SORT_ORDER = {"LOCK": 0, "FIRE": 1, "LOW": 2}
+
+def sort_props_by_tier(props):
+    """Sort props: LOCK first, then FIRE, then LOW. Within tier, highest prob first."""
+    return sorted(
+        props,
+        key=lambda p: (TIER_SORT_ORDER.get(p.get("confidence_tier", "LOW"), 2),
+                       -p.get("no_vig_prob", 0))
+    )
+
 def calculate_parlay_edge(probabilities, book_odds):
     """Calculate parlay edge"""
     try:

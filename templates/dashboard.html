@@ -168,6 +168,10 @@
                             <span class="status-indicator status-live"></span>
                             <strong id="odds-status">Synced</strong>
                         </div>
+                        <div class="text-center" id="quota-display" style="display:none;">
+                            <small class="d-block text-light opacity-75">API Calls Left</small>
+                            <strong id="quota-remaining" class="text-warning">--</strong>
+                        </div>
                         <a href="/logout" class="btn btn-outline-light btn-sm">
                             <i class="fas fa-sign-out-alt me-1"></i>Logout
                         </a>
@@ -199,7 +203,7 @@
                         <div class="col-12">
                             <!-- Sport Selection Tabs -->
                             <div class="d-flex justify-content-center mb-4">
-                                <ul class="nav nav-pills nav-fill" id="sport-tabs" style="max-width: 400px;" role="tablist">
+                                <ul class="nav nav-pills nav-fill" id="sport-tabs" style="max-width: 560px;" role="tablist">
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link active" id="mlb-tab" data-sport="mlb" type="button" role="tab">
                                             <i class="fas fa-baseball-ball me-2"></i>MLB Props
@@ -208,6 +212,11 @@
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link" id="nfl-tab" data-sport="nfl" type="button" role="tab">
                                             <i class="fas fa-football-ball me-2"></i>NFL Props
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="nhl-tab" data-sport="nhl" type="button" role="tab">
+                                            <i class="fas fa-hockey-puck me-2"></i>NHL Props
                                         </button>
                                     </li>
                                 </ul>
@@ -233,10 +242,10 @@
                                 </div>
                                 <div class="col-md-4">
                                     <select id="confidence-filter" class="form-select" onchange="applyFilters()">
-                                        <option value="">All Confidence Levels</option>
-                                        <option value="high">High Confidence (≥70%)</option>
-                                        <option value="medium">Medium Confidence (50-69%)</option>
-                                        <option value="low">Low Confidence (&lt;50%)</option>
+                                        <option value="">All Tiers</option>
+                                        <option value="high">🔒 LOCK (≥70% true prob)</option>
+                                        <option value="medium">🔥 FIRE (50–69%)</option>
+                                        <option value="low">— LOW (&lt;50%)</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
@@ -255,6 +264,44 @@
                                     <span class="visually-hidden">Loading props...</span>
                                 </div>
                                 <p class="mt-3">Loading player props...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Disciplined Hand -->
+                    <div class="mt-4 mb-2">
+                        <button class="btn btn-outline-secondary w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#disciplined-hand-section">
+                            <i class="fas fa-hand-paper me-2 text-warning"></i><strong>Disciplined Hand</strong> <small class="text-muted ms-2">— When to pass & bankroll guardrails</small>
+                            <i class="fas fa-chevron-down float-end mt-1"></i>
+                        </button>
+                        <div class="collapse" id="disciplined-hand-section">
+                            <div class="card bg-dark border-warning mt-2">
+                                <div class="card-body">
+                                    <p class="text-warning fw-bold mb-3"><i class="fas fa-exclamation-triangle me-2"></i>The best edge is knowing when NOT to bet.</p>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <h6 class="text-success"><i class="fas fa-check-circle me-1"></i>Play it when...</h6>
+                                            <ul class="small text-muted">
+                                                <li>True probability ≥ 65% (LOCK tier)</li>
+                                                <li>Best book offers +100 or better</li>
+                                                <li>At least 2 books have the line</li>
+                                                <li>Player is confirmed in the lineup</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-danger"><i class="fas fa-times-circle me-1"></i>Pass when...</h6>
+                                            <ul class="small text-muted">
+                                                <li>Only one sportsbook has the line</li>
+                                                <li>True probability &lt; 55% (LOW tier)</li>
+                                                <li>Lineup not yet posted</li>
+                                                <li>You're chasing losses from yesterday</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="alert alert-secondary small mt-3 mb-0">
+                                        <strong>Bankroll Rule:</strong> Never risk more than 5% of your roll on a single leg. LOCK = up to 3 units. FIRE = 1-2 units. LOW = 0-1 unit (or skip).
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -337,11 +384,14 @@
         let nflProps = [];
         
         // ---------- Utilities ----------
+        function sportLabel() {
+            return currentSport === 'mlb' ? 'MLB' : currentSport === 'nfl' ? 'NFL' : 'NHL';
+        }
         function setPropsLabel() {
             const propsLabel = document.getElementById('total-props-label');
-            if (propsLabel) propsLabel.textContent = currentSport === 'mlb' ? 'Total MLB Props' : 'Total NFL Props';
+            if (propsLabel) propsLabel.textContent = `Total ${sportLabel()} Props`;
             const gamesSubtitle = document.getElementById('games-subtitle');
-            if (gamesSubtitle) gamesSubtitle.textContent = currentSport === 'mlb' ? 'MLB player props grouped by matchup' : 'NFL player props grouped by matchup';
+            if (gamesSubtitle) gamesSubtitle.textContent = `${sportLabel()} player props grouped by matchup`;
         }
 
         // Auto-refresh platform status every 5 minutes
@@ -370,6 +420,23 @@
                     const propsCount = Array.isArray(propsData) ? propsData.length : Object.keys(propsData || {}).length;
                     document.getElementById('total-props').textContent = propsCount.toLocaleString();
                 } catch { document.getElementById('total-props').textContent = '--'; }
+                // Quota
+                try {
+                    const quotaRes = await fetch('/api/quota');
+                    const quotaData = await quotaRes.json();
+                    const rem = quotaData.remaining;
+                    if (rem != null) {
+                        document.getElementById('quota-remaining').textContent = rem.toLocaleString();
+                        document.getElementById('quota-display').style.display = '';
+                        if (rem < 50) {
+                            document.getElementById('quota-remaining').className = 'text-danger';
+                        } else if (rem < 200) {
+                            document.getElementById('quota-remaining').className = 'text-warning';
+                        } else {
+                            document.getElementById('quota-remaining').className = 'text-success';
+                        }
+                    }
+                } catch { /* quota not critical */ }
             } catch (error) { console.error('Error updating platform status:', error); }
         }
 
@@ -397,12 +464,13 @@
             if (gamesHeader) {
                 gamesHeader.innerHTML = `
                     <i class="fas fa-users text-primary me-2"></i>Today's Games
-                    <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${currentSport === 'mlb' ? 'MLB' : 'NFL'} player props grouped by matchup</small>
+                    <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${sportLabel()} player props grouped by matchup</small>
                 `;
             }
 
             if (currentSport === 'mlb') loadMLBProps();
-            else loadNFLProps();
+            else if (currentSport === 'nfl') loadNFLProps();
+            else loadNHLProps();
         }
 
         // ---------- MLB ----------
@@ -415,6 +483,40 @@
                 </div>
             `;
             await loadPlayerPropsGeneric('/player_props', '/api/mlb/environment');
+        }
+
+        // ---------- NHL ----------
+        async function loadNHLProps() {
+            setPropsLabel();
+            document.getElementById('player-props-container').innerHTML = `
+                <div class="loading text-center">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading NHL props...</span></div>
+                    <p class="mt-3">Loading NHL player props...</p>
+                </div>
+            `;
+            try {
+                const [propsRes, envRes] = await Promise.all([
+                    fetch('/api/nhl/props'),
+                    fetch('/api/nhl/environment').catch(() => ({ json: async () => ({}) }))
+                ]);
+                const props = await propsRes.json();
+                const envData = await envRes.json().catch(() => ({}));
+                allProps = Array.isArray(props) ? props : [];
+                environmentData = envData.environments || {};
+                matchupData = {};
+                allProps.forEach(p => {
+                    const away = p.away_team || '';
+                    const home = p.home_team || '';
+                    const key = away && home ? `${away} @ ${home}` : 'NHL Props';
+                    if (!matchupData[key]) matchupData[key] = [];
+                    matchupData[key].push(p);
+                });
+                if (Object.keys(matchupData).length === 0) matchupData = null;
+                displayTodaysGames();
+            } catch (e) {
+                console.error('[NHL] Error loading props:', e);
+                document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NHL props unavailable — no games scheduled or off-season.</div>`;
+            }
         }
 
         // ---------- NFL (now uses the same layout) ----------
@@ -590,15 +692,24 @@
                 if ((st === 'batter_hits' || st === 'hits') && line >= 2.5) ok = false;
 
                 if (confidenceFilter) {
-                    let hitRate = 0;
-                    if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
-                        hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
+                    const tier = prop.confidence_tier;
+                    if (tier) {
+                        // Use tier if available (new pipeline)
+                        if (confidenceFilter === 'high') ok = ok && tier === 'LOCK';
+                        else if (confidenceFilter === 'medium') ok = ok && tier === 'FIRE';
+                        else if (confidenceFilter === 'low') ok = ok && tier === 'LOW';
                     } else {
-                        hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0;
+                        // Fall back to hit rate for legacy props
+                        let hitRate = 0;
+                        if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
+                            hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
+                        } else {
+                            hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0;
+                        }
+                        if (confidenceFilter === 'high') ok = ok && hitRate >= 0.7;
+                        else if (confidenceFilter === 'medium') ok = ok && hitRate >= 0.5 && hitRate < 0.7;
+                        else if (confidenceFilter === 'low') ok = ok && hitRate < 0.5;
                     }
-                    if (confidenceFilter === 'high') ok = ok && hitRate >= 0.7;
-                    else if (confidenceFilter === 'medium') ok = ok && hitRate >= 0.5 && hitRate < 0.7;
-                    else if (confidenceFilter === 'low') ok = ok && hitRate < 0.5;
                 }
                 return ok;
             });
@@ -617,23 +728,60 @@
                     </div>`;
                 return;
             }
+
+            // Board summary counts
+            const lockCount = propsToShow.filter(p => p.confidence_tier === 'LOCK').length;
+            const fireCount = propsToShow.filter(p => p.confidence_tier === 'FIRE').length;
+            const lowCount  = propsToShow.filter(p => p.confidence_tier === 'LOW').length;
+            const boardSummary = `
+                <div class="d-flex justify-content-center gap-3 mb-3">
+                    <span class="badge bg-success fs-6"><i class="fas fa-lock me-1"></i>LOCK: ${lockCount}</span>
+                    <span class="badge bg-warning text-dark fs-6"><i class="fas fa-fire me-1"></i>FIRE: ${fireCount}</span>
+                    <span class="badge bg-secondary fs-6"><i class="fas fa-minus me-1"></i>LOW: ${lowCount}</span>
+                </div>`;
             
             const propCards = propsToShow.map(prop => {
+                // ---- probability ----
+                const noVigProb = prop.no_vig_prob != null ? parseFloat(prop.no_vig_prob) : null;
                 let hitRate = 0;
-                if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
+                if (noVigProb != null) {
+                    hitRate = noVigProb / 100;
+                } else if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
                     hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
                 } else {
                     hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0;
                 }
-                const confidenceClass = hitRate >= 0.7 ? 'confidence-high' : hitRate >= 0.5 ? 'confidence-medium' : 'confidence-low';
-                const confidenceText = hitRate >= 0.7 ? 'High' : hitRate >= 0.5 ? 'Medium' : 'Low';
-                
+                const displayPct = noVigProb != null ? noVigProb.toFixed(1) : (hitRate * 100).toFixed(1);
+
+                // ---- tier badge ----
+                const tier = prop.confidence_tier || (hitRate >= 0.70 ? 'LOCK' : hitRate >= 0.50 ? 'FIRE' : 'LOW');
+                let tierBadgeClass = 'bg-secondary';
+                let tierIcon = 'fas fa-minus';
+                if (tier === 'LOCK')      { tierBadgeClass = 'bg-success'; tierIcon = 'fas fa-lock'; }
+                else if (tier === 'FIRE') { tierBadgeClass = 'bg-warning text-dark'; tierIcon = 'fas fa-fire'; }
+                const tierBadge = `<span class="badge ${tierBadgeClass}" style="font-size:0.75em;"><i class="${tierIcon} me-1"></i>${tier}</span>`;
+
+                // ---- probability bar ----
+                const probBarWidth = Math.min(100, Math.max(0, parseFloat(displayPct)));
+                const barColor = tier === 'LOCK' ? '#198754' : tier === 'FIRE' ? '#ffc107' : '#6c757d';
+                const probBar = `
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between" style="font-size:0.75em;">
+                            <span class="text-muted">True Prob (no-vig)</span>
+                            <strong style="color:${barColor};">${displayPct}%</strong>
+                        </div>
+                        <div class="progress" style="height:6px;border-radius:3px;">
+                            <div class="progress-bar" role="progressbar" style="width:${probBarWidth}%;background:${barColor};" aria-valuenow="${probBarWidth}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>`;
+
+                // ---- player / stat info ----
                 const playerName = prop.player || prop.player_name || 'Unknown Player';
                 const statType = prop.stat || prop.stat_type || prop.market || '';
                 const line = prop.line || prop.point || 'N/A';
-                const bookmaker = prop.bookmaker || prop.sportsbook || 'Multiple Books';
+                const bestBook = prop.best_book || prop.bookmaker || prop.sportsbook || 'Best Book';
                 const team = prop.team || '';
-                
+
                 let teamStatusBadge = '';
                 const teamStatus = prop.team_status || 'unknown';
                 const teamAbbr = prop.team_abbr || '';
@@ -642,41 +790,63 @@
                 } else if (teamStatus === 'underdog' && teamAbbr) {
                     teamStatusBadge = `<span class="badge bg-warning ms-2" style="font-size: 0.7em;"><i class="fas fa-dog me-1"></i>${teamAbbr} DOG</span>`;
                 }
-                
+
+                // ---- line shop rows ----
+                const allBooks = Array.isArray(prop.all_books) ? prop.all_books : [];
+                let lineShopHtml = '';
+                if (allBooks.length > 1) {
+                    const cardId = `lineshop-${playerName.replace(/\s/g,'-')}-${statType}`.replace(/[^a-zA-Z0-9-]/g,'');
+                    const savings = prop.line_shop_savings_pct != null ? prop.line_shop_savings_pct : 0;
+                    const bookRows = allBooks
+                        .slice().sort((a,b) => b.over_price - a.over_price)
+                        .map(b => {
+                            const isBest = b.over_price === (prop.best_over_price || -9999);
+                            const fmt = p => p > 0 ? `+${p}` : `${p}`;
+                            return `<div class="d-flex justify-content-between small py-1 border-bottom border-secondary ${isBest ? 'text-success fw-bold' : 'text-muted'}">
+                                <span>${b.book}</span>
+                                <span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
+                            </div>`;
+                        }).join('');
+                    lineShopHtml = `
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-secondary w-100 py-1" style="font-size:0.72em;" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}">
+                                <i class="fas fa-store me-1"></i>Line Shop (${allBooks.length} books${savings > 0 ? ` · save ~${savings}%` : ''})
+                            </button>
+                            <div class="collapse mt-1" id="${cardId}">
+                                <div class="px-1">${bookRows}</div>
+                            </div>
+                        </div>`;
+                }
+
+                const fmtOdds = p => p != null ? (p > 0 ? `+${p}` : `${p}`) : '—';
                 return `
                     <div class="col-md-6 col-lg-4 mb-3">
                         <div class="prop-card card bg-dark border-secondary">
                             <div class="card-body">
-                                <div class="mb-2 d-flex align-items-center justify-content-between">
+                                <div class="mb-2 d-flex align-items-start justify-content-between">
                                     <div>
                                         <h6 class="mb-0">${playerName}</h6>
                                         <small class="text-muted">${team}</small>
                                     </div>
-                                    ${teamStatusBadge}
+                                    <div class="d-flex flex-column align-items-end gap-1">
+                                        ${tierBadge}${teamStatusBadge}
+                                    </div>
                                 </div>
                                 <div class="mb-2">
                                     <strong>${getHumanStatName(statType)}</strong>
                                     <span class="float-end"><span class="badge bg-primary">${line}</span></span>
                                 </div>
-                                <div class="row mb-2">
-                                    <div class="col-6">
-                                        <small class="text-muted">Hit Rate</small><br>
-                                        <span class="${confidenceClass}">${(hitRate * 100).toFixed(1)}%</span>
-                                    </div>
-                                    <div class="col-6 text-end">
-                                        <small class="text-muted">Confidence</small><br>
-                                        <span class="${confidenceClass}">${confidenceText}</span>
-                                    </div>
-                                </div>
+                                ${probBar}
                                 <div class="text-center">
-                                    <small class="text-warning"><i class="fas fa-building me-1"></i>${bookmaker}</small>
+                                    <small class="text-warning"><i class="fas fa-star me-1"></i>Best: ${bestBook} <strong>${fmtOdds(prop.best_over_price)}</strong></small>
                                 </div>
+                                ${lineShopHtml}
                             </div>
                         </div>
                     </div>`;
             }).join('');
             
-            document.getElementById('player-props-container').innerHTML = `<div class="row">${propCards}</div>`;
+            document.getElementById('player-props-container').innerHTML = `${boardSummary}<div class="row">${propCards}</div>`;
             const loadMoreBtn = document.getElementById('load-more-props');
             loadMoreBtn.style.display = allFilteredProps.length > currentPropsDisplayed ? 'block' : 'none';
         }
@@ -689,12 +859,12 @@
             
             document.getElementById('games-header').innerHTML = `
                 <i class="fas fa-users text-primary me-2"></i>Today's Games
-                <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${currentSport === 'mlb' ? 'MLB' : 'NFL'} player props grouped by matchup</small>
+                <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${sportLabel()} player props grouped by matchup</small>
             `;
             
             const matchupCards = Object.entries(matchupData).map(([matchup, props]) => {
                 const propCount = Array.isArray(props) ? props.length : 0;
-                const sportIcon = currentSport === 'mlb' ? 'fas fa-baseball' : 'fas fa-football-ball';
+                const sportIcon = currentSport === 'mlb' ? 'fas fa-baseball' : currentSport === 'nhl' ? 'fas fa-hockey-puck' : 'fas fa-football-ball';
                 
                 // Parse matchup + environment label
                 let displayMatchup = matchup;
@@ -740,10 +910,9 @@
             const totalProps = allProps.length;
             document.getElementById('prop-count-display').textContent = `${totalProps} props`;
             
-            const sportLabel = currentSport === 'mlb' ? 'MLB' : 'NFL';
             document.getElementById('player-props-container').innerHTML = `
                 <div class="mb-4">
-                    <h4 class="text-center text-muted">Today's ${sportLabel} Games</h4>
+                    <h4 class="text-center text-muted">Today's ${sportLabel()} Games</h4>
                     <p class="text-center text-muted">Click on any matchup to view player props</p>
                 </div>
                 <div class="row">${matchupCards}</div>`;
@@ -805,7 +974,7 @@
             document.getElementById('games-header').innerHTML = `
                 <i class="fas fa-arrow-left text-primary me-2" style="cursor: pointer;" onclick="resetToSportHome()"></i>
                 <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${environmentBadge}
-                <small class="text-muted d-block fs-6 mt-1">${currentSport === 'mlb' ? 'MLB' : 'NFL'} Player Props</small>`;
+                <small class="text-muted d-block fs-6 mt-1">${sportLabel()} Player Props</small>`;
         }
         
         function displayRegularProps() {

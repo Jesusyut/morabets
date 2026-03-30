@@ -23,9 +23,9 @@ from redis import Redis
 from apscheduler.schedulers.background import BackgroundScheduler
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from odds_api import fetch_player_props, parse_game_data, enrich_player_props
+from odds_api import fetch_player_props, parse_game_data, group_props_by_player, get_quota
 from enrichment import load_props_from_file
-from probability import implied_probability, calculate_edge, kelly_bet_size, calculate_parlay_edge
+from probability import implied_probability, calculate_edge, kelly_bet_size, calculate_parlay_edge, sort_props_by_tier
 from prop_deduplication import deduplicate_props_by_player, get_stat_display_name, get_player_avatar_url
 
 from team_abbreviations import get_team_abbreviation, format_matchup, TEAM_ABBREVIATIONS
@@ -1296,6 +1296,48 @@ def api_nfl_environment():
         logger.error(f"Failed to get NFL environment data: {e}")
         return jsonify({"error": "NFL environment data unavailable"}), 503
 
+@app.route("/api/quota")
+def api_quota():
+    """Return current Odds API quota stats"""
+    try:
+        quota = get_quota()
+        return jsonify(quota)
+    except Exception as e:
+        logger.error(f"Failed to get quota: {e}")
+        return jsonify({"error": "Quota unavailable"}), 503
+
+@app.route("/api/nhl/props")
+def api_nhl_props():
+    """Return NHL player props grouped by matchup"""
+    try:
+        from nhl_odds_api import fetch_nhl_props
+        props = fetch_nhl_props() or []
+        if not props:
+            return jsonify([])
+        grouped = group_props_by_player(props)
+        sorted_props = sort_props_by_tier(grouped)
+        return jsonify(sorted_props)
+    except RuntimeError as e:
+        msg = str(e)
+        if "422" in msg or "off-season" in msg.lower():
+            return jsonify([])
+        logger.error(f"[NHL] Error: {e}")
+        return jsonify([])
+    except Exception as e:
+        logger.error(f"[NHL] Error fetching props: {e}")
+        return jsonify([])
+
+@app.route("/api/nhl/environment")
+def api_nhl_environment():
+    """Get NHL game environment classifications"""
+    try:
+        from nhl_odds_api import get_nhl_game_environment_map
+        env_map = get_nhl_game_environment_map()
+        return jsonify({"environments": env_map})
+    except Exception as e:
+        logger.error(f"[NHL] Failed to get environment data: {e}")
+        return jsonify({"environments": {}})
+
 @app.route("/api/mlb/props/enhanced")
 def get_enhanced_mlb_props():
     """Get MLB props with deep game context analysis"""
@@ -1620,11 +1662,11 @@ def update_player_props():
         
         logger.info(f"[INFO] Filtered to {len(relevant_props)} relevant betting props (from {len(raw_props)} total)")
         
-        # Step 3: Parallel enrichment
+        # Step 3: Group by player, compute no-vig prob & tier, sort
         if relevant_props:
-            logger.info(f"[INFO] Using ThreadPoolExecutor with 10 workers for {len(relevant_props)} filtered props")
-            enriched_props = enrich_player_props(relevant_props)
-            
+            grouped = group_props_by_player(relevant_props)
+            enriched_props = sort_props_by_tier(grouped)
+
             # Step 4: Cache enriched props to file (Redis-free)
             from enrichment import cache_props_to_file
             cache_props_to_file(enriched_props, "mlb_props_cache.json")
@@ -1735,6 +1777,44 @@ scheduler.add_job(
     timezone="UTC",
     id="update_player_props_evening",
     name="Update Player Props (Evening)",
+    replace_existing=True
+)
+
+def update_nhl_props():
+    """Fetch and cache NHL props"""
+    try:
+        from nhl_odds_api import fetch_nhl_props
+        props = fetch_nhl_props() or []
+        if props:
+            grouped = group_props_by_player(props)
+            sorted_props = sort_props_by_tier(grouped)
+            from enrichment import cache_props_to_file
+            cache_props_to_file(sorted_props, "nhl_props_cache.json")
+            logger.info(f"[NHL] Cached {len(sorted_props)} props")
+        else:
+            logger.info("[NHL] No props returned (possible off-season)")
+    except Exception as e:
+        logger.error(f"[NHL] update_nhl_props error: {e}")
+
+scheduler.add_job(
+    func=update_nhl_props,
+    trigger="cron",
+    hour=8,
+    minute=0,
+    timezone="America/Los_Angeles",
+    id="update_nhl_props_morning",
+    name="Update NHL Props (Morning)",
+    replace_existing=True
+)
+
+scheduler.add_job(
+    func=update_nhl_props,
+    trigger="cron",
+    hour=17,
+    minute=0,
+    timezone="America/Los_Angeles",
+    id="update_nhl_props_evening",
+    name="Update NHL Props (Evening)",
     replace_existing=True
 )
 

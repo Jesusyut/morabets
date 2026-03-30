@@ -5,8 +5,8 @@ import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from contextual import get_contextual_hit_rate
-from fantasy import get_fantasy_hit_rate
+# from contextual import get_contextual_hit_rate  # removed — no longer in active code path
+# from fantasy import get_fantasy_hit_rate  # removed — no longer in active code path
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,23 @@ def _cache_get(key, ttl_seconds=3600):
 
 def _cache_set(key, data):
     _cache_store[key] = {"data": data, "ts": time.time()}
+
+# API quota tracking
+_last_quota = {"remaining": None, "used": None, "updated_at": None}
+
+def update_quota_from_headers(response):
+    try:
+        remaining = response.headers.get("x-requests-remaining")
+        used = response.headers.get("x-requests-used")
+        if remaining is not None:
+            _last_quota["remaining"] = int(remaining)
+            _last_quota["used"] = int(used) if used else None
+            _last_quota["updated_at"] = time.time()
+    except Exception:
+        pass
+
+def get_quota():
+    return dict(_last_quota)
 
 # Preferred sportsbooks for filtering
 PREFERRED_SPORTSBOOKS = ["draftkings", "fanduel", "betmgm"]
@@ -555,6 +572,7 @@ def fetch_player_props():
                     timeout=20
                 )
                 odds_resp.raise_for_status()
+                update_quota_from_headers(odds_resp)
                 data = odds_resp.json()
                 
                 # Log successful market response
@@ -571,17 +589,31 @@ def fetch_player_props():
                     
                     for market in book.get("markets", []):
                         stat = market.get("key")
+                        # Group over/under outcomes by player for no-vig math
+                        player_outcomes = {}
                         for outcome in market.get("outcomes", []):
-                            player = outcome.get("description") or outcome.get("name")
+                            player = outcome.get("description")
+                            side = outcome.get("name", "").strip()
                             price = outcome.get("price")
                             point = outcome.get("point")
-
                             if player and price is not None:
+                                if player not in player_outcomes:
+                                    player_outcomes[player] = {"point": point}
+                                if side == "Over":
+                                    player_outcomes[player]["over_price"] = price
+                                elif side == "Under":
+                                    player_outcomes[player]["under_price"] = price
+                        for player, data_p in player_outcomes.items():
+                            over_price = data_p.get("over_price")
+                            under_price = data_p.get("under_price")
+                            if over_price is not None and under_price is not None:
                                 props.append({
                                     "player": player,
                                     "stat": stat,
-                                    "line": point,
-                                    "odds": price,
+                                    "line": data_p.get("point"),
+                                    "over_price": over_price,
+                                    "under_price": under_price,
+                                    "odds": over_price,  # backward compat
                                     "bookmaker": book_title
                                 })
                                 
@@ -604,29 +636,71 @@ def fetch_player_props():
     print(f"[DEBUG] Props by stat type: {stat_counts}")
     return props
 
-def deduplicate_props(props):
-    """Deduplicate props: keep one prop per unique player+stat+line combination"""
-    unique_props = {}
-    
-    for prop in props:
-        # Create unique key for each player+stat+line combination
-        key = f"{prop['player']}_{prop['stat']}_{prop['line']}"
-        
-        # If this is the first occurrence or has better odds, keep it
-        if key not in unique_props:
-            unique_props[key] = prop
-        else:
-            # Keep the prop with better odds (higher absolute value for positive odds)
-            current_odds = unique_props[key]['odds']
-            new_odds = prop['odds']
-            
-            # For positive odds, higher is better; for negative odds, closer to 0 is better
-            if (current_odds > 0 and new_odds > current_odds) or (current_odds < 0 and new_odds > current_odds):
-                unique_props[key] = prop
-    
-    deduplicated = list(unique_props.values())
-    print(f"[INFO] Deduplication: {len(props)} props -> {len(deduplicated)} unique props")
-    return deduplicated
+def group_props_by_player(props):
+    """
+    Group props by player+stat+line. For each group, collect all books,
+    identify the best over line, calculate no-vig probability, and return
+    one enriched prop dict per unique player+stat+line.
+    """
+    from probability import no_vig_probability, get_confidence_tier
+
+    groups = {}
+    for p in props:
+        key = f"{p['player']}_{p['stat']}_{p['line']}"
+        if key not in groups:
+            groups[key] = {
+                "player": p["player"],
+                "stat": p["stat"],
+                "line": p["line"],
+                "all_books": []
+            }
+        if p.get("over_price") is not None and p.get("under_price") is not None:
+            groups[key]["all_books"].append({
+                "book": p["bookmaker"],
+                "over_price": p["over_price"],
+                "under_price": p["under_price"]
+            })
+
+    result = []
+    for key, group in groups.items():
+        books = group["all_books"]
+        if not books:
+            continue
+
+        best = max(books, key=lambda b: b["over_price"])
+
+        def vig_amount(b):
+            def imp(o):
+                return 100 / (o + 100) if o > 0 else abs(o) / (abs(o) + 100)
+            return imp(b["over_price"]) + imp(b["under_price"])
+        sharpest = min(books, key=vig_amount)
+
+        no_vig_prob = no_vig_probability(sharpest["over_price"], sharpest["under_price"])
+        tier = get_confidence_tier(no_vig_prob)
+
+        worst = min(books, key=lambda b: b["over_price"])
+        def to_imp(o):
+            return 100 / (o + 100) if o > 0 else abs(o) / (abs(o) + 100)
+        best_implied = to_imp(best["over_price"])
+        worst_implied = to_imp(worst["over_price"])
+        savings_pct = round((worst_implied - best_implied) * 100, 1) if worst_implied > 0 else 0
+
+        result.append({
+            **group,
+            "no_vig_prob": no_vig_prob,
+            "confidence_tier": tier,
+            "best_book": best["book"],
+            "best_over_price": best["over_price"],
+            "worst_book": worst["book"],
+            "worst_over_price": worst["over_price"],
+            "line_shop_savings_pct": savings_pct,
+            "odds": best["over_price"],  # backward compat alias
+            "bookmaker": best["book"],   # backward compat alias
+            "enriched": True
+        })
+
+    print(f"[INFO] Grouped {len(props)} raw props into {len(result)} unique player props")
+    return result
 
 def enrich_prop(prop):
     """Enrich a single prop with contextual and fantasy hit rates - with robust error handling"""
