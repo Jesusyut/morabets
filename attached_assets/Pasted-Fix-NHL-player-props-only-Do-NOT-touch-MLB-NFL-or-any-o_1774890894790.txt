@@ -1,3 +1,29 @@
+Fix NHL player props only. Do NOT touch MLB, NFL, or any 
+other existing file except nhl_odds_api.py and the NHL 
+routes in app.py. Do not audit, modify, or refactor any 
+other code.
+
+=== THE EXACT BUG ===
+
+The Odds API official docs confirm player prop outcomes 
+use this structure:
+
+{
+  "name": "Over",                 ← side ONLY, not player name
+  "description": "Connor McDavid", ← ACTUAL player name
+  "price": -148,
+  "point": 1.5
+}
+
+The current nhl_odds_api.py is reading outcome.get("name") 
+or outcome.get("player") for the player name.
+Both return "Over"/"Under" or nothing.
+The fix is reading outcome.get("description") for player name.
+
+=== TASK 1: REWRITE nhl_odds_api.py ONLY ===
+
+Replace the entire contents of nhl_odds_api.py with this:
+
 import requests
 import os
 import time
@@ -50,10 +76,10 @@ def _log_quota(response):
 def fetch_nhl_events():
     """
     Step 1 — Get list of today's NHL events.
-
+    
     Endpoint: GET /v4/sports/icehockey_nhl/events
     Cost: FREE — does not count against quota.
-    Returns: list of dicts with id, home_team,
+    Returns: list of dicts with id, home_team, 
              away_team, commence_time.
     """
     if not ODDS_API_KEY:
@@ -88,16 +114,16 @@ def fetch_nhl_events():
 def fetch_props_for_event(event):
     """
     Step 2 — Fetch player props for one NHL event.
-
-    Endpoint:
+    
+    Endpoint: 
     GET /v4/sports/icehockey_nhl/events/{eventId}/odds
-
+    
     Cost: 1 credit per market per region.
-    5 markets x 1 region = 5 credits per event.
-
+    5 markets × 1 region = 5 credits per event.
+    
     CRITICAL — official docs confirm prop outcome shape:
     {
-      "name": "Over",               <- Over or Under ONLY
+      "name": "Over",              <- Over or Under ONLY
       "description": "Player Name", <- actual player name
       "price": -148,
       "point": 1.5
@@ -244,9 +270,9 @@ def fetch_nhl_props():
     """
     Main entry point — fetches all NHL props for today.
 
-    Step 1: /events (free) -> get event IDs
-    Step 2: /events/{id}/odds (5 credits per event) -> props
-
+    Step 1: /events (free) → get event IDs
+    Step 2: /events/{id}/odds (5 credits per event) → props
+    
     Returns raw props list for group_props_by_player()
     and sort_props_by_tier() to process downstream.
     """
@@ -284,7 +310,7 @@ def fetch_nhl_game_odds():
     """
     Game-level odds only (moneyline, spread, total).
     Not props. Uses /odds endpoint directly.
-    Cost: 3 credits (3 markets x 1 region)
+    Cost: 3 credits (3 markets × 1 region)
     """
     if not ODDS_API_KEY:
         return []
@@ -313,10 +339,105 @@ def fetch_nhl_game_odds():
         return []
 
 
-def get_nhl_game_environment_map():
+=== TASK 2: ADD DEBUG ROUTE TO app.py ONLY ===
+
+Add this single route to app.py for immediate verification.
+Do not change any other route in app.py.
+
+@app.route("/api/debug/nhl-raw")
+def debug_nhl_raw():
     """
-    Returns a minimal environment map for NHL games.
-    NHL does not have ballpark factors like MLB,
-    so returns an empty dict — routes won't 500.
+    Verify NHL prop parsing is working.
+    Fetches one event, returns raw API response + 
+    parsed props so you can confirm player names 
+    are populated correctly.
+    Remove this route after confirming it works.
     """
-    return {}
+    if not os.environ.get("ODDS_API_KEY"):
+        return jsonify({"error": "ODDS_API_KEY not set"}), 500
+
+    try:
+        from nhl_odds_api import (fetch_nhl_events,
+                                   fetch_props_for_event)
+
+        events = fetch_nhl_events()
+
+        if not events:
+            return jsonify({
+                "status": "no_events",
+                "message": "No NHL games today"
+            })
+
+        first_event = events[0]
+
+        # Fetch raw for ONE market to keep quota cost to 1
+        raw = requests.get(
+            f"https://api.the-odds-api.com/v4/sports/"
+            f"icehockey_nhl/events/{first_event['id']}/odds",
+            params={
+                "apiKey": os.environ.get("ODDS_API_KEY"),
+                "regions": "us",
+                "markets": "player_shots_on_goal",
+                "oddsFormat": "american",
+                "bookmakers": "draftkings"
+            },
+            timeout=15
+        )
+
+        quota = raw.headers.get(
+            "x-requests-remaining", "unknown"
+        )
+
+        if raw.status_code == 422:
+            return jsonify({
+                "status": "props_not_posted_yet",
+                "event": first_event,
+                "quota_remaining": quota,
+                "message": "Try again after 9 AM ET"
+            })
+
+        # Also run through the actual parser
+        parsed = fetch_props_for_event(first_event)
+
+        return jsonify({
+            "status": "success",
+            "event": first_event,
+            "total_events_today": len(events),
+            "quota_remaining": quota,
+            "parsed_props_count": len(parsed),
+            "parsed_sample": parsed[:3],
+            "raw_api_response": raw.json()
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+=== TASK 3: TRIGGER IMMEDIATE NHL CACHE ON DEPLOY ===
+
+In the existing background_initializer() function in app.py,
+confirm this block exists. If it does not exist, add it 
+after the existing update_odds() call:
+
+try:
+    update_nhl_props()
+    logger.info("✅ NHL props cache primed on startup")
+except Exception as e:
+    logger.warning(f"NHL startup cache failed: {e}")
+
+Do not change anything else in background_initializer().
+
+=== CONSTRAINTS ===
+- Touch ONLY: nhl_odds_api.py and two small additions 
+  to app.py (debug route + NHL startup cache line)
+- Do NOT modify odds_api.py
+- Do NOT modify nfl_odds_api.py  
+- Do NOT modify probability.py
+- Do NOT modify enrichment.py
+- Do NOT modify any templates
+- Do NOT change any existing routes
+- Do NOT change scheduler timing
+- Do NOT touch Stripe, auth, or TikTok pixel
+- 422 from API = silent, not an error
+- 429 from API = log warning, return []
+- Remove /api/debug/nhl-raw after confirming it works

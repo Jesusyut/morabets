@@ -1377,6 +1377,74 @@ def api_nhl_environment():
         logger.error(f"[NHL] Failed to get environment data: {e}")
         return jsonify({"environments": {}})
 
+@app.route("/api/debug/nhl-raw")
+def debug_nhl_raw():
+    """
+    Verify NHL prop parsing is working.
+    Fetches one event, returns raw API response +
+    parsed props so you can confirm player names
+    are populated correctly.
+    Remove this route after confirming it works.
+    """
+    if not os.environ.get("ODDS_API_KEY"):
+        return jsonify({"error": "ODDS_API_KEY not set"}), 500
+
+    try:
+        from nhl_odds_api import (fetch_nhl_events,
+                                   fetch_props_for_event)
+
+        events = fetch_nhl_events()
+
+        if not events:
+            return jsonify({
+                "status": "no_events",
+                "message": "No NHL games today"
+            })
+
+        first_event = events[0]
+
+        # Fetch raw for ONE market to keep quota cost to 1
+        raw = requests.get(
+            f"https://api.the-odds-api.com/v4/sports/"
+            f"icehockey_nhl/events/{first_event['id']}/odds",
+            params={
+                "apiKey": os.environ.get("ODDS_API_KEY"),
+                "regions": "us",
+                "markets": "player_shots_on_goal",
+                "oddsFormat": "american",
+                "bookmakers": "draftkings"
+            },
+            timeout=15
+        )
+
+        quota = raw.headers.get(
+            "x-requests-remaining", "unknown"
+        )
+
+        if raw.status_code == 422:
+            return jsonify({
+                "status": "props_not_posted_yet",
+                "event": first_event,
+                "quota_remaining": quota,
+                "message": "Try again after 9 AM ET"
+            })
+
+        # Also run through the actual parser
+        parsed = fetch_props_for_event(first_event)
+
+        return jsonify({
+            "status": "success",
+            "event": first_event,
+            "total_events_today": len(events),
+            "quota_remaining": quota,
+            "parsed_props_count": len(parsed),
+            "parsed_sample": parsed[:3],
+            "raw_api_response": raw.json()
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/cache-status")
 def cache_status():
     """Lightweight cache status — no auth required, costs no API calls."""
