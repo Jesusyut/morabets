@@ -499,11 +499,25 @@
                     fetch('/api/nhl/props'),
                     fetch('/api/nhl/environment').catch(() => ({ json: async () => ({}) }))
                 ]);
-                const props = await propsRes.json();
+                const data = await propsRes.json();
                 const envData = await envRes.json().catch(() => ({}));
-                allProps = Array.isArray(props) ? props : [];
+
+                // Support both flat array (legacy) and {props:[...]} envelope
+                const rawProps = Array.isArray(data) ? data : (data.props || []);
+                allProps = rawProps;
                 environmentData = envData.environments || {};
                 matchupData = {};
+
+                if (allProps.length === 0) {
+                    document.getElementById('player-props-container').innerHTML = `
+                        <div class="alert alert-info text-center">
+                            <h4><i class="fas fa-hockey-puck me-2"></i>No NHL Props Available Yet</h4>
+                            <p class="mb-0 text-muted">Props load daily at 10 AM ET when the NHL season is active. Check back tomorrow.</p>
+                        </div>`;
+                    document.getElementById('prop-count-display').textContent = '0 props';
+                    return;
+                }
+
                 allProps.forEach(p => {
                     const away = p.away_team || '';
                     const home = p.home_team || '';

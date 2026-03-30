@@ -1308,24 +1308,63 @@ def api_quota():
 
 @app.route("/api/nhl/props")
 def api_nhl_props():
-    """Return NHL player props grouped by matchup"""
+    """Return NHL player props — checks memory cache, then file cache, then live fetch."""
     try:
-        from nhl_odds_api import fetch_nhl_props
-        props = fetch_nhl_props() or []
-        if not props:
-            return jsonify([])
-        grouped = group_props_by_player(props)
-        sorted_props = sort_props_by_tier(grouped)
-        return jsonify(sorted_props)
-    except RuntimeError as e:
-        msg = str(e)
-        if "422" in msg or "off-season" in msg.lower():
-            return jsonify([])
-        logger.error(f"[NHL] Error: {e}")
-        return jsonify([])
+        # 1. Memory cache
+        cached = cache_get("nhl_enriched_props")
+        if cached:
+            props = json.loads(cached) if isinstance(cached, str) else cached
+            return jsonify({
+                "props": props,
+                "count": len(props),
+                "sport": "NHL",
+                "cached": True,
+                "tiers": {
+                    "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                    "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                    "LOW": len([p for p in props if p.get("confidence_tier") == "LOW"])
+                }
+            })
+
+        # 2. File cache
+        from enrichment import load_props_from_file
+        props = load_props_from_file("nhl_props_cache.json")
+        if props:
+            return jsonify({
+                "props": props,
+                "count": len(props),
+                "sport": "NHL",
+                "cached": True,
+                "tiers": {
+                    "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                    "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                    "LOW": len([p for p in props if p.get("confidence_tier") == "LOW"])
+                }
+            })
+
+        # 3. Live fetch (costs API quota)
+        props = update_nhl_props()
+        return jsonify({
+            "props": props,
+            "count": len(props),
+            "sport": "NHL",
+            "cached": False
+        })
+
     except Exception as e:
-        logger.error(f"[NHL] Error fetching props: {e}")
-        return jsonify([])
+        logger.error(f"[NHL] /api/nhl/props error: {e}")
+        return jsonify({"props": [], "count": 0, "sport": "NHL", "error": "Failed to load NHL props"}), 500
+
+@app.route("/api/nhl/odds")
+def api_nhl_odds():
+    """Return NHL game-level odds (moneyline, spreads, totals)."""
+    try:
+        from nhl_odds_api import fetch_nhl_game_odds
+        odds = fetch_nhl_game_odds()
+        return jsonify({"odds": odds, "sport": "NHL"})
+    except Exception as e:
+        logger.error(f"[NHL] /api/nhl/odds error: {e}")
+        return jsonify({"error": "Failed to load NHL odds"}), 500
 
 @app.route("/api/nhl/environment")
 def api_nhl_environment():
@@ -1337,6 +1376,45 @@ def api_nhl_environment():
     except Exception as e:
         logger.error(f"[NHL] Failed to get environment data: {e}")
         return jsonify({"environments": {}})
+
+@app.route("/api/cache-status")
+def cache_status():
+    """Lightweight cache status — no auth required, costs no API calls."""
+    from enrichment import load_props_from_file
+    import os
+
+    mlb_props = load_props_from_file("mlb_props_cache.json")
+    nhl_props = load_props_from_file("nhl_props_cache.json")
+
+    def file_age_minutes(filename):
+        try:
+            mtime = os.path.getmtime(filename)
+            return round((time.time() - mtime) / 60, 1)
+        except Exception:
+            return None
+
+    return jsonify({
+        "mlb": {
+            "props_count": len(mlb_props),
+            "cache_age_minutes": file_age_minutes("mlb_props_cache.json"),
+            "tiers": {
+                "LOCK": len([p for p in mlb_props if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in mlb_props if p.get("confidence_tier") == "FIRE"]),
+                "LOW": len([p for p in mlb_props if p.get("confidence_tier") == "LOW"])
+            }
+        },
+        "nhl": {
+            "props_count": len(nhl_props),
+            "cache_age_minutes": file_age_minutes("nhl_props_cache.json"),
+            "tiers": {
+                "LOCK": len([p for p in nhl_props if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in nhl_props if p.get("confidence_tier") == "FIRE"]),
+                "LOW": len([p for p in nhl_props if p.get("confidence_tier") == "LOW"])
+            }
+        },
+        "next_refresh": "Daily at 10:00 AM ET",
+        "strategy": "Sharp consensus window — overnight sharp action settled, before public money distorts lines"
+    })
 
 @app.route("/api/mlb/props/enhanced")
 def get_enhanced_mlb_props():
@@ -1682,6 +1760,48 @@ def update_player_props():
         logger.error(f"Full traceback: {e}", exc_info=True)
         return []
 
+# FETCH SCHEDULE RATIONALE:
+# - Props post the night before but lines are soft/unsharp
+# - Sharp bettors move lines overnight into early morning
+# - By 10 AM ET, overnight sharp action has settled lines
+# - Lineups for MLB aren't confirmed until 3-4 hrs before
+#   first pitch (1-4 PM ET) so morning odds reflect sharp
+#   consensus before public money distorts them
+# - This is the "true probability" window — sharpest market
+#   consensus before public noise
+# - Aligns with our "5 Minute Morning Routine" brand promise
+# - One API call per day saves 95% of quota vs hourly fetching
+
+# Alias for scheduler — mirrors update_player_props for MLB
+update_mlb_props = update_player_props
+
+def update_nhl_props():
+    """Fetch, group, score, and cache NHL props."""
+    try:
+        from nhl_odds_api import fetch_nhl_props
+        from enrichment import cache_props_to_file
+
+        logger.info("[NHL] Starting daily props update...")
+        raw_props = fetch_nhl_props()
+
+        if not raw_props:
+            logger.warning("[NHL] No raw props returned")
+            return []
+
+        logger.info(f"[NHL] Processing {len(raw_props)} raw props")
+        grouped = group_props_by_player(raw_props)
+        sorted_props = sort_props_by_tier(grouped)
+
+        cache_props_to_file(sorted_props, "nhl_props_cache.json")
+        logger.info(f"[NHL] Cached {len(sorted_props)} processed props")
+
+        cache_set("nhl_enriched_props", json.dumps(sorted_props))
+        return sorted_props
+
+    except Exception as e:
+        logger.error(f"[NHL] update_nhl_props failed: {e}", exc_info=True)
+        return []
+
 def redis_health_monitor():
     """Monitor Redis health and attempt reconnection"""
     logger.info("🔄 Attempting scheduled Redis reconnection...")
@@ -1726,95 +1846,42 @@ def system_health_check():
 scheduler = BackgroundScheduler()
 
 # Schedule jobs
+
+# MLB — 10 AM ET daily (sharp consensus window)
+scheduler.add_job(
+    func=update_mlb_props,
+    trigger="cron",
+    hour=10,
+    minute=0,
+    timezone="America/New_York",
+    id="update_mlb_props_daily",
+    name="Daily MLB Props — 10 AM ET Sharp Window",
+    replace_existing=True
+)
+
+# NHL — 10 AM ET daily
+# NHL games typically 7-10 PM ET so morning lines are clean
+scheduler.add_job(
+    func=update_nhl_props,
+    trigger="cron",
+    hour=10,
+    minute=5,  # 5 min offset to stagger API calls
+    timezone="America/New_York",
+    id="update_nhl_props_daily",
+    name="Daily NHL Props — 10 AM ET Sharp Window",
+    replace_existing=True
+)
+
+# Game-level odds refresh twice daily (lighter weight calls)
+# Morning sharp window + evening pre-game refresh
 scheduler.add_job(
     func=update_odds,
-    trigger="interval",
-    hours=2,
-    id="update_odds",
-    name="Update MLB Odds",
-    replace_existing=True
-)
-
-# Schedule player props updates 4x daily
-scheduler.add_job(
-    func=update_player_props,
     trigger="cron",
-    hour=7,  # 7am PT
-    minute=0,
-    timezone="America/Los_Angeles",
-    id="update_player_props_morning",
-    name="Update Player Props (Morning)",
-    replace_existing=True
-)
-
-scheduler.add_job(
-    func=update_player_props,
-    trigger="cron",
-    hour=12,  # 12pm PT
-    minute=0,
-    timezone="America/Los_Angeles",
-    id="update_player_props_noon",
-    name="Update Player Props (Noon)",
-    replace_existing=True
-)
-
-scheduler.add_job(
-    func=update_player_props,
-    trigger="cron",
-    hour=14,  # 2pm UTC
-    minute=0,
-    timezone="UTC",
-    id="update_player_props_afternoon",
-    name="Update Player Props (Afternoon)",
-    replace_existing=True
-)
-
-scheduler.add_job(
-    func=update_player_props,
-    trigger="cron",
-    hour=19,  # 7pm UTC
-    minute=0,
-    timezone="UTC",
-    id="update_player_props_evening",
-    name="Update Player Props (Evening)",
-    replace_existing=True
-)
-
-def update_nhl_props():
-    """Fetch and cache NHL props"""
-    try:
-        from nhl_odds_api import fetch_nhl_props
-        props = fetch_nhl_props() or []
-        if props:
-            grouped = group_props_by_player(props)
-            sorted_props = sort_props_by_tier(grouped)
-            from enrichment import cache_props_to_file
-            cache_props_to_file(sorted_props, "nhl_props_cache.json")
-            logger.info(f"[NHL] Cached {len(sorted_props)} props")
-        else:
-            logger.info("[NHL] No props returned (possible off-season)")
-    except Exception as e:
-        logger.error(f"[NHL] update_nhl_props error: {e}")
-
-scheduler.add_job(
-    func=update_nhl_props,
-    trigger="cron",
-    hour=8,
-    minute=0,
-    timezone="America/Los_Angeles",
-    id="update_nhl_props_morning",
-    name="Update NHL Props (Morning)",
-    replace_existing=True
-)
-
-scheduler.add_job(
-    func=update_nhl_props,
-    trigger="cron",
-    hour=17,
-    minute=0,
-    timezone="America/Los_Angeles",
-    id="update_nhl_props_evening",
-    name="Update NHL Props (Evening)",
+    hour="10,18",  # 10 AM and 6 PM ET
+    minute=10,
+    timezone="America/New_York",
+    id="update_game_odds",
+    name="Game Odds Refresh",
     replace_existing=True
 )
 
@@ -1869,7 +1936,13 @@ def background_initializer():
             logger.info("✅ Props cache primed")
         except Exception as e:
             logger.warning(f"Props cache priming failed: {e}")
-        
+
+        try:
+            update_nhl_props()
+            logger.info("✅ NHL props cache primed")
+        except Exception as e:
+            logger.warning(f"NHL cache priming failed: {e}")
+
         app_initialized = True
         logger.info("🎉 Background initialization complete")
         

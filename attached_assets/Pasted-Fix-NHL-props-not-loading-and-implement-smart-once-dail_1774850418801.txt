@@ -1,0 +1,571 @@
+Fix NHL props not loading and implement smart once-daily caching 
+for all sports. DO NOT touch Stripe, auth, token system, TikTok 
+pixel, or any existing working routes.
+
+=== ROOT CAUSE FIX: NHL PROPS ===
+
+The Odds API REQUIRES player props to be fetched in two steps:
+
+STEP 1 — Fetch the event list to get event IDs:
+GET /v4/sports/icehockey_nhl/events?apiKey=KEY
+
+STEP 2 — Loop each event ID and fetch props individually:
+GET /v4/sports/icehockey_nhl/events/{eventId}/odds
+    ?apiKey=KEY
+    &regions=us
+    &markets=player_goal_scorer,player_anytime_goalscorer,
+             player_points,player_shots_on_goal,
+             player_power_play_points
+    &oddsFormat=american
+    &bookmakers=draftkings,fanduel,betmgm
+
+You CANNOT batch all events in one props request.
+You MUST loop per event. This is why NHL returns empty.
+
+=== TASK 1: CREATE nhl_odds_api.py (fix or replace existing) ===
+
+Create/overwrite nhl_odds_api.py with this implementation:
+
+import requests
+import os
+import time
+import logging
+from concurrent.futures import ThreadPoolExecutor
+
+logger = logging.getLogger(__name__)
+
+BASE_URL = "https://api.the-odds-api.com/v4"
+ODDS_API_KEY = os.getenv("ODDS_API_KEY")
+SPORT_KEY = "icehockey_nhl"
+
+# NHL prop markets available in The Odds API
+NHL_PROP_MARKETS = [
+    "player_goal_scorer",
+    "player_anytime_goalscorer", 
+    "player_points",
+    "player_shots_on_goal",
+    "player_power_play_points"
+]
+
+# Simple in-process cache
+_nhl_cache = {}
+
+def _cache_get(key, ttl_seconds=3600):
+    entry = _nhl_cache.get(key)
+    if entry and (time.time() - entry["ts"]) < ttl_seconds:
+        return entry["data"]
+    return None
+
+def _cache_set(key, data):
+    _nhl_cache[key] = {"data": data, "ts": time.time()}
+
+
+def fetch_nhl_events():
+    """
+    Step 1: Fetch list of upcoming NHL events to get event IDs.
+    Returns list of event dicts with id, home_team, away_team, 
+    commence_time.
+    """
+    if not ODDS_API_KEY:
+        logger.error("[NHL] ODDS_API_KEY not set")
+        return []
+
+    cached = _cache_get("nhl_events", ttl_seconds=300)
+    if cached:
+        logger.info(f"[NHL] Returning {len(cached)} cached events")
+        return cached
+
+    try:
+        response = requests.get(
+            f"{BASE_URL}/sports/{SPORT_KEY}/events",
+            params={
+                "apiKey": ODDS_API_KEY,
+                "dateFormat": "iso"
+            },
+            timeout=15
+        )
+        response.raise_for_status()
+        events = response.json()
+        
+        # Log quota
+        remaining = response.headers.get("x-requests-remaining")
+        logger.info(f"[NHL] Fetched {len(events)} events. "
+                   f"API calls remaining: {remaining}")
+        
+        _cache_set("nhl_events", events)
+        return events
+        
+    except Exception as e:
+        logger.error(f"[NHL] Failed to fetch events: {e}")
+        return []
+
+
+def fetch_props_for_event(event):
+    """
+    Step 2: Fetch player props for a single NHL event.
+    Called per-event in a thread pool.
+    """
+    event_id = event.get("id")
+    home_team = event.get("home_team", "")
+    away_team = event.get("away_team", "")
+    game_time = event.get("commence_time", "")
+    
+    if not event_id:
+        return []
+
+    cache_key = f"nhl_props_{event_id}"
+    cached = _cache_get(cache_key, ttl_seconds=300)
+    if cached:
+        return cached
+
+    markets = ",".join(NHL_PROP_MARKETS)
+    props = []
+
+    try:
+        response = requests.get(
+            f"{BASE_URL}/sports/{SPORT_KEY}/events/{event_id}/odds",
+            params={
+                "apiKey": ODDS_API_KEY,
+                "regions": "us",
+                "markets": markets,
+                "oddsFormat": "american",
+                "bookmakers": "draftkings,fanduel,betmgm"
+            },
+            timeout=15
+        )
+        
+        if response.status_code == 422:
+            # No props available for this event yet
+            logger.info(f"[NHL] No props available for "
+                       f"{away_team} @ {home_team}")
+            return []
+            
+        response.raise_for_status()
+        data = response.json()
+        
+        # Log quota after each call
+        remaining = response.headers.get("x-requests-remaining")
+        if remaining:
+            logger.info(f"[NHL] Props fetched for "
+                       f"{away_team} @ {home_team}. "
+                       f"Calls remaining: {remaining}")
+
+        bookmakers = data.get("bookmakers", [])
+        
+        for bookmaker in bookmakers:
+            book_title = bookmaker.get("title", "")
+            markets_data = bookmaker.get("markets", [])
+            
+            for market in markets_data:
+                market_key = market.get("key", "")
+                outcomes = market.get("outcomes", [])
+                
+                # Group outcomes by player description
+                # Each prop has an Over and Under outcome
+                player_outcomes = {}
+                for outcome in outcomes:
+                    player_name = outcome.get("description", "")
+                    side = outcome.get("name", "")  # "Over" or "Under"
+                    price = outcome.get("price")
+                    point = outcome.get("point")
+                    
+                    if not player_name:
+                        continue
+                    
+                    if player_name not in player_outcomes:
+                        player_outcomes[player_name] = {
+                            "over_price": None,
+                            "under_price": None,
+                            "line": point
+                        }
+                    
+                    if side == "Over":
+                        player_outcomes[player_name]["over_price"] = price
+                        player_outcomes[player_name]["line"] = point
+                    elif side == "Under":
+                        player_outcomes[player_name]["under_price"] = price
+
+                # Build prop dict for each player
+                for player_name, sides in player_outcomes.items():
+                    if (sides["over_price"] is not None and 
+                        sides["under_price"] is not None):
+                        props.append({
+                            "player": player_name,
+                            "stat": market_key,
+                            "line": sides["line"],
+                            "over_price": sides["over_price"],
+                            "under_price": sides["under_price"],
+                            "odds": sides["over_price"],
+                            "bookmaker": book_title,
+                            "home_team": home_team,
+                            "away_team": away_team,
+                            "game_time": game_time,
+                            "sport": "NHL"
+                        })
+
+        _cache_set(cache_key, props)
+        return props
+        
+    except Exception as e:
+        logger.error(f"[NHL] Failed to fetch props for "
+                    f"event {event_id}: {e}")
+        return []
+
+
+def fetch_nhl_props():
+    """
+    Main entry point: fetch all NHL player props for today's games.
+    Returns raw props list (before grouping/no-vig calculation).
+    """
+    events = fetch_nhl_events()
+    
+    if not events:
+        logger.warning("[NHL] No events found")
+        return []
+    
+    logger.info(f"[NHL] Fetching props for {len(events)} events")
+    
+    # Fetch props per event in parallel (max 5 workers to 
+    # avoid hammering the API)
+    all_props = []
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        results = list(executor.map(fetch_props_for_event, events))
+    
+    for result in results:
+        all_props.extend(result)
+    
+    logger.info(f"[NHL] Total raw props collected: {len(all_props)}")
+    return all_props
+
+
+def fetch_nhl_game_odds():
+    """
+    Fetch NHL moneylines, spreads, and totals (game-level odds).
+    Separate from player props.
+    """
+    if not ODDS_API_KEY:
+        return []
+        
+    try:
+        response = requests.get(
+            f"{BASE_URL}/sports/{SPORT_KEY}/odds",
+            params={
+                "apiKey": ODDS_API_KEY,
+                "regions": "us",
+                "markets": "h2h,spreads,totals",
+                "oddsFormat": "american",
+                "bookmakers": "draftkings,fanduel,betmgm"
+            },
+            timeout=15
+        )
+        response.raise_for_status()
+        data = response.json()
+        remaining = response.headers.get("x-requests-remaining")
+        logger.info(f"[NHL] Game odds fetched for {len(data)} games. "
+                   f"Calls remaining: {remaining}")
+        return data
+    except Exception as e:
+        logger.error(f"[NHL] Failed to fetch game odds: {e}")
+        return []
+
+
+=== TASK 2: SMART CACHING SCHEDULE — ONCE DAILY AT 10 AM ET ===
+
+Research-backed rationale (add as comment in app.py):
+# FETCH SCHEDULE RATIONALE:
+# - Props post the night before but lines are soft/unsharp
+# - Sharp bettors move lines overnight into early morning
+# - By 10 AM ET, overnight sharp action has settled lines
+# - Lineups for MLB aren't confirmed until 3-4 hrs before 
+#   first pitch (1-4 PM ET) so morning odds reflect sharp 
+#   consensus before public money distorts them
+# - This is the "true probability" window — sharpest market 
+#   consensus before public noise
+# - Aligns with our "5 Minute Morning Routine" brand promise
+# - One API call per day saves 95% of quota vs hourly fetching
+
+In app.py, REPLACE all existing scheduler jobs for props updates
+with this single daily schedule:
+
+Remove these existing jobs:
+- update_player_props_morning
+- update_player_props_noon  
+- update_player_props_afternoon
+- update_player_props_evening
+- Any NHL scheduler jobs if they exist
+
+Add these replacement jobs:
+
+# MLB — 10 AM ET daily (sharp consensus window)
+scheduler.add_job(
+    func=update_mlb_props,
+    trigger="cron",
+    hour=10,
+    minute=0,
+    timezone="America/New_York",
+    id="update_mlb_props_daily",
+    name="Daily MLB Props — 10 AM ET Sharp Window",
+    replace_existing=True
+)
+
+# NHL — 10 AM ET daily  
+# NHL games typically 7-10 PM ET so morning lines are clean
+scheduler.add_job(
+    func=update_nhl_props,
+    trigger="cron",
+    hour=10,
+    minute=5,  # 5 min offset to stagger API calls
+    timezone="America/New_York",
+    id="update_nhl_props_daily",
+    name="Daily NHL Props — 10 AM ET Sharp Window",
+    replace_existing=True
+)
+
+# Game-level odds refresh twice daily (lighter weight calls)
+# Morning sharp window + evening pre-game refresh
+scheduler.add_job(
+    func=update_odds,
+    trigger="cron",
+    hour="10,18",  # 10 AM and 6 PM ET
+    minute=10,
+    timezone="America/New_York",
+    id="update_game_odds",
+    name="Game Odds Refresh",
+    replace_existing=True
+)
+
+
+=== TASK 3: CREATE update_nhl_props FUNCTION IN app.py ===
+
+Add this function to app.py (mirror of update_player_props 
+but for NHL):
+
+def update_nhl_props():
+    """Fetch, group, score, and cache NHL props."""
+    try:
+        from nhl_odds_api import fetch_nhl_props
+        from odds_api import group_props_by_player
+        from probability import sort_props_by_tier
+        from enrichment import cache_props_to_file
+        
+        logger.info("[NHL] Starting daily props update...")
+        
+        raw_props = fetch_nhl_props()
+        
+        if not raw_props:
+            logger.warning("[NHL] No raw props returned")
+            return []
+        
+        logger.info(f"[NHL] Processing {len(raw_props)} raw props")
+        
+        # Group by player, calculate no-vig, assign tiers
+        grouped = group_props_by_player(raw_props)
+        sorted_props = sort_props_by_tier(grouped)
+        
+        # Cache to file
+        cache_props_to_file(sorted_props, "nhl_props_cache.json")
+        logger.info(f"[NHL] Cached {len(sorted_props)} processed props")
+        
+        # Also store in Redis/memory cache if available
+        cache_set("nhl_enriched_props", 
+                  json.dumps(sorted_props), 
+                  ex=86400)  # 24 hour TTL
+        
+        return sorted_props
+        
+    except Exception as e:
+        logger.error(f"[NHL] update_nhl_props failed: {e}", 
+                    exc_info=True)
+        return []
+
+
+=== TASK 4: ADD NHL API ROUTES IN app.py ===
+
+Add these routes (mirror MLB route structure exactly,
+use same license key auth gate):
+
+@app.route("/api/nhl/props")
+def nhl_props():
+    # Use same auth validation as /api/mlb/props
+    key = request.args.get('key') or request.headers.get('X-License-Key')
+    if not validate_token(key):
+        return jsonify({"error": "Invalid or missing license key"}), 401
+    
+    try:
+        # Try memory cache first
+        cached = cache_get("nhl_enriched_props")
+        if cached:
+            props = json.loads(cached) if isinstance(cached, str) else cached
+            return jsonify({
+                "props": props,
+                "count": len(props),
+                "sport": "NHL",
+                "cached": True,
+                "tiers": {
+                    "LOCK": len([p for p in props 
+                                if p.get("confidence_tier") == "LOCK"]),
+                    "FIRE": len([p for p in props 
+                                if p.get("confidence_tier") == "FIRE"]),
+                    "LOW": len([p for p in props 
+                               if p.get("confidence_tier") == "LOW"])
+                }
+            })
+        
+        # Try file cache
+        from enrichment import load_props_from_file
+        props = load_props_from_file("nhl_props_cache.json")
+        if props:
+            return jsonify({
+                "props": props,
+                "count": len(props),
+                "sport": "NHL",
+                "cached": True,
+                "tiers": {
+                    "LOCK": len([p for p in props 
+                                if p.get("confidence_tier") == "LOCK"]),
+                    "FIRE": len([p for p in props 
+                                if p.get("confidence_tier") == "FIRE"]),
+                    "LOW": len([p for p in props 
+                               if p.get("confidence_tier") == "LOW"])
+                }
+            })
+        
+        # No cache — fetch live (costs API calls)
+        props = update_nhl_props()
+        return jsonify({
+            "props": props,
+            "count": len(props),
+            "sport": "NHL",
+            "cached": False
+        })
+        
+    except Exception as e:
+        logger.error(f"[NHL] /api/nhl/props error: {e}")
+        return jsonify({"error": "Failed to load NHL props"}), 500
+
+
+@app.route("/api/nhl/odds")
+def nhl_odds():
+    key = request.args.get('key') or request.headers.get('X-License-Key')
+    if not validate_token(key):
+        return jsonify({"error": "Invalid or missing license key"}), 401
+    
+    try:
+        from nhl_odds_api import fetch_nhl_game_odds
+        odds = fetch_nhl_game_odds()
+        return jsonify({"odds": odds, "sport": "NHL"})
+    except Exception as e:
+        logger.error(f"[NHL] /api/nhl/odds error: {e}")
+        return jsonify({"error": "Failed to load NHL odds"}), 500
+
+
+=== TASK 5: STAT DISPLAY LABELS FOR NHL ===
+
+In nhl_odds_api.py add this display helper:
+
+NHL_STAT_LABELS = {
+    "player_goal_scorer": "Goal Scorer (First)",
+    "player_anytime_goalscorer": "Anytime Goal Scorer",
+    "player_points": "Over/Under Points",
+    "player_shots_on_goal": "Shots on Goal",
+    "player_power_play_points": "Power Play Points"
+}
+
+def get_nhl_stat_label(market_key):
+    return NHL_STAT_LABELS.get(market_key, market_key.replace("_", " ").title())
+
+Add "stat_label": get_nhl_stat_label(market_key) to each 
+prop dict when building props in fetch_props_for_event().
+
+
+=== TASK 6: NHL TAB ON DASHBOARD ===
+
+In templates/dashboard.html, ensure the NHL tab:
+1. Calls /api/nhl/props?key={userKey} via fetch()
+2. Renders cards with same tier badge system as MLB
+3. Shows "stat_label" field as the prop description
+   e.g. "Connor McDavid — Anytime Goal Scorer"
+4. If props array is empty, show:
+   <div class="text-center py-12 text-gray-500">
+     <div class="text-4xl mb-4">🏒</div>
+     <p class="text-lg font-medium">No NHL props available yet.</p>
+     <p class="text-sm">Props load daily at 10 AM ET when 
+     sharp lines open. Check back this morning.</p>
+   </div>
+
+
+=== TASK 7: CACHE STATUS ENDPOINT ===
+
+Add a lightweight status route (no auth required) so you 
+can verify what's cached without burning API calls:
+
+@app.route("/api/cache-status")
+def cache_status():
+    from enrichment import load_props_from_file
+    import os
+    
+    mlb_props = load_props_from_file("mlb_props_cache.json")
+    nhl_props = load_props_from_file("nhl_props_cache.json")
+    
+    def file_age_minutes(filename):
+        try:
+            mtime = os.path.getmtime(filename)
+            return round((time.time() - mtime) / 60, 1)
+        except:
+            return None
+    
+    return jsonify({
+        "mlb": {
+            "props_count": len(mlb_props),
+            "cache_age_minutes": file_age_minutes(
+                "mlb_props_cache.json"),
+            "tiers": {
+                "LOCK": len([p for p in mlb_props 
+                            if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in mlb_props 
+                            if p.get("confidence_tier") == "FIRE"]),
+                "LOW": len([p for p in mlb_props 
+                           if p.get("confidence_tier") == "LOW"])
+            }
+        },
+        "nhl": {
+            "props_count": len(nhl_props),
+            "cache_age_minutes": file_age_minutes(
+                "nhl_props_cache.json"),
+            "tiers": {
+                "LOCK": len([p for p in nhl_props 
+                            if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in nhl_props 
+                            if p.get("confidence_tier") == "FIRE"]),
+                "LOW": len([p for p in nhl_props 
+                           if p.get("confidence_tier") == "LOW"])
+            }
+        },
+        "next_refresh": "Daily at 10:00 AM ET",
+        "strategy": "Sharp consensus window — overnight sharp action settled, before public money distorts lines"
+    })
+
+
+=== TASK 8: TRIGGER IMMEDIATE NHL FETCH ON DEPLOY ===
+
+In the background_initializer() function, add NHL props 
+to the initial cache priming alongside existing MLB priming:
+
+try:
+    update_nhl_props()
+    logger.info("✅ NHL props cache primed")
+except Exception as e:
+    logger.warning(f"NHL cache priming failed: {e}")
+
+
+=== CONSTRAINTS ===
+- Do NOT touch Stripe, auth, token, TikTok pixel, or email
+- Do NOT remove existing MLB routes or change their response shape
+- Do NOT change update_player_props() — only add update_nhl_props()
+- If ODDS_API_KEY is not set, all fetch functions must return [] 
+  gracefully without crashing
+- Thread pool max_workers=5 for NHL event loop to avoid 
+  rate limiting
+- All NHL routes must use identical auth gate as MLB routes
+- The 422 status code from Odds API means no props for that 
+  event yet — handle silently, do not log as error
