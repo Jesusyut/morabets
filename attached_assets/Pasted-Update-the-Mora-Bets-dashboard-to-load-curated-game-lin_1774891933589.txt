@@ -1,0 +1,369 @@
+Update the Mora Bets dashboard to load curated game lines 
+as the PRIMARY content on first load for MLB and NHL tabs.
+DO NOT touch auth, Stripe, TikTok, email, or NHL/NFL odds 
+fetch files. Only change what is listed below.
+
+=== PHILOSOPHY ===
+
+We are NOT pulling everything. We are surfacing the 
+highest-probability, best-payout lines available today.
+Subscribers open the board and see 15-25 clean picks 
+ranked by value. That's the product.
+
+Markets to include per sport:
+
+MLB:
+  - h2h (moneyline) — favorites only, no_vig_prob >= 55%
+  - spreads (run line -1.5) — when juice is reasonable
+  - totals (over/under runs) — when line is sharp
+  - pitcher strikeouts over — if available from props
+  - NO: batter hits under, batter props with one side only
+
+NHL:
+  - h2h (moneyline) — full slate
+  - puck line spreads
+  - totals (goals over/under)
+  - player_shots_on_goal over — best NHL prop, always 
+    has both sides
+  - NO: first goal scorer (too volatile, low probability)
+
+Markets to NEVER show:
+  - Any prop missing an under price
+  - Any line where no_vig_prob < 50%
+  - Duplicate picks (same team/player twice)
+  - Anything with only 1 book available
+
+=== TASK 1: UPDATE /api/mlb/odds ROUTE IN app.py ===
+
+Find the existing /api/mlb/odds route.
+Update it to return a curated, enriched response that 
+includes no-vig probability for every line, not just 
+raw bookmaker data.
+
+Replace the route logic with:
+
+@app.route("/api/mlb/odds")
+def mlb_odds():
+    key = (request.args.get('key') or 
+           request.headers.get('X-License-Key'))
+    if not validate_token(key):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        from odds_api import parse_game_data
+        from probability import no_vig_probability, get_confidence_tier
+        
+        raw_games = parse_game_data()
+        picks = []
+
+        for game in raw_games:
+            home = game.get("home_team", "")
+            away = game.get("away_team", "")
+            game_time = game.get("commence_time", "")
+            matchup = f"{away} @ {home}"
+
+            for bookmaker in game.get("bookmakers", []):
+                book_title = bookmaker.get("title", "")
+                
+                for market in bookmaker.get("markets", []):
+                    market_key = market.get("key", "")
+                    outcomes = market.get("outcomes", [])
+
+                    # ── MONEYLINE (h2h) ──────────────────
+                    if market_key == "h2h" and len(outcomes) == 2:
+                        o1, o2 = outcomes[0], outcomes[1]
+                        p1 = o1.get("price")
+                        p2 = o2.get("price")
+                        if p1 is None or p2 is None:
+                            continue
+
+                        nv1 = no_vig_probability(p1, p2)
+                        nv2 = no_vig_probability(p2, p1)
+
+                        for team, price, nv in [
+                            (o1["name"], p1, nv1),
+                            (o2["name"], p2, nv2)
+                        ]:
+                            if nv < 55:
+                                continue
+                            picks.append({
+                                "player":           team,
+                                "stat":             "h2h",
+                                "stat_label":       "Moneyline Win",
+                                "line":             None,
+                                "no_vig_prob":      nv,
+                                "confidence_tier":  get_confidence_tier(nv),
+                                "best_over_price":  price,
+                                "best_book":        book_title,
+                                "matchup":          matchup,
+                                "game_time":        game_time,
+                                "sport":            "MLB",
+                                "market_type":      "moneyline",
+                                "all_books": [{
+                                    "book":        book_title,
+                                    "over_price":  price,
+                                    "under_price": p2 if team == o1["name"] else p1
+                                }]
+                            })
+
+                    # ── SPREAD (run line) ────────────────
+                    elif market_key == "spreads" and len(outcomes) == 2:
+                        o1, o2 = outcomes[0], outcomes[1]
+                        p1 = o1.get("price")
+                        p2 = o2.get("price")
+                        pt1 = o1.get("point")
+                        if p1 is None or p2 is None:
+                            continue
+
+                        # Only show spreads where juice is 
+                        # reasonable (not worse than -145)
+                        if p1 < -145 or p2 < -145:
+                            continue
+
+                        nv1 = no_vig_probability(p1, p2)
+                        nv2 = no_vig_probability(p2, p1)
+
+                        for outcome, price, nv in [
+                            (o1, p1, nv1),
+                            (o2, p2, nv2)
+                        ]:
+                            if nv < 52:
+                                continue
+                            point = outcome.get("point", "")
+                            label = (f"Run Line {'+' if point > 0 else ''}"
+                                    f"{point}")
+                            picks.append({
+                                "player":          outcome["name"],
+                                "stat":            "spreads",
+                                "stat_label":      label,
+                                "line":            point,
+                                "no_vig_prob":     nv,
+                                "confidence_tier": get_confidence_tier(nv),
+                                "best_over_price": price,
+                                "best_book":       book_title,
+                                "matchup":         matchup,
+                                "game_time":       game_time,
+                                "sport":           "MLB",
+                                "market_type":     "spread",
+                                "all_books": [{
+                                    "book":        book_title,
+                                    "over_price":  price,
+                                    "under_price": p2 if price == p1 else p1
+                                }]
+                            })
+
+                    # ── TOTALS (over/under runs) ─────────
+                    elif market_key == "totals" and len(outcomes) == 2:
+                        over_out = next(
+                            (o for o in outcomes 
+                             if o.get("name") == "Over"), None)
+                        under_out = next(
+                            (o for o in outcomes 
+                             if o.get("name") == "Under"), None)
+                        
+                        if not over_out or not under_out:
+                            continue
+                        
+                        op = over_out.get("price")
+                        up = under_out.get("price")
+                        pt = over_out.get("point")
+                        
+                        if op is None or up is None:
+                            continue
+
+                        # Totals filter: only show when 
+                        # juice is -115 or better on either side
+                        if op < -115 and up < -115:
+                            continue
+
+                        nv_over = no_vig_probability(op, up)
+                        nv_under = no_vig_probability(up, op)
+
+                        for label, price, nv in [
+                            (f"Total Runs Over {pt}", op, nv_over),
+                            (f"Total Runs Under {pt}", up, nv_under)
+                        ]:
+                            if nv < 52:
+                                continue
+                            picks.append({
+                                "player":          matchup,
+                                "stat":            "totals",
+                                "stat_label":      label,
+                                "line":            pt,
+                                "no_vig_prob":     nv,
+                                "confidence_tier": get_confidence_tier(nv),
+                                "best_over_price": price,
+                                "best_book":       book_title,
+                                "matchup":         matchup,
+                                "game_time":       game_time,
+                                "sport":           "MLB",
+                                "market_type":     "total",
+                                "all_books": [{
+                                    "book":        book_title,
+                                    "over_price":  price,
+                                    "under_price": up if price == op else op
+                                }]
+                            })
+
+        # ── Dedup: keep best no_vig_prob per 
+        #    player+stat+line combo ─────────────────────
+        deduped = {}
+        for pick in picks:
+            key_str = (f"{pick['player']}_"
+                      f"{pick['stat']}_"
+                      f"{pick.get('line', 'ml')}")
+            if (key_str not in deduped or 
+                pick["no_vig_prob"] > 
+                deduped[key_str]["no_vig_prob"]):
+                deduped[key_str] = pick
+
+        # ── Sort: highest prob first, 
+        #    then best payout ─────────────────────────
+        final = sorted(
+            deduped.values(),
+            key=lambda p: (
+                -p["no_vig_prob"],
+                -p["best_over_price"]
+            )
+        )
+
+        # Cap at 30 picks max to keep board clean
+        final = final[:30]
+
+        return jsonify({
+            "picks":  final,
+            "count":  len(final),
+            "sport":  "MLB",
+            "tiers": {
+                "LOCK": len([p for p in final 
+                    if p["confidence_tier"] == "LOCK"]),
+                "FIRE": len([p for p in final 
+                    if p["confidence_tier"] == "FIRE"]),
+                "LOW":  len([p for p in final 
+                    if p["confidence_tier"] == "LOW"])
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"[MLB] /api/mlb/odds error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+=== TASK 2: ADD SAME LOGIC TO /api/nhl/odds ===
+
+Apply the identical pattern to the NHL odds route.
+Use fetch_nhl_game_odds() to get raw games.
+
+Same three markets: h2h, spreads (puck line), totals
+Same filters:
+  - h2h: no_vig_prob >= 55% to show
+  - spreads: juice no worse than -145 on either side
+  - totals: juice -115 or better on at least one side
+  - All: no_vig_prob >= 52% minimum
+
+NHL-specific labels:
+  - spreads label: "Puck Line +1.5 / -1.5"
+  - totals label: "Total Goals Over X / Under X"
+  - h2h label: "Moneyline Win"
+
+Same dedup, same sort, cap at 25 picks for NHL.
+
+=== TASK 3: UPDATE DASHBOARD FRONTEND ===
+
+In templates/dashboard.html, update the tab load 
+logic so that on first load each sport tab calls 
+/api/{sport}/odds (the curated picks endpoint) 
+instead of /api/{sport}/props.
+
+The props endpoint stays available but is now 
+secondary — load order is:
+
+1. On tab click → fetch /api/{sport}/odds → render picks
+2. Add a toggle button above the board:
+   [ 🎯 Best Lines ] [ 📊 Player Props ]
+   Default selected: Best Lines
+   Switching to Player Props calls /api/{sport}/props
+
+The toggle buttons:
+  Active state: bg-brand-cta text-white rounded-lg px-4 py-2
+  Inactive state: bg-gray-100 text-gray-600 rounded-lg px-4 py-2
+
+=== TASK 4: CARD LAYOUT FOR GAME LINE PICKS ===
+
+Game line picks (moneyline, spread, total) use the same 
+card component as props but with these field mappings:
+
+For h2h (moneyline):
+  - Top line (player field): Team name e.g. "New York Yankees"
+  - Second line (stat_label): "Moneyline Win"
+  - No line value shown (line is null)
+  - True Probability: X%
+  - Best Line: -135 @ FanDuel
+
+For spreads:
+  - Top line: Team name
+  - Second line: "Run Line -1.5" or "Puck Line +1.5"
+  - True Probability: X%
+  - Best Line: +115 @ DraftKings
+
+For totals:
+  - Top line: matchup as team identifier 
+    e.g. "Yankees @ Red Sox"
+  - Second line: "Over 8.5 Runs" or "Under 8.5 Runs"
+  - True Probability: X%
+  - Best Line: -108 @ BetMGM
+
+Market type badge (small, top-left of card, 
+below tier badge):
+  Moneyline: gray-200 text-gray-700 "💰 ML"
+  Spread:    blue-100 text-blue-700 "📐 RL" or "📐 PL"  
+  Total:     purple-100 text-purple-700 "📊 O/U"
+
+This gives subscribers instant visual context on 
+what type of bet each card represents.
+
+=== TASK 5: BOARD SUMMARY LINE ===
+
+Update the summary line above the board to reflect 
+the current view mode:
+
+When showing Best Lines:
+"Today's best lines — X picks · X 🔒 LOCKs · 
+ X 🔥 FIRE · sorted by probability + value"
+
+When showing Player Props:
+"X props available · X 🔒 LOCKs · X 🔥 FIRE · 
+ X ⚪ Long Shots"
+
+=== TASK 6: EMPTY STATE ===
+
+If the curated picks array comes back with 0 results
+(no games today, API issue, off day):
+
+Show this centered on the board:
+
+<div class="text-center py-16">
+  <div class="text-5xl mb-4">📋</div>
+  <p class="text-xl font-bold text-brand-navy mb-2">
+    No lines available right now.
+  </p>
+  <p class="text-gray-500 text-sm">
+    Lines load daily at 10 AM ET when sharp odds open.
+    <br>Check back this morning for today's best picks.
+  </p>
+</div>
+
+=== CONSTRAINTS ===
+- Do NOT touch nhl_odds_api.py
+- Do NOT touch the existing /api/mlb/props or 
+  /api/nhl/props routes — they still work for 
+  the Player Props toggle
+- Do NOT touch auth, Stripe, TikTok, email
+- Do NOT pull alternate spreads or exotic markets
+- Max 30 MLB picks, max 25 NHL picks on the board
+- Every pick shown MUST have a valid no_vig_prob 
+  calculated from two real prices — no implied-only lines
+- NFL tab still shows "Season starts September" — 
+  do not change NFL behavior
+- Mobile responsive — cards stack single column 
+  under 768px same as before

@@ -222,6 +222,22 @@
                                 </ul>
                             </div>
                             
+                            <!-- View Mode Toggle -->
+                            <div class="d-flex justify-content-center mb-3">
+                                <div class="d-flex gap-2" id="view-mode-toggle">
+                                    <button id="mode-lines-btn" onclick="switchMode('lines')"
+                                        class="px-4 py-2 rounded-lg fw-semibold border-0"
+                                        style="background:#8b5cf6;color:#fff;cursor:pointer;">
+                                        🎯 Best Lines
+                                    </button>
+                                    <button id="mode-props-btn" onclick="switchMode('props')"
+                                        class="px-4 py-2 rounded-lg fw-semibold border-0"
+                                        style="background:#e5e7eb;color:#374151;cursor:pointer;">
+                                        📊 Player Props
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h2 id="games-header" style="cursor: pointer;" onclick="resetToSportHome()">
                                     <i class="fas fa-users text-primary me-2"></i>Today's Games
@@ -381,6 +397,7 @@
         let currentPropsDisplayed = 50;
 
         let currentSport = 'mlb'; // default
+        let currentMode  = 'lines'; // 'lines' or 'props'
         let nflProps = [];
         
         // ---------- Utilities ----------
@@ -399,7 +416,7 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             updatePlatformStatus();
-            loadMLBProps(); // start on MLB
+            loadMLBLines(); // start on MLB Best Lines
             // sport tabs
             document.querySelectorAll('#sport-tabs button').forEach(tab => {
                 tab.addEventListener('click', function() {
@@ -440,6 +457,22 @@
             } catch (error) { console.error('Error updating platform status:', error); }
         }
 
+        function switchMode(mode) {
+            currentMode = mode;
+            const linesBtn = document.getElementById('mode-lines-btn');
+            const propsBtn = document.getElementById('mode-props-btn');
+            if (linesBtn && propsBtn) {
+                if (mode === 'lines') {
+                    linesBtn.style.background = '#8b5cf6'; linesBtn.style.color = '#fff';
+                    propsBtn.style.background = '#e5e7eb'; propsBtn.style.color = '#374151';
+                } else {
+                    propsBtn.style.background = '#8b5cf6'; propsBtn.style.color = '#fff';
+                    linesBtn.style.background = '#e5e7eb'; linesBtn.style.color = '#374151';
+                }
+            }
+            resetToSportHome();
+        }
+
         function switchSport(sport) {
             if (currentSport === sport) return;
             currentSport = sport;
@@ -459,7 +492,6 @@
             const stickyBar = document.getElementById('sticky-back-header');
             stickyBar.style.display = 'none';
             document.body.classList.remove('sticky-header-visible');
-            // Restore the games header immediately (it may have been replaced by a matchup header)
             const gamesHeader = document.getElementById('games-header');
             if (gamesHeader) {
                 gamesHeader.innerHTML = `
@@ -468,9 +500,78 @@
                 `;
             }
 
-            if (currentSport === 'mlb') loadMLBProps();
-            else if (currentSport === 'nfl') loadNFLProps();
-            else loadNHLProps();
+            if (currentMode === 'lines') {
+                if (currentSport === 'mlb') loadMLBLines();
+                else if (currentSport === 'nfl') loadNFLProps();
+                else loadNHLLines();
+            } else {
+                if (currentSport === 'mlb') loadMLBProps();
+                else if (currentSport === 'nfl') loadNFLProps();
+                else loadNHLProps();
+            }
+        }
+
+        // ---------- Best Lines loaders ----------
+        async function loadMLBLines() {
+            document.getElementById('player-props-container').innerHTML = `
+                <div class="loading text-center">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                    <p class="mt-3">Loading today's best MLB lines...</p>
+                </div>`;
+            try {
+                const res  = await fetch('/api/mlb/odds');
+                const data = await res.json();
+                const picks = data.picks || [];
+                if (picks.length === 0) {
+                    document.getElementById('player-props-container').innerHTML = `
+                        <div class="text-center py-16" style="padding:4rem 0;">
+                            <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
+                            <p class="fw-bold fs-5 text-light mb-2">No lines available right now.</p>
+                            <p class="text-muted small">Lines load daily at 10 AM ET when sharp odds open.<br>Check back this morning for today's best picks.</p>
+                        </div>`;
+                    document.getElementById('prop-count-display').textContent = '0 picks';
+                    return;
+                }
+                allProps = picks;
+                allFilteredProps = picks;
+                matchupData = null;
+                document.getElementById('prop-count-display').textContent = `${picks.length} picks`;
+                displayProps();
+            } catch(e) {
+                console.error('[MLB] Error loading best lines:', e);
+                document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">MLB lines temporarily unavailable.</div>`;
+            }
+        }
+
+        async function loadNHLLines() {
+            document.getElementById('player-props-container').innerHTML = `
+                <div class="loading text-center">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                    <p class="mt-3">Loading today's best NHL lines...</p>
+                </div>`;
+            try {
+                const res  = await fetch('/api/nhl/odds');
+                const data = await res.json();
+                const picks = data.picks || [];
+                if (picks.length === 0) {
+                    document.getElementById('player-props-container').innerHTML = `
+                        <div class="text-center py-16" style="padding:4rem 0;">
+                            <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
+                            <p class="fw-bold fs-5 text-light mb-2">No lines available right now.</p>
+                            <p class="text-muted small">Lines load daily at 10 AM ET when sharp odds open.<br>Check back this morning for today's best picks.</p>
+                        </div>`;
+                    document.getElementById('prop-count-display').textContent = '0 picks';
+                    return;
+                }
+                allProps = picks;
+                allFilteredProps = picks;
+                matchupData = null;
+                document.getElementById('prop-count-display').textContent = `${picks.length} picks`;
+                displayProps();
+            } catch(e) {
+                console.error('[NHL] Error loading best lines:', e);
+                document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NHL lines temporarily unavailable.</div>`;
+            }
         }
 
         // ---------- MLB + Moneyline fallback helper ----------
@@ -864,7 +965,11 @@
             const lockCount = validProps.filter(p => p.confidence_tier === 'LOCK').length;
             const fireCount = validProps.filter(p => p.confidence_tier === 'FIRE').length;
             const lowCount  = validProps.filter(p => p.confidence_tier === 'LOW').length;
+            const summaryLine = currentMode === 'lines'
+                ? `Today's best lines — ${validProps.length} picks · ${lockCount} 🔒 LOCKs · ${fireCount} 🔥 FIRE · sorted by probability + value`
+                : `${validProps.length} props available · ${lockCount} 🔒 LOCKs · ${fireCount} 🔥 FIRE · ${lowCount} ⚪ Long Shots`;
             const boardSummary = `
+                <div class="text-center text-muted small mb-2">${summaryLine}</div>
                 <div class="d-flex justify-content-center gap-3 mb-3">
                     <span class="badge bg-success fs-6"><i class="fas fa-lock me-1"></i>LOCK: ${lockCount}</span>
                     <span class="badge bg-warning text-dark fs-6"><i class="fas fa-fire me-1"></i>FIRE: ${fireCount}</span>
@@ -910,11 +1015,21 @@
                 // ---- player / stat info ----
                 const playerName = prop.player || prop.player_name || 'Unknown Player';
                 const statType = prop.stat || prop.stat_type || prop.market || '';
-                // Use stat_label if present (NHL), else human mapping
                 const statDisplay = prop.stat_label || getHumanStatName(statType) || statType;
-                const line = prop.line || prop.point;
-                const lineDisplay = line != null ? line : 'N/A';
+                const line = prop.line != null ? prop.line : (prop.point != null ? prop.point : null);
+                const lineDisplay = line != null ? `<span class="badge bg-primary">${line}</span>` : '';
                 const bestBook = prop.best_book || prop.bookmaker || prop.sportsbook || 'Best Book';
+
+                // ---- market type badge ----
+                let marketBadge = '';
+                const mt = prop.market_type || '';
+                if (mt === 'moneyline') {
+                    marketBadge = `<span class="badge me-1" style="background:#e5e7eb;color:#374151;font-size:0.68em;">💰 ML</span>`;
+                } else if (mt === 'spread') {
+                    marketBadge = `<span class="badge me-1" style="background:#dbeafe;color:#1d4ed8;font-size:0.68em;">📐 ${prop.sport === 'NHL' ? 'PL' : 'RL'}</span>`;
+                } else if (mt === 'total') {
+                    marketBadge = `<span class="badge me-1" style="background:#ede9fe;color:#6d28d9;font-size:0.68em;">📊 O/U</span>`;
+                }
 
                 // ---- game time (small, non-prominent) ----
                 let gameTimeHtml = '';
@@ -960,11 +1075,12 @@
                                 <div class="mb-2 d-flex align-items-start justify-content-between">
                                     <div>
                                         <h6 class="mb-1 fw-bold">${playerName}</h6>
-                                        <div class="text-muted" style="font-size:0.82em;">${statDisplay} &nbsp;<span class="badge bg-primary">${lineDisplay}</span></div>
+                                        <div class="text-muted" style="font-size:0.82em;">${statDisplay} &nbsp;${lineDisplay}</div>
                                         ${gameTimeHtml}
                                     </div>
                                     <div class="d-flex flex-column align-items-end gap-1">
                                         ${tierBadge}
+                                        ${marketBadge}
                                     </div>
                                 </div>
                                 ${probBar}

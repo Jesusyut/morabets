@@ -1274,6 +1274,174 @@ def get_odds():
         logger.error(f"Error in odds endpoint: {e}")
         return jsonify({"error": "Failed to retrieve odds"}), 500
 
+@app.route("/api/mlb/odds")
+def mlb_odds():
+    """Curated MLB picks — h2h, spreads, totals — with no-vig probability."""
+    try:
+        from probability import no_vig_probability, get_confidence_tier
+
+        odds_api_key = os.environ.get("ODDS_API_KEY")
+        if not odds_api_key:
+            return jsonify({"picks": [], "count": 0, "sport": "MLB", "error": "API key not configured"}), 503
+
+        now = __import__('datetime').datetime.utcnow()
+        future = now + __import__('datetime').timedelta(hours=48)
+        start_time = now.replace(microsecond=0).isoformat() + "Z"
+        end_time   = future.replace(microsecond=0).isoformat() + "Z"
+
+        resp = requests.get(
+            "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds",
+            params={
+                "apiKey":            odds_api_key,
+                "regions":           "us",
+                "markets":           "h2h,spreads,totals",
+                "oddsFormat":        "american",
+                "commenceTimeFrom":  start_time,
+                "commenceTimeTo":    end_time,
+            },
+            timeout=20,
+        )
+        if resp.status_code == 401:
+            return jsonify({"picks": [], "count": 0, "sport": "MLB", "error": "API quota exhausted"}), 503
+        resp.raise_for_status()
+        raw_games = resp.json()
+
+        picks = []
+        for game in raw_games:
+            home       = game.get("home_team", "")
+            away       = game.get("away_team", "")
+            game_time  = game.get("commence_time", "")
+            matchup    = f"{away} @ {home}"
+
+            for bookmaker in game.get("bookmakers", []):
+                book_title = bookmaker.get("title", "")
+
+                for market in bookmaker.get("markets", []):
+                    market_key = market.get("key", "")
+                    outcomes   = market.get("outcomes", [])
+
+                    if market_key == "h2h" and len(outcomes) == 2:
+                        o1, o2 = outcomes[0], outcomes[1]
+                        p1, p2 = o1.get("price"), o2.get("price")
+                        if p1 is None or p2 is None:
+                            continue
+                        nv1 = no_vig_probability(p1, p2)
+                        nv2 = no_vig_probability(p2, p1)
+                        for team, price, nv, opp_price in [
+                            (o1["name"], p1, nv1, p2),
+                            (o2["name"], p2, nv2, p1),
+                        ]:
+                            if nv < 55:
+                                continue
+                            picks.append({
+                                "player":          team,
+                                "stat":            "h2h",
+                                "stat_label":      "Moneyline Win",
+                                "line":            None,
+                                "no_vig_prob":     nv,
+                                "confidence_tier": get_confidence_tier(nv),
+                                "best_over_price": price,
+                                "best_book":       book_title,
+                                "matchup":         matchup,
+                                "game_time":       game_time,
+                                "sport":           "MLB",
+                                "market_type":     "moneyline",
+                                "all_books": [{"book": book_title, "over_price": price, "under_price": opp_price}],
+                            })
+
+                    elif market_key == "spreads" and len(outcomes) == 2:
+                        o1, o2 = outcomes[0], outcomes[1]
+                        p1, p2 = o1.get("price"), o2.get("price")
+                        if p1 is None or p2 is None:
+                            continue
+                        if p1 < -145 or p2 < -145:
+                            continue
+                        nv1 = no_vig_probability(p1, p2)
+                        nv2 = no_vig_probability(p2, p1)
+                        for outcome, price, nv, opp_price in [
+                            (o1, p1, nv1, p2),
+                            (o2, p2, nv2, p1),
+                        ]:
+                            if nv < 52:
+                                continue
+                            point = outcome.get("point", 0)
+                            label = f"Run Line {'+' if point > 0 else ''}{point}"
+                            picks.append({
+                                "player":          outcome["name"],
+                                "stat":            "spreads",
+                                "stat_label":      label,
+                                "line":            point,
+                                "no_vig_prob":     nv,
+                                "confidence_tier": get_confidence_tier(nv),
+                                "best_over_price": price,
+                                "best_book":       book_title,
+                                "matchup":         matchup,
+                                "game_time":       game_time,
+                                "sport":           "MLB",
+                                "market_type":     "spread",
+                                "all_books": [{"book": book_title, "over_price": price, "under_price": opp_price}],
+                            })
+
+                    elif market_key == "totals" and len(outcomes) == 2:
+                        over_out  = next((o for o in outcomes if o.get("name") == "Over"),  None)
+                        under_out = next((o for o in outcomes if o.get("name") == "Under"), None)
+                        if not over_out or not under_out:
+                            continue
+                        op = over_out.get("price")
+                        up = under_out.get("price")
+                        pt = over_out.get("point")
+                        if op is None or up is None:
+                            continue
+                        if op < -115 and up < -115:
+                            continue
+                        nv_over  = no_vig_probability(op, up)
+                        nv_under = no_vig_probability(up, op)
+                        for label, price, nv, opp_price in [
+                            (f"Total Runs Over {pt}",  op, nv_over,  up),
+                            (f"Total Runs Under {pt}", up, nv_under, op),
+                        ]:
+                            if nv < 52:
+                                continue
+                            picks.append({
+                                "player":          matchup,
+                                "stat":            "totals",
+                                "stat_label":      label,
+                                "line":            pt,
+                                "no_vig_prob":     nv,
+                                "confidence_tier": get_confidence_tier(nv),
+                                "best_over_price": price,
+                                "best_book":       book_title,
+                                "matchup":         matchup,
+                                "game_time":       game_time,
+                                "sport":           "MLB",
+                                "market_type":     "total",
+                                "all_books": [{"book": book_title, "over_price": price, "under_price": opp_price}],
+                            })
+
+        deduped = {}
+        for pick in picks:
+            k = f"{pick['player']}_{pick['stat']}_{pick.get('line', 'ml')}"
+            if k not in deduped or pick["no_vig_prob"] > deduped[k]["no_vig_prob"]:
+                deduped[k] = pick
+
+        final = sorted(deduped.values(), key=lambda p: (-p["no_vig_prob"], -p["best_over_price"]))[:30]
+
+        return jsonify({
+            "picks": final,
+            "count": len(final),
+            "sport": "MLB",
+            "tiers": {
+                "LOCK": len([p for p in final if p["confidence_tier"] == "LOCK"]),
+                "FIRE": len([p for p in final if p["confidence_tier"] == "FIRE"]),
+                "LOW":  len([p for p in final if p["confidence_tier"] == "LOW"]),
+            },
+        })
+
+    except Exception as e:
+        logger.error(f"[MLB] /api/mlb/odds error: {e}")
+        return jsonify({"picks": [], "count": 0, "sport": "MLB", "error": str(e)}), 500
+
+
 @app.route("/api/mlb/environment")
 def api_mlb_environment():
     """Get MLB game environment classifications and favored teams"""
@@ -1357,14 +1525,147 @@ def api_nhl_props():
 
 @app.route("/api/nhl/odds")
 def api_nhl_odds():
-    """Return NHL game-level odds (moneyline, spreads, totals)."""
+    """Curated NHL picks — h2h, spreads, totals — with no-vig probability."""
     try:
         from nhl_odds_api import fetch_nhl_game_odds
-        odds = fetch_nhl_game_odds()
-        return jsonify({"odds": odds, "sport": "NHL"})
+        from probability import no_vig_probability, get_confidence_tier
+
+        raw_games = fetch_nhl_game_odds()
+
+        picks = []
+        for game in raw_games:
+            home      = game.get("home_team", "")
+            away      = game.get("away_team", "")
+            game_time = game.get("commence_time", "")
+            matchup   = f"{away} @ {home}"
+
+            for bookmaker in game.get("bookmakers", []):
+                book_title = bookmaker.get("title", "")
+
+                for market in bookmaker.get("markets", []):
+                    market_key = market.get("key", "")
+                    outcomes   = market.get("outcomes", [])
+
+                    if market_key == "h2h" and len(outcomes) == 2:
+                        o1, o2 = outcomes[0], outcomes[1]
+                        p1, p2 = o1.get("price"), o2.get("price")
+                        if p1 is None or p2 is None:
+                            continue
+                        nv1 = no_vig_probability(p1, p2)
+                        nv2 = no_vig_probability(p2, p1)
+                        for team, price, nv, opp_price in [
+                            (o1["name"], p1, nv1, p2),
+                            (o2["name"], p2, nv2, p1),
+                        ]:
+                            if nv < 55:
+                                continue
+                            picks.append({
+                                "player":          team,
+                                "stat":            "h2h",
+                                "stat_label":      "Moneyline Win",
+                                "line":            None,
+                                "no_vig_prob":     nv,
+                                "confidence_tier": get_confidence_tier(nv),
+                                "best_over_price": price,
+                                "best_book":       book_title,
+                                "matchup":         matchup,
+                                "game_time":       game_time,
+                                "sport":           "NHL",
+                                "market_type":     "moneyline",
+                                "all_books": [{"book": book_title, "over_price": price, "under_price": opp_price}],
+                            })
+
+                    elif market_key == "spreads" and len(outcomes) == 2:
+                        o1, o2 = outcomes[0], outcomes[1]
+                        p1, p2 = o1.get("price"), o2.get("price")
+                        if p1 is None or p2 is None:
+                            continue
+                        if p1 < -145 or p2 < -145:
+                            continue
+                        nv1 = no_vig_probability(p1, p2)
+                        nv2 = no_vig_probability(p2, p1)
+                        for outcome, price, nv, opp_price in [
+                            (o1, p1, nv1, p2),
+                            (o2, p2, nv2, p1),
+                        ]:
+                            if nv < 52:
+                                continue
+                            point = outcome.get("point", 0)
+                            label = f"Puck Line {'+' if point > 0 else ''}{point}"
+                            picks.append({
+                                "player":          outcome["name"],
+                                "stat":            "spreads",
+                                "stat_label":      label,
+                                "line":            point,
+                                "no_vig_prob":     nv,
+                                "confidence_tier": get_confidence_tier(nv),
+                                "best_over_price": price,
+                                "best_book":       book_title,
+                                "matchup":         matchup,
+                                "game_time":       game_time,
+                                "sport":           "NHL",
+                                "market_type":     "spread",
+                                "all_books": [{"book": book_title, "over_price": price, "under_price": opp_price}],
+                            })
+
+                    elif market_key == "totals" and len(outcomes) == 2:
+                        over_out  = next((o for o in outcomes if o.get("name") == "Over"),  None)
+                        under_out = next((o for o in outcomes if o.get("name") == "Under"), None)
+                        if not over_out or not under_out:
+                            continue
+                        op = over_out.get("price")
+                        up = under_out.get("price")
+                        pt = over_out.get("point")
+                        if op is None or up is None:
+                            continue
+                        if op < -115 and up < -115:
+                            continue
+                        nv_over  = no_vig_probability(op, up)
+                        nv_under = no_vig_probability(up, op)
+                        for label, price, nv, opp_price in [
+                            (f"Total Goals Over {pt}",  op, nv_over,  up),
+                            (f"Total Goals Under {pt}", up, nv_under, op),
+                        ]:
+                            if nv < 52:
+                                continue
+                            picks.append({
+                                "player":          matchup,
+                                "stat":            "totals",
+                                "stat_label":      label,
+                                "line":            pt,
+                                "no_vig_prob":     nv,
+                                "confidence_tier": get_confidence_tier(nv),
+                                "best_over_price": price,
+                                "best_book":       book_title,
+                                "matchup":         matchup,
+                                "game_time":       game_time,
+                                "sport":           "NHL",
+                                "market_type":     "total",
+                                "all_books": [{"book": book_title, "over_price": price, "under_price": opp_price}],
+                            })
+
+        deduped = {}
+        for pick in picks:
+            k = f"{pick['player']}_{pick['stat']}_{pick.get('line', 'ml')}"
+            if k not in deduped or pick["no_vig_prob"] > deduped[k]["no_vig_prob"]:
+                deduped[k] = pick
+
+        final = sorted(deduped.values(), key=lambda p: (-p["no_vig_prob"], -p["best_over_price"]))[:25]
+
+        return jsonify({
+            "picks": final,
+            "count": len(final),
+            "sport": "NHL",
+            "tiers": {
+                "LOCK": len([p for p in final if p["confidence_tier"] == "LOCK"]),
+                "FIRE": len([p for p in final if p["confidence_tier"] == "FIRE"]),
+                "LOW":  len([p for p in final if p["confidence_tier"] == "LOW"]),
+            },
+        })
+
     except Exception as e:
         logger.error(f"[NHL] /api/nhl/odds error: {e}")
-        return jsonify({"error": "Failed to load NHL odds"}), 500
+        return jsonify({"picks": [], "count": 0, "sport": "NHL", "error": str(e)}), 500
 
 @app.route("/api/nhl/environment")
 def api_nhl_environment():
