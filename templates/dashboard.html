@@ -473,7 +473,66 @@
             else loadNHLProps();
         }
 
-        // ---------- MLB ----------
+        // ---------- MLB + Moneyline fallback helper ----------
+        function convertMoneylinesToPicks(oddsData, sport) {
+            const picks = [];
+            const games = Array.isArray(oddsData) ? oddsData : (oddsData.odds || []);
+            for (const game of games) {
+                for (const book of (game.bookmakers || [])) {
+                    const h2h = (book.markets || []).find(m => m.key === 'h2h');
+                    if (!h2h) continue;
+                    const outcomes = h2h.outcomes || [];
+                    if (outcomes.length < 2) continue;
+
+                    function toImplied(o) {
+                        return o > 0 ? 100 / (o + 100) : Math.abs(o) / (Math.abs(o) + 100);
+                    }
+                    const imp1 = toImplied(outcomes[0].price);
+                    const imp2 = toImplied(outcomes[1].price);
+                    const total = imp1 + imp2;
+                    const prob1 = Math.round((imp1 / total) * 1000) / 10;
+                    const prob2 = Math.round((imp2 / total) * 1000) / 10;
+
+                    function getTier(p) { return p >= 70 ? 'LOCK' : p >= 50 ? 'FIRE' : 'LOW'; }
+
+                    picks.push({
+                        player: outcomes[0].name,
+                        stat: 'Moneyline',
+                        stat_label: 'Moneyline Win',
+                        line: null,
+                        no_vig_prob: prob1,
+                        confidence_tier: getTier(prob1),
+                        best_over_price: outcomes[0].price,
+                        best_book: book.title,
+                        all_books: [{ book: book.title, over_price: outcomes[0].price, under_price: outcomes[1].price }],
+                        game_time: game.commence_time,
+                        sport: sport
+                    });
+                    picks.push({
+                        player: outcomes[1].name,
+                        stat: 'Moneyline',
+                        stat_label: 'Moneyline Win',
+                        line: null,
+                        no_vig_prob: prob2,
+                        confidence_tier: getTier(prob2),
+                        best_over_price: outcomes[1].price,
+                        best_book: book.title,
+                        all_books: [{ book: book.title, over_price: outcomes[1].price, under_price: outcomes[0].price }],
+                        game_time: game.commence_time,
+                        sport: sport
+                    });
+                    break; // one book per game is enough for fallback
+                }
+            }
+            const teamSeen = new Set();
+            return picks
+                .filter(p => { if (teamSeen.has(p.player)) return false; teamSeen.add(p.player); return true; })
+                .sort((a, b) => {
+                    if (b.no_vig_prob !== a.no_vig_prob) return b.no_vig_prob - a.no_vig_prob;
+                    return b.best_over_price - a.best_over_price;
+                });
+        }
+
         async function loadMLBProps() {
             setPropsLabel();
             document.getElementById('player-props-container').innerHTML = `
@@ -483,6 +542,20 @@
                 </div>
             `;
             await loadPlayerPropsGeneric('/player_props', '/api/mlb/environment');
+            // Fallback: if props are sparse, show game moneylines
+            if (allProps.length < 5) {
+                try {
+                    const oddsRes = await fetch('/api/odds');
+                    const oddsData = await oddsRes.json();
+                    const mlPicks = convertMoneylinesToPicks(oddsData, 'MLB');
+                    if (mlPicks.length > 0) {
+                        allProps = mlPicks;
+                        allFilteredProps = mlPicks;
+                        matchupData = null;
+                        displayProps();
+                    }
+                } catch(e) { console.warn('[MLB] Moneyline fallback failed:', e); }
+            }
         }
 
         // ---------- NHL ----------
@@ -508,7 +581,22 @@
                 environmentData = envData.environments || {};
                 matchupData = {};
 
-                if (allProps.length === 0) {
+                if (allProps.length < 5) {
+                    // Fallback: show game moneylines when props are sparse
+                    try {
+                        const oddsRes = await fetch('/api/nhl/odds');
+                        const oddsData = await oddsRes.json();
+                        const mlPicks = convertMoneylinesToPicks(oddsData, 'NHL');
+                        if (mlPicks.length > 0) {
+                            allProps = mlPicks;
+                            allFilteredProps = mlPicks;
+                            matchupData = null;
+                            document.getElementById('prop-count-display').textContent = `${mlPicks.length} games`;
+                            displayProps();
+                            return;
+                        }
+                    } catch(e) { console.warn('[NHL] Moneyline fallback failed:', e); }
+                    // Nothing to show
                     document.getElementById('player-props-container').innerHTML = `
                         <div class="alert alert-info text-center">
                             <h4><i class="fas fa-hockey-puck me-2"></i>No NHL Props Available Yet</h4>
@@ -733,7 +821,36 @@
         }
 
         function displayProps() {
-            const propsToShow = allFilteredProps.slice(0, currentPropsDisplayed);
+            // Step 1: deduplicate by player+stat+line
+            const seen = new Set();
+            const uniqueProps = allFilteredProps.filter(p => {
+                const key = (p.player || p.player_name || '') + '_' +
+                            (p.stat || p.stat_type || '') + '_' +
+                            (p.line || p.point || '');
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            // Step 2: drop one-sided props (no-vig requires both sides)
+            const validProps = uniqueProps.filter(p => {
+                const nvp = parseFloat(p.no_vig_prob);
+                const books = Array.isArray(p.all_books) ? p.all_books : [];
+                const bestPrice = p.best_over_price || 0;
+                if (nvp === 50.0 && books.length <= 1 && bestPrice > 200) return false;
+                return true;
+            });
+
+            // Step 3: sort — highest true prob first; ties broken by best payout
+            validProps.sort((a, b) => {
+                const pa = parseFloat(a.no_vig_prob) || 0;
+                const pb = parseFloat(b.no_vig_prob) || 0;
+                if (pb !== pa) return pb - pa;
+                return (b.best_over_price || 0) - (a.best_over_price || 0);
+            });
+
+            const propsToShow = validProps.slice(0, currentPropsDisplayed);
+
             if (propsToShow.length === 0) {
                 document.getElementById('player-props-container').innerHTML = `
                     <div class="alert alert-info text-center">
@@ -743,17 +860,17 @@
                 return;
             }
 
-            // Board summary counts
-            const lockCount = propsToShow.filter(p => p.confidence_tier === 'LOCK').length;
-            const fireCount = propsToShow.filter(p => p.confidence_tier === 'FIRE').length;
-            const lowCount  = propsToShow.filter(p => p.confidence_tier === 'LOW').length;
+            // Board summary — count from full validProps, not just the visible slice
+            const lockCount = validProps.filter(p => p.confidence_tier === 'LOCK').length;
+            const fireCount = validProps.filter(p => p.confidence_tier === 'FIRE').length;
+            const lowCount  = validProps.filter(p => p.confidence_tier === 'LOW').length;
             const boardSummary = `
                 <div class="d-flex justify-content-center gap-3 mb-3">
                     <span class="badge bg-success fs-6"><i class="fas fa-lock me-1"></i>LOCK: ${lockCount}</span>
                     <span class="badge bg-warning text-dark fs-6"><i class="fas fa-fire me-1"></i>FIRE: ${fireCount}</span>
                     <span class="badge bg-secondary fs-6"><i class="fas fa-minus me-1"></i>LOW: ${lowCount}</span>
                 </div>`;
-            
+
             const propCards = propsToShow.map(prop => {
                 // ---- probability ----
                 const noVigProb = prop.no_vig_prob != null ? parseFloat(prop.no_vig_prob) : null;
@@ -771,9 +888,10 @@
                 const tier = prop.confidence_tier || (hitRate >= 0.70 ? 'LOCK' : hitRate >= 0.50 ? 'FIRE' : 'LOW');
                 let tierBadgeClass = 'bg-secondary';
                 let tierIcon = 'fas fa-minus';
-                if (tier === 'LOCK')      { tierBadgeClass = 'bg-success'; tierIcon = 'fas fa-lock'; }
-                else if (tier === 'FIRE') { tierBadgeClass = 'bg-warning text-dark'; tierIcon = 'fas fa-fire'; }
-                const tierBadge = `<span class="badge ${tierBadgeClass}" style="font-size:0.75em;"><i class="${tierIcon} me-1"></i>${tier}</span>`;
+                let tierLabel = tier;
+                if (tier === 'LOCK')      { tierBadgeClass = 'bg-success'; tierIcon = 'fas fa-lock'; tierLabel = 'LOCK'; }
+                else if (tier === 'FIRE') { tierBadgeClass = 'bg-warning text-dark'; tierIcon = 'fas fa-fire'; tierLabel = 'FIRE PICK'; }
+                const tierBadge = `<span class="badge ${tierBadgeClass}" style="font-size:0.75em;"><i class="${tierIcon} me-1"></i>${tierLabel}</span>`;
 
                 // ---- probability bar ----
                 const probBarWidth = Math.min(100, Math.max(0, parseFloat(displayPct)));
@@ -781,7 +899,7 @@
                 const probBar = `
                     <div class="mb-2">
                         <div class="d-flex justify-content-between" style="font-size:0.75em;">
-                            <span class="text-muted">True Prob (no-vig)</span>
+                            <span class="text-muted">True Probability (no-vig)</span>
                             <strong style="color:${barColor};">${displayPct}%</strong>
                         </div>
                         <div class="progress" style="height:6px;border-radius:3px;">
@@ -792,17 +910,19 @@
                 // ---- player / stat info ----
                 const playerName = prop.player || prop.player_name || 'Unknown Player';
                 const statType = prop.stat || prop.stat_type || prop.market || '';
-                const line = prop.line || prop.point || 'N/A';
+                // Use stat_label if present (NHL), else human mapping
+                const statDisplay = prop.stat_label || getHumanStatName(statType) || statType;
+                const line = prop.line || prop.point;
+                const lineDisplay = line != null ? line : 'N/A';
                 const bestBook = prop.best_book || prop.bookmaker || prop.sportsbook || 'Best Book';
-                const team = prop.team || '';
 
-                let teamStatusBadge = '';
-                const teamStatus = prop.team_status || 'unknown';
-                const teamAbbr = prop.team_abbr || '';
-                if (teamStatus === 'favored' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-success ms-2" style="font-size: 0.7em;"><i class="fas fa-crown me-1"></i>${teamAbbr} FAV</span>`;
-                } else if (teamStatus === 'underdog' && teamAbbr) {
-                    teamStatusBadge = `<span class="badge bg-warning ms-2" style="font-size: 0.7em;"><i class="fas fa-dog me-1"></i>${teamAbbr} DOG</span>`;
+                // ---- game time (small, non-prominent) ----
+                let gameTimeHtml = '';
+                if (prop.game_time) {
+                    const gt = new Date(prop.game_time);
+                    if (!isNaN(gt)) {
+                        gameTimeHtml = `<small class="text-muted d-block" style="font-size:0.68em;">${gt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</small>`;
+                    }
                 }
 
                 // ---- line shop rows ----
@@ -815,7 +935,7 @@
                         .slice().sort((a,b) => b.over_price - a.over_price)
                         .map(b => {
                             const isBest = b.over_price === (prop.best_over_price || -9999);
-                            const fmt = p => p > 0 ? `+${p}` : `${p}`;
+                            const fmt = o => o > 0 ? `+${o}` : `${o}`;
                             return `<div class="d-flex justify-content-between small py-1 border-bottom border-secondary ${isBest ? 'text-success fw-bold' : 'text-muted'}">
                                 <span>${b.book}</span>
                                 <span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
@@ -832,23 +952,20 @@
                         </div>`;
                 }
 
-                const fmtOdds = p => p != null ? (p > 0 ? `+${p}` : `${p}`) : '—';
+                const fmtOdds = o => o != null ? (o > 0 ? `+${o}` : `${o}`) : '—';
                 return `
                     <div class="col-md-6 col-lg-4 mb-3">
                         <div class="prop-card card bg-dark border-secondary">
                             <div class="card-body">
                                 <div class="mb-2 d-flex align-items-start justify-content-between">
                                     <div>
-                                        <h6 class="mb-0">${playerName}</h6>
-                                        <small class="text-muted">${team}</small>
+                                        <h6 class="mb-1 fw-bold">${playerName}</h6>
+                                        <div class="text-muted" style="font-size:0.82em;">${statDisplay} &nbsp;<span class="badge bg-primary">${lineDisplay}</span></div>
+                                        ${gameTimeHtml}
                                     </div>
                                     <div class="d-flex flex-column align-items-end gap-1">
-                                        ${tierBadge}${teamStatusBadge}
+                                        ${tierBadge}
                                     </div>
-                                </div>
-                                <div class="mb-2">
-                                    <strong>${getHumanStatName(statType)}</strong>
-                                    <span class="float-end"><span class="badge bg-primary">${line}</span></span>
                                 </div>
                                 ${probBar}
                                 <div class="text-center">
@@ -859,10 +976,10 @@
                         </div>
                     </div>`;
             }).join('');
-            
+
             document.getElementById('player-props-container').innerHTML = `${boardSummary}<div class="row">${propCards}</div>`;
             const loadMoreBtn = document.getElementById('load-more-props');
-            loadMoreBtn.style.display = allFilteredProps.length > currentPropsDisplayed ? 'block' : 'none';
+            loadMoreBtn.style.display = validProps.length > currentPropsDisplayed ? 'block' : 'none';
         }
 
         function displayTodaysGames() {
@@ -941,19 +1058,29 @@
             stickyBar.style.display = 'flex';
             document.body.classList.add('sticky-header-visible');
 
-            // Normalize props for shared card renderer
+            // Normalize props — preserve all enriched fields for card renderer
             allProps = matchupProps.map(p => ({
                 player: p.player || p.player_name,
                 player_name: p.player_name || p.player,
                 stat: p.stat || p.stat_type || p.market,
+                stat_label: p.stat_label || '',
                 stat_type: p.stat_type || p.stat || p.market,
                 line: p.line || p.point,
                 point: p.point || p.line,
                 bookmaker: p.bookmaker || p.sportsbook,
                 sportsbook: p.sportsbook || p.bookmaker,
                 team: p.team || '',
-                team_status: p.team_status,
-                team_abbr: p.team_abbr || '',
+                no_vig_prob: p.no_vig_prob,
+                confidence_tier: p.confidence_tier,
+                best_book: p.best_book || p.bookmaker || p.sportsbook,
+                best_over_price: p.best_over_price,
+                worst_over_price: p.worst_over_price,
+                all_books: p.all_books || [],
+                line_shop_savings_pct: p.line_shop_savings_pct,
+                odds: p.odds || p.best_over_price,
+                game_time: p.game_time,
+                away_team: p.away_team || '',
+                home_team: p.home_team || '',
                 contextual_hit_rate: p.contextual_hit_rate || p.hit_probability
             }));
             

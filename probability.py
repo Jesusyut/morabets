@@ -93,11 +93,13 @@ def get_confidence_tier(no_vig_prob):
 TIER_SORT_ORDER = {"LOCK": 0, "FIRE": 1, "LOW": 2}
 
 def sort_props_by_tier(props):
-    """Sort props: LOCK first, then FIRE, then LOW. Within tier, highest prob first."""
+    """Sort by highest no_vig_prob first; ties broken by best payout (least negative odds)."""
     return sorted(
         props,
-        key=lambda p: (TIER_SORT_ORDER.get(p.get("confidence_tier", "LOW"), 2),
-                       -p.get("no_vig_prob", 0))
+        key=lambda p: (
+            -p.get("no_vig_prob", 0),
+            -(p.get("best_over_price", -999))
+        )
     )
 
 def calculate_parlay_edge(probabilities, book_odds):
