@@ -43,7 +43,11 @@ def get_quota():
     return dict(_last_quota)
 
 # Preferred sportsbooks for filtering
-PREFERRED_SPORTSBOOKS = ["draftkings", "fanduel", "betmgm"]
+PREFERRED_SPORTSBOOKS = [
+    "draftkings", "fanduel", "betmgm",
+    "caesars", "pointsbetus", "betrivers",
+    "bovada", "betonlineag", "fanatics"
+]
 VALID_BOOKS = {"DraftKings", "FanDuel", "BetMGM"}
 
 def get_favored_team(game):
@@ -639,10 +643,10 @@ def fetch_player_props():
 def group_props_by_player(props):
     """
     Group props by player+stat+line. For each group, collect all books,
-    identify the best over line, calculate no-vig probability, and return
-    one enriched prop dict per unique player+stat+line.
+    run full EV evaluation, and return one enriched prop dict per unique
+    player+stat+line. Only props passing the EV threshold are surfaced.
     """
-    from probability import no_vig_probability, get_confidence_tier
+    from ev_engine import evaluate_pick
 
     groups = {}
     for p in props:
@@ -667,37 +671,71 @@ def group_props_by_player(props):
         if not books:
             continue
 
-        best = max(books, key=lambda b: b["over_price"])
+        try:
+            evaluation = evaluate_pick(
+                player_or_team=group["player"],
+                market_type=group["stat"],
+                side="over",
+                line=group["line"],
+                book_prices=books,
+                game_time=group.get("game_time")
+            )
 
-        def vig_amount(b):
-            def imp(o):
-                return 100 / (o + 100) if o > 0 else abs(o) / (abs(o) + 100)
-            return imp(b["over_price"]) + imp(b["under_price"])
-        sharpest = min(books, key=vig_amount)
+            if not evaluation["passes_threshold"]:
+                logger.debug(
+                    f"[EV] Filtered: {group['player']} — "
+                    f"{evaluation.get('rejection_reason')}"
+                )
+                evaluation["surfaced"] = False
+            else:
+                evaluation["surfaced"] = True
 
-        no_vig_prob = no_vig_probability(sharpest["over_price"], sharpest["under_price"])
-        tier = get_confidence_tier(no_vig_prob)
+            # Line shop savings (backward compat)
+            if books:
+                best_price = max(b["over_price"] for b in books if b.get("over_price") is not None)
+                worst_price = min(b["over_price"] for b in books if b.get("over_price") is not None)
+                def to_imp(o):
+                    return 100 / (o + 100) if o > 0 else abs(o) / (abs(o) + 100)
+                savings_pct = round((to_imp(worst_price) - to_imp(best_price)) * 100, 1)
+            else:
+                savings_pct = 0
 
-        worst = min(books, key=lambda b: b["over_price"])
-        def to_imp(o):
-            return 100 / (o + 100) if o > 0 else abs(o) / (abs(o) + 100)
-        best_implied = to_imp(best["over_price"])
-        worst_implied = to_imp(worst["over_price"])
-        savings_pct = round((worst_implied - best_implied) * 100, 1) if worst_implied > 0 else 0
+            fp = evaluation.get("fair_probability") or 0.5
+            result.append({
+                **group,
+                **evaluation,
+                "no_vig_prob":         round(fp * 100, 1),
+                "confidence_tier":     evaluation["confidence_tier"],
+                "best_book":           evaluation["best_book"],
+                "best_over_price":     evaluation["best_offered_odds"],
+                "line_shop_savings_pct": savings_pct,
+                "odds":                evaluation["best_offered_odds"],
+                "bookmaker":           evaluation["best_book"],
+                "enriched":            True
+            })
 
-        result.append({
-            **group,
-            "no_vig_prob": no_vig_prob,
-            "confidence_tier": tier,
-            "best_book": best["book"],
-            "best_over_price": best["over_price"],
-            "worst_book": worst["book"],
-            "worst_over_price": worst["over_price"],
-            "line_shop_savings_pct": savings_pct,
-            "odds": best["over_price"],  # backward compat alias
-            "bookmaker": best["book"],   # backward compat alias
-            "enriched": True
-        })
+        except Exception as e:
+            logger.warning(f"[EV] evaluate_pick failed for {group['player']}: {e} — using fallback")
+            from probability import no_vig_probability, get_confidence_tier
+            best = max(books, key=lambda b: b["over_price"])
+            sharpest = min(books, key=lambda b: (
+                (100/(b["over_price"]+100) if b["over_price"]>0 else abs(b["over_price"])/(abs(b["over_price"])+100)) +
+                (100/(b["under_price"]+100) if b["under_price"]>0 else abs(b["under_price"])/(abs(b["under_price"])+100))
+            ))
+            no_vig_prob = no_vig_probability(sharpest["over_price"], sharpest["under_price"])
+            tier = get_confidence_tier(no_vig_prob)
+            result.append({
+                **group,
+                "no_vig_prob":         no_vig_prob,
+                "confidence_tier":     tier,
+                "best_book":           best["book"],
+                "best_over_price":     best["over_price"],
+                "odds":                best["over_price"],
+                "bookmaker":           best["book"],
+                "surfaced":            True,
+                "passes_threshold":    True,
+                "enriched":            True
+            })
 
     print(f"[INFO] Grouped {len(props)} raw props into {len(result)} unique player props")
     return result

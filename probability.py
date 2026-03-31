@@ -93,12 +93,17 @@ def get_confidence_tier(no_vig_prob):
 TIER_SORT_ORDER = {"LOCK": 0, "FIRE": 1, "LOW": 2}
 
 def sort_props_by_tier(props):
-    """Sort by highest no_vig_prob first; ties broken by best payout (least negative odds)."""
+    """Sort by highest EV% first; only surface picks that pass EV threshold."""
+    surfaced = [
+        p for p in props
+        if p.get("surfaced", True) and p.get("passes_threshold", True)
+    ]
     return sorted(
-        props,
+        surfaced,
         key=lambda p: (
-            -p.get("no_vig_prob", 0),
-            -(p.get("best_over_price", -999))
+            -(p.get("ev_pct") or 0),
+            -(p.get("no_vig_prob") or 0),
+            -(p.get("best_over_price") or -999)
         )
     )
 

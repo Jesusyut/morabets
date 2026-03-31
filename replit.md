@@ -3,6 +3,16 @@
 ## Overview
 Mora Bets is a sports betting analytics platform focused on MLB and NFL, offering insights through odds analysis, player prop evaluation, and probability calculations. It integrates real-time data from external APIs, processes it with custom algorithms, and delivers analytics via a web interface. The platform aims to provide a competitive edge for serious bettors by offering data-driven insights and advanced betting tools. The platform now focuses exclusively on a single $9.99/month subscription tier with 3-day free trial, removing the previous Mora Assist tier.
 
+### Recent Updates (March 2026) — EV Engine Overhaul
+- **EV Engine**: `ev_engine.py` with book weights (sharp/standard/soft), weighted fair probability, `evaluate_pick()`, EV%, edge%, break-even threshold
+- **CLV Tracker**: `clv_tracker.py` — logs every surfaced pick (entry odds, fair probability, EV%), supports `update_closing_line`, `record_result`, `get_performance_report`
+- **Player Props**: `group_props_by_player` uses EV engine; only `passes_threshold=True` picks surfaced; `sort_props_by_tier` sorts by EV%
+- **Best Lines (MLB/NHL)**: `/api/mlb/odds` and `/api/nhl/odds` collect all books per game/market first, then call `evaluate_pick()` once per side; CLV logging on every surfaced pick
+- **Bookmakers expanded**: 9 books (draftkings, fanduel, betmgm, caesars, pointsbetus, betrivers, bovada, betonlineag, fanatics) across all APIs
+- **Tier labels**: LOCK (≥6% EV), FIRE (≥3% EV), EDGE (marginal positive EV) — LOW replaced
+- **Dashboard UI**: EV%, fair odds, break-even% shown on every card; board summary is EV-based with info tooltip
+- **Performance API**: `/api/performance` returns CLV/ROI report; `/api/performance/log` returns raw log
+
 ### Recent Updates (August 2025)
 - **NFL UI Integration**: Added complete MLB/NFL sport switching tabs in dashboard with proper navigation flow
 - **MLB Game Context Enrichment**: Implemented advanced game-level context analysis for MLB props, identifying favorable environments for OVER props based on team trends, pitcher matchups, and opponent weaknesses

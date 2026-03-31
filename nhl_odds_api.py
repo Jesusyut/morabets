@@ -129,7 +129,7 @@ def fetch_props_for_event(event):
                 "regions": "us",
                 "markets": ",".join(NHL_PROP_MARKETS),
                 "oddsFormat": "american",
-                "bookmakers": "draftkings,fanduel,betmgm"
+                "bookmakers": "draftkings,fanduel,betmgm,caesars,pointsbetus,betrivers,bovada,betonlineag,fanatics"
             },
             timeout=15
         )
