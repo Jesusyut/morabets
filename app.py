@@ -231,13 +231,8 @@ def cache_exists(key, timeout=3):
 
 @app.route("/")
 def home():
-    """Redirect to how-it-works landing page"""
-    return redirect(url_for("how_it_works"))
-
-@app.route("/how-it-works")
-def how_it_works():
-    """Landing page explaining how Mora Bets works"""
-    return render_template("how_it_works.html")
+    """Redirect to dashboard"""
+    return redirect(url_for("dashboard"))
 
 
 

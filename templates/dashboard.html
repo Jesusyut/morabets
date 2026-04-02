@@ -78,8 +78,8 @@
         *, *::before, *::after { box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
-            background: #111827;
-            color: #fff;
+            background: #f9fafb;
+            color: #1a1a1a;
             min-height: 100vh;
             padding-bottom: 4rem;
         }
@@ -89,7 +89,7 @@
             position: fixed; top: 0; left: 0; right: 0; z-index: 1050;
             background: #091f35;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
             padding: 0.6rem 1.5rem;
             display: none; align-items: center; gap: 1rem;
         }
@@ -120,13 +120,13 @@
             font-weight: 700; font-size: 0.9rem;
             padding: 0.45rem 1.25rem; border-radius: 0.5rem;
             border: none; cursor: pointer;
-            color: rgba(255,255,255,0.5);
+            color: rgba(13,59,102,0.5);
             background: transparent;
             transition: all 0.15s;
             letter-spacing: 0.03em;
         }
         .sport-tab.active-tab { color: #111827; background: #facc15; }
-        .sport-tab:hover:not(.active-tab) { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
+        .sport-tab:hover:not(.active-tab) { color: #0d3b66; background: rgba(13,59,102,0.08); }
 
         /* ── Main Tabs (Player Props | Betting Strategy) ── */
         .main-tab-btn {
@@ -134,11 +134,11 @@
             font-weight: 700; font-size: 0.9rem;
             padding: 0.45rem 1.25rem; border-radius: 0.5rem;
             border: none; cursor: pointer;
-            color: rgba(255,255,255,0.5);
+            color: rgba(13,59,102,0.5);
             background: transparent; transition: all 0.15s;
         }
         .main-tab-btn.active { color: #111827; background: #facc15; }
-        .main-tab-btn:hover:not(.active) { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
+        .main-tab-btn:hover:not(.active) { color: #0d3b66; background: rgba(13,59,102,0.08); }
 
         /* ── View Mode Toggle (Best Lines / Player Props) ── */
         .view-btn {
@@ -147,60 +147,62 @@
             transition: all 0.15s;
         }
         .view-btn.active-view { background: #8b5cf6; color: #fff; }
-        .view-btn:not(.active-view) { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.65); }
-        .view-btn:hover:not(.active-view) { background: rgba(255,255,255,0.14); color: #fff; }
+        .view-btn:not(.active-view) { background: #e5e7eb; color: #4b5563; }
+        .view-btn:hover:not(.active-view) { background: #d1d5db; color: #111827; }
 
-        /* ── Prop Card (dark surface) ── */
+        /* ── Prop Card (light surface) ── */
         .prop-card {
-            background: #1f2937;
-            border: 1px solid rgba(255,255,255,0.08);
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-radius: 0.75rem;
             margin-bottom: 0.75rem;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
-        .prop-card:hover { border-color: rgba(255,255,255,0.2); }
+        .prop-card:hover { border-color: #d1d5db; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .prop-card .card-body { padding: 0.9rem 1rem; }
 
         /* ── Matchup Card ── */
         .matchup-card {
-            background: #1f2937;
-            border: 1px solid rgba(255,255,255,0.08);
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-radius: 0.75rem; cursor: pointer;
             transition: all 0.2s; margin-bottom: 0.75rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
-        .matchup-card:hover { border-color: rgba(250,204,21,0.4); transform: translateY(-2px); }
+        .matchup-card:hover { border-color: rgba(250,204,21,0.6); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
         .matchup-card .card-body { padding: 1rem; }
 
-        /* ── Bootstrap overrides for dark theme ── */
-        .card { background: #1f2937 !important; border-color: rgba(255,255,255,0.08) !important; color: #fff !important; }
-        .text-muted { color: rgba(255,255,255,0.45) !important; }
-        .text-light { color: rgba(255,255,255,0.85) !important; }
-        .border-secondary { border-color: rgba(255,255,255,0.1) !important; }
-        .progress { background: rgba(255,255,255,0.1) !important; border-radius: 3px; }
+        /* ── Bootstrap overrides for light theme ── */
+        .card { background: #ffffff !important; border-color: #e5e7eb !important; color: #1a1a1a !important; }
+        .text-muted { color: #6b7280 !important; }
+        .text-light { color: #374151 !important; }
+        .border-secondary { border-color: #e5e7eb !important; }
+        .progress { background: #e5e7eb !important; border-radius: 3px; }
         .progress-bar { border-radius: 3px; }
         .form-control, .form-select {
-            background: #1f2937 !important; border: 1px solid rgba(255,255,255,0.12) !important;
-            color: #fff !important; border-radius: 0.5rem;
+            background: #ffffff !important; border: 1px solid #d1d5db !important;
+            color: #1a1a1a !important; border-radius: 0.5rem;
             font-family: 'Inter', sans-serif; font-size: 0.85rem;
         }
-        .form-control::placeholder { color: rgba(255,255,255,0.3) !important; }
-        .form-select option { background: #1f2937; }
+        .form-control::placeholder { color: #9ca3af !important; }
+        .form-select option { background: #ffffff; color: #1a1a1a; }
         .btn-outline-secondary {
-            color: rgba(255,255,255,0.5) !important; border-color: rgba(255,255,255,0.15) !important;
+            color: #6b7280 !important; border-color: #d1d5db !important;
             font-size: 0.72em;
         }
-        .btn-outline-secondary:hover { background: rgba(255,255,255,0.08) !important; color: #fff !important; }
+        .btn-outline-secondary:hover { background: #f3f4f6 !important; color: #111827 !important; }
         .btn-outline-primary {
-            color: #60a5fa !important; border-color: rgba(96,165,250,0.4) !important; font-size: 0.85rem;
+            color: #0d3b66 !important; border-color: rgba(13,59,102,0.4) !important; font-size: 0.85rem;
         }
-        .btn-outline-primary:hover { background: rgba(96,165,250,0.15) !important; color: #fff !important; }
+        .btn-outline-primary:hover { background: rgba(13,59,102,0.08) !important; color: #0d3b66 !important; }
         .alert { border-radius: 0.75rem; font-family: 'Inter', sans-serif; }
-        .alert-info { background: rgba(96,165,250,0.08) !important; border-color: rgba(96,165,250,0.2) !important; color: rgba(255,255,255,0.8) !important; }
-        .alert-warning { background: rgba(250,204,21,0.08) !important; border-color: rgba(250,204,21,0.2) !important; color: rgba(255,255,255,0.8) !important; }
-        .alert-danger { background: rgba(239,68,68,0.08) !important; border-color: rgba(239,68,68,0.2) !important; color: rgba(255,255,255,0.8) !important; }
+        .alert-info { background: #eff6ff !important; border-color: #bfdbfe !important; color: #1e40af !important; }
+        .alert-warning { background: #fffbeb !important; border-color: #fcd34d !important; color: #92400e !important; }
+        .alert-danger { background: #fef2f2 !important; border-color: #fca5a5 !important; color: #991b1b !important; }
         .collapse.show { display: block; }
         .badge { font-family: 'Inter', sans-serif; }
-        .favored { color: #00FF95; font-weight: bold; text-shadow: 0 0 8px rgba(0,255,149,0.3); }
+        .favored { color: #059669; font-weight: bold; }
         .env-label { font-size: 0.72rem; font-weight: 600; padding: 3px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
         /* ── Skeleton shimmer ── */
@@ -209,7 +211,7 @@
             100% { background-position:  200% 0; }
         }
         .skeleton-card {
-            background: linear-gradient(90deg, #1f2937 0%, #374151 50%, #1f2937 100%);
+            background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%);
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite;
             border-radius: 0.75rem; height: 160px; margin-bottom: 0.75rem;
@@ -225,7 +227,7 @@
             font-family: 'Barlow Condensed', sans-serif;
             font-weight: 700; font-size: 1.2rem;
             text-transform: uppercase; letter-spacing: 0.05em;
-            color: #fff;
+            color: #0d3b66;
         }
         .pill-badge {
             font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 700;
@@ -234,11 +236,12 @@
 
         /* ── Book affiliate cards ── */
         .book-card {
-            background: #1f2937; border: 1px solid rgba(255,255,255,0.08);
+            background: #ffffff; border: 1px solid #e5e7eb;
             border-radius: 0.75rem; padding: 1rem; display: flex; flex-direction: column;
-            align-items: center; gap: 0.5rem; transition: border-color 0.2s;
+            align-items: center; gap: 0.5rem; transition: border-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
-        .book-card:hover { border-color: rgba(250,204,21,0.4); }
+        .book-card:hover { border-color: rgba(250,204,21,0.6); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .book-cta {
             background: #facc15; color: #111827;
             font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
@@ -258,13 +261,13 @@
 
         /* ── Disciplined Hand section ── */
         #disciplined-hand-btn {
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            background: #ffffff; border: 1px solid #e5e7eb;
             border-radius: 0.5rem; padding: 0.65rem 1rem; cursor: pointer;
-            color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-size: 0.85rem;
+            color: #374151; font-family: 'Inter', sans-serif; font-size: 0.85rem;
             width: 100%; text-align: left; display: flex; justify-content: space-between;
-            transition: background 0.15s;
+            transition: background 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
-        #disciplined-hand-btn:hover { background: rgba(255,255,255,0.09); }
+        #disciplined-hand-btn:hover { background: #f9fafb; }
 
         /* ── Status bar ── */
         .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 4px; }
@@ -301,26 +304,25 @@
             <div style="font-size:0.75rem;font-family:'Inter',sans-serif;color:rgba(255,255,255,0.4);">
                 <span class="status-dot"></span><span id="odds-status">Synced</span>
             </div>
-            <a href="/how-it-works" style="font-family:'Inter',sans-serif;font-size:0.8rem;color:rgba(255,255,255,0.55);text-decoration:none;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.55)'">How It Works</a>
         </div>
     </div>
 </nav>
 
 <!-- ── Thin Status Bar ── -->
-<div style="background:#0d1b2a;border-bottom:1px solid rgba(255,255,255,0.06);padding:0.3rem 1rem;">
+<div style="background:#f3f4f6;border-bottom:1px solid #e5e7eb;padding:0.3rem 1rem;">
     <div style="max-width:1280px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-        <div style="font-family:'Inter',sans-serif;font-size:0.7rem;color:rgba(255,255,255,0.35);">
-            Updated <span id="last-updated" style="color:rgba(255,255,255,0.55);">--:--</span>
+        <div style="font-family:'Inter',sans-serif;font-size:0.7rem;color:#9ca3af;">
+            Updated <span id="last-updated" style="color:#6b7280;">--:--</span>
         </div>
-        <div style="font-family:'Inter',sans-serif;font-size:0.7rem;color:rgba(255,255,255,0.35);">
-            <span id="total-props-label">Total Props</span>: <span id="total-props" style="color:rgba(255,255,255,0.55);">--</span>
+        <div style="font-family:'Inter',sans-serif;font-size:0.7rem;color:#9ca3af;">
+            <span id="total-props-label">Total Props</span>: <span id="total-props" style="color:#6b7280;">--</span>
         </div>
     </div>
 </div>
 
 <!-- ── Main Tab Buttons ── -->
 <div style="max-width:1280px;margin:0 auto;padding:1rem 1rem 0;">
-    <div style="background:#1f2937;border-radius:0.75rem;padding:0.25rem;display:inline-flex;gap:0.25rem;">
+    <div style="background:#e5e7eb;border-radius:0.75rem;padding:0.25rem;display:inline-flex;gap:0.25rem;">
         <button onclick="switchMainTab('player-props')" id="player-props-tab" class="main-tab-btn active">
             <i class="fas fa-users" style="margin-right:0.3rem;font-size:0.8em;"></i>Player Props
         </button>
@@ -337,7 +339,7 @@
 
     <!-- Sport Tabs + View Mode Row -->
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">
-        <div id="sport-tabs" style="background:#1f2937;border-radius:0.75rem;padding:0.25rem;display:inline-flex;gap:0.25rem;">
+        <div id="sport-tabs" style="background:#e5e7eb;border-radius:0.75rem;padding:0.25rem;display:inline-flex;gap:0.25rem;">
             <button class="sport-tab active-tab" data-sport="mlb" type="button">⚾ MLB</button>
             <button class="sport-tab" data-sport="nfl" type="button">🏈 NFL</button>
             <button class="sport-tab" data-sport="nhl" type="button">🏒 NHL</button>
@@ -351,10 +353,10 @@
     <!-- Games Header + Count -->
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;">
         <div>
-            <h2 id="games-header" style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:700;color:#fff;cursor:pointer;margin:0;text-transform:uppercase;letter-spacing:0.04em;" onclick="resetToSportHome()">
+            <h2 id="games-header" style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:700;color:#0d3b66;cursor:pointer;margin:0;text-transform:uppercase;letter-spacing:0.04em;" onclick="resetToSportHome()">
                 <i class="fas fa-users" style="color:#facc15;margin-right:0.4rem;font-size:1rem;"></i>Today's Games
             </h2>
-            <small style="display:block;font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.45);margin-top:0.15rem;" id="games-subtitle">Player props grouped by matchup</small>
+            <small style="display:block;font-family:'Inter',sans-serif;font-size:0.75rem;color:#9ca3af;margin-top:0.15rem;" id="games-subtitle">Player props grouped by matchup</small>
         </div>
         <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
             <span id="prop-count-display" style="font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;background:rgba(250,204,21,0.15);color:#facc15;border:1px solid rgba(250,204,21,0.3);padding:0.2rem 0.7rem;border-radius:50rem;">Loading...</span>
@@ -388,15 +390,15 @@
     <!-- Disciplined Hand Section -->
     <div style="margin-top:1.5rem;margin-bottom:0.5rem;">
         <button id="disciplined-hand-btn" onclick="toggleDisciplinedHand()">
-            <span><i class="fas fa-hand-paper" style="color:#facc15;margin-right:0.5rem;"></i><strong>Disciplined Hand</strong> <span style="color:rgba(255,255,255,0.4);font-size:0.8em;margin-left:0.5rem;">— When to pass & bankroll guardrails</span></span>
-            <i class="fas fa-chevron-down" id="disciplined-hand-chevron" style="color:rgba(255,255,255,0.4);font-size:0.8rem;"></i>
+            <span><i class="fas fa-hand-paper" style="color:#d97706;margin-right:0.5rem;"></i><strong>Disciplined Hand</strong> <span style="color:#9ca3af;font-size:0.8em;margin-left:0.5rem;">— When to pass & bankroll guardrails</span></span>
+            <i class="fas fa-chevron-down" id="disciplined-hand-chevron" style="color:#9ca3af;font-size:0.8rem;"></i>
         </button>
-        <div id="disciplined-hand-body" style="display:none;background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;padding:1.25rem;margin-top:0.4rem;">
-            <p style="color:#facc15;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:1rem;margin:0 0 1rem;"><i class="fas fa-exclamation-triangle" style="margin-right:0.4rem;"></i>THE BEST EDGE IS KNOWING WHEN NOT TO BET.</p>
+        <div id="disciplined-hand-body" style="display:none;background:#ffffff;border:1px solid #e5e7eb;border-radius:0.75rem;padding:1.25rem;margin-top:0.4rem;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+            <p style="color:#d97706;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:1rem;margin:0 0 1rem;"><i class="fas fa-exclamation-triangle" style="margin-right:0.4rem;"></i>THE BEST EDGE IS KNOWING WHEN NOT TO BET.</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                 <div>
-                    <h6 style="color:#22c55e;font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;"><i class="fas fa-check-circle" style="margin-right:0.3rem;"></i>PLAY IT WHEN...</h6>
-                    <ul style="font-size:0.8rem;color:rgba(255,255,255,0.55);padding-left:1rem;line-height:1.7;">
+                    <h6 style="color:#059669;font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;"><i class="fas fa-check-circle" style="margin-right:0.3rem;"></i>PLAY IT WHEN...</h6>
+                    <ul style="font-size:0.8rem;color:#6b7280;padding-left:1rem;line-height:1.7;">
                         <li>True probability ≥ 65% (LOCK tier)</li>
                         <li>Best book offers +100 or better</li>
                         <li>At least 2 books have the line</li>
@@ -404,8 +406,8 @@
                     </ul>
                 </div>
                 <div>
-                    <h6 style="color:#ef4444;font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;"><i class="fas fa-times-circle" style="margin-right:0.3rem;"></i>PASS WHEN...</h6>
-                    <ul style="font-size:0.8rem;color:rgba(255,255,255,0.55);padding-left:1rem;line-height:1.7;">
+                    <h6 style="color:#dc2626;font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;"><i class="fas fa-times-circle" style="margin-right:0.3rem;"></i>PASS WHEN...</h6>
+                    <ul style="font-size:0.8rem;color:#6b7280;padding-left:1rem;line-height:1.7;">
                         <li>Only one sportsbook has the line</li>
                         <li>True probability &lt; 55% (LOW tier)</li>
                         <li>Lineup not yet posted</li>
@@ -413,15 +415,15 @@
                     </ul>
                 </div>
             </div>
-            <div style="background:rgba(255,255,255,0.04);border-left:3px solid rgba(250,204,21,0.5);padding:0.75rem 1rem;border-radius:0 0.5rem 0.5rem 0;margin-top:0.75rem;font-size:0.8rem;color:rgba(255,255,255,0.65);">
-                <strong style="color:#facc15;">Bankroll Rule:</strong> Never risk more than 5% of your roll on a single leg. LOCK = up to 3 units. FIRE = 1–2 units. EDGE = 0–1 unit (or skip).
+            <div style="background:#fffbeb;border-left:3px solid #facc15;padding:0.75rem 1rem;border-radius:0 0.5rem 0.5rem 0;margin-top:0.75rem;font-size:0.8rem;color:#78350f;">
+                <strong style="color:#92400e;">Bankroll Rule:</strong> Never risk more than 5% of your roll on a single leg. LOCK = up to 3 units. FIRE = 1–2 units. EDGE = 0–1 unit (or skip).
             </div>
         </div>
     </div>
 
     <!-- Sportsbook Affiliate Grid -->
     <div style="margin-top:2rem;">
-        <div style="font-family:'Inter',sans-serif;font-size:0.68rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem;">Line Shop — Best Books</div>
+        <div style="font-family:'Inter',sans-serif;font-size:0.68rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem;">Line Shop — Best Books</div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.6rem;" id="book-affiliate-grid">
             <div class="book-card">
                 <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;">FanDuel</div>
@@ -447,13 +449,13 @@
      BETTING STRATEGY TAB
 ════════════════════════════════════════════════════ -->
 <div id="how-to-profit" style="display:none;max-width:1280px;margin:0 auto;padding:1.5rem 1rem;">
-    <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:700;text-align:center;margin-bottom:2rem;color:#fff;">BETTING STRATEGY GUIDE</h2>
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:700;text-align:center;margin-bottom:2rem;color:#0d3b66;">BETTING STRATEGY GUIDE</h2>
     <div style="max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:1rem;">
-        <div style="background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;overflow:hidden;">
+        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:0.75rem;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
             <div style="background:#0d3b66;padding:0.75rem 1rem;">
-                <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;margin:0;">💰 1. Bankroll Management</h4>
+                <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;margin:0;color:#fff;">💰 1. Bankroll Management</h4>
             </div>
-            <div style="padding:1rem;font-size:0.85rem;color:rgba(255,255,255,0.75);line-height:1.7;">
+            <div style="padding:1rem;font-size:0.85rem;color:#374151;line-height:1.7;">
                 <p>The foundation of profitable betting is proper bankroll management:</p>
                 <ul style="padding-left:1.2rem;">
                     <li><strong>Unit System:</strong> Bet 1–5% of your total bankroll per wager</li>
@@ -461,16 +463,16 @@
                     <li><strong>Medium Confidence:</strong> 2–3% of bankroll (50–59%)</li>
                     <li><strong>Low/Speculative:</strong> 1–2% of bankroll (under 50%)</li>
                 </ul>
-                <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:0.5rem;padding:0.75rem;margin-top:0.75rem;font-size:0.82rem;color:rgba(255,255,255,0.65);">
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:0.5rem;padding:0.75rem;margin-top:0.75rem;font-size:0.82rem;color:#1e40af;">
                     <strong>Example:</strong> With a $300 bankroll, your max bet should be $15 (5%) on high-confidence plays.
                 </div>
             </div>
         </div>
-        <div style="background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;overflow:hidden;">
+        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:0.75rem;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
             <div style="background:#14532d;padding:0.75rem 1rem;">
-                <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;margin:0;">👥 2. Player Diversification</h4>
+                <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;margin:0;color:#fff;">👥 2. Player Diversification</h4>
             </div>
-            <div style="padding:1rem;font-size:0.85rem;color:rgba(255,255,255,0.75);line-height:1.7;">
+            <div style="padding:1rem;font-size:0.85rem;color:#374151;line-height:1.7;">
                 <p>Avoid correlation risk by diversifying your selections:</p>
                 <ul style="padding-left:1.2rem;">
                     <li><strong>Different Teams:</strong> Don't stack multiple players from the same team</li>
@@ -480,11 +482,11 @@
                 </ul>
             </div>
         </div>
-        <div style="background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;overflow:hidden;">
-            <div style="background:#6b3c00;padding:0.75rem 1rem;">
-                <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;margin:0;">📋 3. Optimal Slip Sizing</h4>
+        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:0.75rem;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+            <div style="background:#92400e;padding:0.75rem 1rem;">
+                <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;margin:0;color:#fff;">📋 3. Optimal Slip Sizing</h4>
             </div>
-            <div style="padding:1rem;font-size:0.85rem;color:rgba(255,255,255,0.75);line-height:1.7;">
+            <div style="padding:1rem;font-size:0.85rem;color:#374151;line-height:1.7;">
                 <p>Structure your bet slips for maximum profitability:</p>
                 <ul style="padding-left:1.2rem;">
                     <li><strong>3–4 Pick Maximum:</strong> Sweet spot for risk vs. reward</li>
@@ -498,10 +500,10 @@
 </div>
 
 <!-- ── Footer ── -->
-<footer style="background:#091f35;border-top:1px solid rgba(255,255,255,0.08);padding:1.25rem 1rem;margin-top:2rem;">
-    <div style="max-width:1280px;margin:0 auto;text-align:center;font-family:'Inter',sans-serif;font-size:0.72rem;color:rgba(255,255,255,0.3);">
+<footer style="background:#0d3b66;border-top:1px solid rgba(255,255,255,0.1);padding:1.25rem 1rem;margin-top:2rem;">
+    <div style="max-width:1280px;margin:0 auto;text-align:center;font-family:'Inter',sans-serif;font-size:0.72rem;color:rgba(255,255,255,0.4);">
         <p style="margin:0;">© 2026 Mora Bets. For informational and entertainment purposes only. Please bet responsibly.</p>
-        <p style="margin:0.25rem 0 0;"><a href="/how-it-works" style="color:rgba(255,255,255,0.3);text-decoration:none;">How It Works</a></p>
+        <p style="margin:0.25rem 0 0;color:rgba(255,255,255,0.25);">Free sports analytics — no account required</p>
     </div>
 </footer>
 
@@ -781,8 +783,8 @@
                 document.getElementById('player-props-container').innerHTML = `
                     <div style="text-align:center;padding:4rem 0;">
                         <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
-                        <p style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;color:rgba(255,255,255,0.7);margin:0 0 0.5rem;">No lines available right now.</p>
-                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:rgba(255,255,255,0.4);">Lines load daily at 10 AM ET when sharp odds open.<br>Check back this morning for today's best picks.</p>
+                        <p style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;color:#374151;margin:0 0 0.5rem;">No lines available right now.</p>
+                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:#9ca3af;">Lines load daily at 10 AM ET when sharp odds open.<br>Check back this morning for today's best picks.</p>
                     </div>`;
                 document.getElementById('prop-count-display').textContent = '0 picks';
                 return;
@@ -807,8 +809,8 @@
                 document.getElementById('player-props-container').innerHTML = `
                     <div style="text-align:center;padding:4rem 0;">
                         <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
-                        <p style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;color:rgba(255,255,255,0.7);margin:0 0 0.5rem;">No lines available right now.</p>
-                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:rgba(255,255,255,0.4);">Lines load daily at 10 AM ET when sharp odds open.</p>
+                        <p style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;color:#374151;margin:0 0 0.5rem;">No lines available right now.</p>
+                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:#9ca3af;">Lines load daily at 10 AM ET when sharp odds open.</p>
                     </div>`;
                 document.getElementById('prop-count-display').textContent = '0 picks';
                 return;
@@ -839,7 +841,7 @@
                     <span class="section-header-title">⚡ Edge Picks</span>
                     <span class="pill-badge" style="background:#facc15;color:#111827;">${edgePicks.length} today</span>
                     ${avgEv ? `<span class="pill-badge" style="background:rgba(34,197,94,0.2);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">avg EV +${avgEv}%</span>` : ''}
-                    <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.4);">Lines where the math shows real edge vs the market</span>
+                    <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#9ca3af;">Lines where the math shows real edge vs the market</span>
                     <span title="These picks passed the EV threshold — the offered odds are better than the fair market price. Positive EV means value over the long run." style="cursor:help;font-size:0.85rem;">ℹ️</span>
                 </div>
                 <div class="picks-grid" id="edge-cards-row"></div>`;
@@ -857,8 +859,8 @@
         noVigSection.innerHTML = `
             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
                 <span class="section-header-title">📊 Today's Lines</span>
-                <span class="pill-badge" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.55);">${noVigPicks.length} picks · 50%+</span>
-                <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.4);">All picks above 50% no-vig probability</span>
+                <span class="pill-badge" style="background:rgba(13,59,102,0.08);color:#0d3b66;">${noVigPicks.length} picks · 50%+</span>
+                <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#9ca3af;">All picks above 50% no-vig probability</span>
             </div>
             <div class="picks-grid" id="novig-cards-row"></div>`;
         container.appendChild(noVigSection);
@@ -897,14 +899,14 @@
 
         const mt = pick.market_type || '';
         let marketBadge = '';
-        if (mt === 'moneyline') marketBadge = `<span style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">💰 ML</span>`;
-        else if (mt === 'spread') marketBadge = `<span style="background:rgba(96,165,250,0.2);color:#60a5fa;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
-        else if (mt === 'total')  marketBadge = `<span style="background:rgba(167,139,250,0.2);color:#a78bfa;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">📊 O/U</span>`;
+        if (mt === 'moneyline') marketBadge = `<span style="background:rgba(13,59,102,0.08);color:#0d3b66;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">💰 ML</span>`;
+        else if (mt === 'spread') marketBadge = `<span style="background:rgba(59,130,246,0.1);color:#1d4ed8;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
+        else if (mt === 'total')  marketBadge = `<span style="background:rgba(139,92,246,0.1);color:#6d28d9;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">📊 O/U</span>`;
 
         let gameTimeHtml = '';
         if (pick.game_time) {
             const gt = new Date(pick.game_time);
-            if (!isNaN(gt)) gameTimeHtml = `<small style="font-family:'Inter',sans-serif;color:rgba(255,255,255,0.35);font-size:0.68em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
+            if (!isNaN(gt)) gameTimeHtml = `<small style="font-family:'Inter',sans-serif;color:#9ca3af;font-size:0.68em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
         }
         const line = pick.line != null ? pick.line : null;
         const lineHtml = line != null ? `<span style="background:#3b82f6;color:#fff;font-size:0.65em;padding:0.15rem 0.4rem;border-radius:0.3rem;margin-left:0.25rem;">${line}</span>` : '';
@@ -917,7 +919,7 @@
             const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
                 const isBest = b.over_price === pick.best_over_price;
                 const fmt = o => o > 0 ? `+${o}` : `${o}`;
-                return `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.06);font-family:'Inter',sans-serif;font-size:0.72rem;${isBest?'color:#22c55e;font-weight:700;':'color:rgba(255,255,255,0.45);'}">
+                return `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid #f3f4f6;font-family:'Inter',sans-serif;font-size:0.72rem;${isBest?'color:#059669;font-weight:700;':'color:#9ca3af;'}">
                     <span>${b.book}</span><span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
                 </div>`;
             }).join('');
@@ -931,11 +933,11 @@
         }
 
         return `
-        <div style="background:#1f2937;border:1px solid rgba(250,204,21,0.25);border-top:3px solid #facc15;border-radius:0.75rem;padding:0.9rem 1rem;height:100%;">
+        <div style="background:#ffffff;border:1px solid rgba(250,204,21,0.4);border-top:3px solid #facc15;border-radius:0.75rem;padding:0.9rem 1rem;height:100%;box-shadow:0 2px 8px rgba(0,0,0,0.07);">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.6rem;">
                 <div>
-                    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;color:#fff;">${pick.player || 'Unknown'}</div>
-                    <div style="font-family:'Inter',sans-serif;font-size:0.78rem;color:rgba(255,255,255,0.5);margin-top:0.1rem;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;color:#0d3b66;">${pick.player || 'Unknown'}</div>
+                    <div style="font-family:'Inter',sans-serif;font-size:0.78rem;color:#6b7280;margin-top:0.1rem;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
                     <div style="margin-top:0.2rem;">${gameTimeHtml}</div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
@@ -943,36 +945,36 @@
                     ${marketBadge}
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.25rem;background:rgba(255,255,255,0.04);border-radius:0.5rem;padding:0.5rem;margin-bottom:0.6rem;">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.25rem;background:rgba(13,59,102,0.04);border-radius:0.5rem;padding:0.5rem;margin-bottom:0.6rem;">
                 <div style="text-align:center;">
-                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:rgba(255,255,255,0.4);">EV</div>
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.95em;color:${ev>=0?'#22c55e':'#ef4444'};">${ev>=0?'+':''}${ev.toFixed(2)}%</div>
+                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#9ca3af;">EV</div>
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.95em;color:${ev>=0?'#059669':'#dc2626'};">${ev>=0?'+':''}${ev.toFixed(2)}%</div>
                 </div>
                 <div style="text-align:center;">
-                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:rgba(255,255,255,0.4);">Fair Odds</div>
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;">${fmtOdds(pick.fair_odds)}</div>
+                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#9ca3af;">Fair Odds</div>
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#1a1a1a;">${fmtOdds(pick.fair_odds)}</div>
                 </div>
                 <div style="text-align:center;">
-                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:rgba(255,255,255,0.4);">True Prob</div>
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;">${nvp.toFixed(1)}%</div>
+                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#9ca3af;">True Prob</div>
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#1a1a1a;">${nvp.toFixed(1)}%</div>
                 </div>
                 <div style="text-align:center;">
-                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:rgba(255,255,255,0.4);">BE%</div>
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;">${pick.break_even_prob!=null ? parseFloat(pick.break_even_prob).toFixed(1)+'%' : '—'}</div>
+                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#9ca3af;">BE%</div>
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#1a1a1a;">${pick.break_even_prob!=null ? parseFloat(pick.break_even_prob).toFixed(1)+'%' : '—'}</div>
                 </div>
             </div>
             <div style="margin-bottom:0.5rem;">
                 <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.68em;margin-bottom:0.2rem;">
-                    <span style="color:rgba(255,255,255,0.4);">True Probability</span>
+                    <span style="color:#9ca3af;">True Probability</span>
                     <strong style="color:${barColor};">${nvp.toFixed(1)}%</strong>
                 </div>
-                <div style="background:rgba(255,255,255,0.1);border-radius:3px;height:5px;">
+                <div style="background:#e5e7eb;border-radius:3px;height:5px;">
                     <div style="width:${Math.min(100,nvp)}%;background:${barColor};border-radius:3px;height:100%;"></div>
                 </div>
             </div>
             <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
-                <span style="color:#facc15;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;"></i>Best: <strong>${pick.best_book || '—'}</strong> ${fmtOdds(pick.best_over_price)}</span>
-                ${bookCount > 1 ? `<span style="color:rgba(255,255,255,0.35);margin-left:0.5rem;font-size:0.85em;">${bookCount} books</span>` : ''}
+                <span style="color:#d97706;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;"></i>Best: <strong>${pick.best_book || '—'}</strong> ${fmtOdds(pick.best_over_price)}</span>
+                ${bookCount > 1 ? `<span style="color:#9ca3af;margin-left:0.5rem;font-size:0.85em;">${bookCount} books</span>` : ''}
             </div>
             ${lineShopHtml}
         </div>`;
@@ -995,14 +997,14 @@
 
         const mt = pick.market_type || '';
         let marketBadge = '';
-        if (mt === 'moneyline') marketBadge = `<span style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">💰 ML</span>`;
-        else if (mt === 'spread') marketBadge = `<span style="background:rgba(96,165,250,0.2);color:#60a5fa;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
-        else if (mt === 'total')  marketBadge = `<span style="background:rgba(167,139,250,0.2);color:#a78bfa;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">📊 O/U</span>`;
+        if (mt === 'moneyline') marketBadge = `<span style="background:rgba(13,59,102,0.08);color:#0d3b66;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">💰 ML</span>`;
+        else if (mt === 'spread') marketBadge = `<span style="background:rgba(59,130,246,0.1);color:#1d4ed8;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
+        else if (mt === 'total')  marketBadge = `<span style="background:rgba(139,92,246,0.1);color:#6d28d9;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">📊 O/U</span>`;
 
         let gameTimeHtml = '';
         if (pick.game_time) {
             const gt = new Date(pick.game_time);
-            if (!isNaN(gt)) gameTimeHtml = `<small style="display:block;font-family:'Inter',sans-serif;color:rgba(255,255,255,0.35);font-size:0.65em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
+            if (!isNaN(gt)) gameTimeHtml = `<small style="display:block;font-family:'Inter',sans-serif;color:#9ca3af;font-size:0.65em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
         }
         const line = pick.line != null ? pick.line : null;
         const lineHtml = line != null ? `<span style="background:#3b82f6;color:#fff;font-size:0.62em;padding:0.12rem 0.35rem;border-radius:0.3rem;margin-left:0.2rem;">${line}</span>` : '';
@@ -1015,7 +1017,7 @@
             const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
                 const isBest = b.over_price === pick.best_over_price;
                 const fmt = o => o > 0 ? `+${o}` : `${o}`;
-                return `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.06);font-family:'Inter',sans-serif;font-size:0.72rem;${isBest?'color:#22c55e;font-weight:700;':'color:rgba(255,255,255,0.45);'}">
+                return `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid #f3f4f6;font-family:'Inter',sans-serif;font-size:0.72rem;${isBest?'color:#059669;font-weight:700;':'color:#9ca3af;'}">
                     <span>${b.book}</span><span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
                 </div>`;
             }).join('');
@@ -1033,11 +1035,11 @@
             : '';
 
         return `
-        <div style="background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;padding:0.9rem 1rem;height:100%;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:0.75rem;padding:0.9rem 1rem;height:100%;box-shadow:0 1px 4px rgba(0,0,0,0.06);transition:border-color 0.2s,box-shadow 0.2s;" onmouseover="this.style.borderColor='#d1d5db';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'" onmouseout="this.style.borderColor='#e5e7eb';this.style.boxShadow='0 1px 4px rgba(0,0,0,0.06)'">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.5rem;">
                 <div>
-                    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;color:#fff;">${pick.player || 'Unknown'}</div>
-                    <div style="font-family:'Inter',sans-serif;font-size:0.76rem;color:rgba(255,255,255,0.5);margin-top:0.1rem;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;color:#0d3b66;">${pick.player || 'Unknown'}</div>
+                    <div style="font-family:'Inter',sans-serif;font-size:0.76rem;color:#6b7280;margin-top:0.1rem;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
                     ${gameTimeHtml}
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
@@ -1047,15 +1049,15 @@
             </div>
             <div style="margin-bottom:0.5rem;">
                 <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.7em;margin-bottom:0.2rem;">
-                    <span style="color:rgba(255,255,255,0.4);">True Probability (no-vig)</span>
+                    <span style="color:#9ca3af;">True Probability (no-vig)</span>
                     <strong style="color:${barColor};">${nvp.toFixed(1)}%</strong>
                 </div>
-                <div style="background:rgba(255,255,255,0.1);border-radius:3px;height:5px;">
+                <div style="background:#e5e7eb;border-radius:3px;height:5px;">
                     <div style="width:${Math.min(100,nvp)}%;background:${barColor};border-radius:3px;height:100%;"></div>
                 </div>
             </div>
             <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
-                <span style="color:#facc15;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;"></i>Best: ${pick.best_book || '—'} <strong>${fmtOdds(pick.best_over_price)}</strong></span>
+                <span style="color:#d97706;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;"></i>Best: ${pick.best_book || '—'} <strong>${fmtOdds(pick.best_over_price)}</strong></span>
                 ${evBadge}
             </div>
             ${lineShopHtml}
@@ -1344,7 +1346,7 @@
             let gameTimeHtml = '';
             if (prop.game_time) {
                 const gt = new Date(prop.game_time);
-                if (!isNaN(gt)) gameTimeHtml = `<small style="display:block;font-family:'Inter',sans-serif;color:rgba(255,255,255,0.35);font-size:0.65em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
+                if (!isNaN(gt)) gameTimeHtml = `<small style="display:block;font-family:'Inter',sans-serif;color:#9ca3af;font-size:0.65em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
             }
 
             const allBooks = Array.isArray(prop.all_books) ? prop.all_books : [];
