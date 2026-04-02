@@ -1,121 +1,60 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
 <head>
-    <!-- ✅ Charset & Viewport -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- ✅ Page Title -->
-    <title>Today's Player Props  – Mora Bets</title>
-    
-    <!-- ✅ Meta Description -->
-    <meta name="description" content="Daily MLB player prop picks, optimized parlays, and expert insights. See today's top 2-leg picks powered by Mora Bets.">
-    
-    <!-- ✅ Open Graph Tags -->
-    <meta property="og:title" content="Mora Bets – Today's Best MLB Prop Picks">
-    <meta property="og:description" content="Expert-crafted 2-leg parlays and hit prop picks, updated daily.">
+    <meta name="theme-color" content="#091f35">
+    <meta name="color-scheme" content="dark">
+
+    <title>Today's Picks – Mora Bets</title>
+    <meta name="description" content="Daily MLB player prop picks, EV-positive edge picks, and real probability data. Mora Bets — free daily picks powered by real math.">
+    <meta property="og:title" content="Mora Bets – Today's Best Picks">
+    <meta property="og:description" content="Edge picks + no-vig lines updated daily. Real math, no guessing.">
     <meta property="og:url" content="https://morabets.com/">
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://morabets.com/assets/og-image.png">
-    
-    <!-- ✅ Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Mora Bets – MLB Prop Picks">
-    <meta name="twitter:description" content="Updated daily with the best 2-leg parlays and MLB player props.">
-    <meta name="twitter:image" content="https://morabets.com/assets/og-image.png">
-    
-    <!-- ✅ Canonical URL -->
     <link rel="canonical" href="https://morabets.com/">
-    
-    <!-- ✅ Favicon -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Affiliate config (single source of truth for all book links) -->
+    <script src="/static/affiliate_config.js"></script>
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'display': ['Barlow Condensed', 'sans-serif'],
+                        'data':    ['Space Grotesk', 'sans-serif'],
+                        'ui':      ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'brand-navy':      '#0d3b66',
+                        'brand-navy-dark': '#091f35',
+                        'brand-green':     '#14532d',
+                        'brand-cta':       '#17603e',
+                        'brand-gold':      '#facc15',
+                        'brand-gold-dark': '#d97706',
+                        'surface':         '#111827',
+                        'surface-2':       '#1f2937',
+                        'surface-3':       '#374151',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Bootstrap Bundle JS only (for accordion / collapse) -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .stats-card {
-            background: var(--bs-dark);
-            border: 1px solid var(--bs-border-color);
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        .probability-high { color: var(--bs-success); font-weight: bold; }
-        .probability-medium { color: var(--bs-warning); }
-        .probability-low { color: var(--bs-danger); }
-        .loading { text-align: center; padding: 2rem; }
-        .api-endpoint { background: var(--bs-secondary); border-radius: 0.25rem; padding: 0.5rem; font-family: monospace; font-size: 0.9rem; }
-        .edge-positive { color: var(--bs-success); }
-        .edge-negative { color: var(--bs-danger); }
-        .matchup-tab { min-width: 140px; white-space: nowrap; transition: all 0.3s ease; }
-        .matchup-tab:hover { transform: translateY(-2px); }
-        .platform-header {
-            background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%);
-            border-radius: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .nav-pills .nav-link { border-radius: 50rem; transition: all 0.3s ease; margin: 0 0.25rem; }
-        .nav-pills .nav-link.active {
-            background: linear-gradient(45deg, #06b6d4, #3b82f6); color: white; transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
-        }
-        .nav-pills .nav-link:hover:not(.active) { background: rgba(255,255,255,0.1); color: white; }
-        .prop-card { background: var(--bs-dark); border: 1px solid var(--bs-border-color); border-radius: 0.75rem; transition: all 0.3s ease; margin-bottom: 1rem; }
-        .prop-card:hover { transform: translateY(-2px); border-color: var(--bs-primary); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
-        .confidence-high { color: #22c55e; font-weight: bold; }
-        .confidence-medium { color: #f59e0b; }
-        .confidence-low { color: #ef4444; }
-        .status-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
-        .status-live { background-color: #22c55e; }
-        .status-updating { background-color: #f59e0b; }
-        .status-offline { background-color: #ef4444; }
-        .ai-badge { background: linear-gradient(45deg, #8b5cf6, #a855f7); color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.375rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; }
-        .refresh-btn { background: linear-gradient(45deg, #06b6d4, #3b82f6); border: none; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.3s ease; }
-        .refresh-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4); }
-        .picks-container { background: linear-gradient(135deg, #1f2937 0%, #374151 100%); border-radius: 1rem; padding: 2rem; margin: 1rem 0; }
-        .parlay-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1rem; }
-        .parlay-title { background: linear-gradient(45deg, #8b5cf6, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: bold; font-size: 1.25rem; }
-        .matchup-card { transition: all 0.3s ease; cursor: pointer; }
-        .matchup-card:hover { transform: translateY(-5px); border-color: var(--bs-primary); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
-        .analysis-content { background: rgba(255,255,255,0.03); border-left: 4px solid #8b5cf6; padding: 1.5rem; border-radius: 0.5rem; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; }
-        .env-label { font-size: 0.8rem; font-weight: 500; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .favored { color: #00FF95; font-weight: bold; text-shadow: 0 0 8px rgba(0,255,149,0.3); }
-        /* Sticky back header */
-        #sticky-back-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1050;
-            background: linear-gradient(90deg, #1e3a8a 0%, #3730a3 60%, #581c87 100%);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-            padding: 0.6rem 1.5rem;
-            display: none;
-            align-items: center;
-            gap: 1rem;
-        }
-        #sticky-back-header .back-btn {
-            background: rgba(255,255,255,0.15);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: #fff;
-            border-radius: 50rem;
-            padding: 0.35rem 1rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            white-space: nowrap;
-        }
-        #sticky-back-header .back-btn:hover { background: rgba(255,255,255,0.28); }
-        #sticky-back-header .matchup-label {
-            color: rgba(255,255,255,0.85);
-            font-size: 0.95rem;
-            font-weight: 600;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        body.sticky-header-visible { padding-top: 48px; }
-    </style>
+
     <!-- Meta Pixel Code -->
     <script>
     !function(f,b,e,v,n,t,s)
@@ -133,1413 +72,1469 @@
     src="https://www.facebook.com/tr?id=1688269505510635&ev=PageView&noscript=1"
     /></noscript>
     <!-- End Meta Pixel Code -->
+
+    <style>
+        /* ── Base ── */
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #111827;
+            color: #fff;
+            min-height: 100vh;
+            padding-bottom: 4rem;
+        }
+
+        /* ── Sticky Back Header ── */
+        #sticky-back-header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1050;
+            background: #091f35;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            padding: 0.6rem 1.5rem;
+            display: none; align-items: center; gap: 1rem;
+        }
+        #sticky-back-header .back-btn {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            border-radius: 50rem;
+            padding: 0.3rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            white-space: nowrap;
+        }
+        #sticky-back-header .back-btn:hover { background: rgba(255,255,255,0.22); }
+        #sticky-back-header .matchup-label {
+            color: rgba(255,255,255,0.85);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1rem; font-weight: 700;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        body.sticky-header-visible { padding-top: 48px; }
+
+        /* ── Sport Tabs ── */
+        .sport-tab {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700; font-size: 0.9rem;
+            padding: 0.45rem 1.25rem; border-radius: 0.5rem;
+            border: none; cursor: pointer;
+            color: rgba(255,255,255,0.5);
+            background: transparent;
+            transition: all 0.15s;
+            letter-spacing: 0.03em;
+        }
+        .sport-tab.active-tab { color: #111827; background: #facc15; }
+        .sport-tab:hover:not(.active-tab) { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
+
+        /* ── Main Tabs (Player Props | Betting Strategy) ── */
+        .main-tab-btn {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700; font-size: 0.9rem;
+            padding: 0.45rem 1.25rem; border-radius: 0.5rem;
+            border: none; cursor: pointer;
+            color: rgba(255,255,255,0.5);
+            background: transparent; transition: all 0.15s;
+        }
+        .main-tab-btn.active { color: #111827; background: #facc15; }
+        .main-tab-btn:hover:not(.active) { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
+
+        /* ── View Mode Toggle (Best Lines / Player Props) ── */
+        .view-btn {
+            font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.82rem;
+            padding: 0.4rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .view-btn.active-view { background: #8b5cf6; color: #fff; }
+        .view-btn:not(.active-view) { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.65); }
+        .view-btn:hover:not(.active-view) { background: rgba(255,255,255,0.14); color: #fff; }
+
+        /* ── Prop Card (dark surface) ── */
+        .prop-card {
+            background: #1f2937;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 0.75rem;
+            margin-bottom: 0.75rem;
+            transition: border-color 0.2s;
+        }
+        .prop-card:hover { border-color: rgba(255,255,255,0.2); }
+        .prop-card .card-body { padding: 0.9rem 1rem; }
+
+        /* ── Matchup Card ── */
+        .matchup-card {
+            background: #1f2937;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 0.75rem; cursor: pointer;
+            transition: all 0.2s; margin-bottom: 0.75rem;
+        }
+        .matchup-card:hover { border-color: rgba(250,204,21,0.4); transform: translateY(-2px); }
+        .matchup-card .card-body { padding: 1rem; }
+
+        /* ── Bootstrap overrides for dark theme ── */
+        .card { background: #1f2937 !important; border-color: rgba(255,255,255,0.08) !important; color: #fff !important; }
+        .text-muted { color: rgba(255,255,255,0.45) !important; }
+        .text-light { color: rgba(255,255,255,0.85) !important; }
+        .border-secondary { border-color: rgba(255,255,255,0.1) !important; }
+        .progress { background: rgba(255,255,255,0.1) !important; border-radius: 3px; }
+        .progress-bar { border-radius: 3px; }
+        .form-control, .form-select {
+            background: #1f2937 !important; border: 1px solid rgba(255,255,255,0.12) !important;
+            color: #fff !important; border-radius: 0.5rem;
+            font-family: 'Inter', sans-serif; font-size: 0.85rem;
+        }
+        .form-control::placeholder { color: rgba(255,255,255,0.3) !important; }
+        .form-select option { background: #1f2937; }
+        .btn-outline-secondary {
+            color: rgba(255,255,255,0.5) !important; border-color: rgba(255,255,255,0.15) !important;
+            font-size: 0.72em;
+        }
+        .btn-outline-secondary:hover { background: rgba(255,255,255,0.08) !important; color: #fff !important; }
+        .btn-outline-primary {
+            color: #60a5fa !important; border-color: rgba(96,165,250,0.4) !important; font-size: 0.85rem;
+        }
+        .btn-outline-primary:hover { background: rgba(96,165,250,0.15) !important; color: #fff !important; }
+        .alert { border-radius: 0.75rem; font-family: 'Inter', sans-serif; }
+        .alert-info { background: rgba(96,165,250,0.08) !important; border-color: rgba(96,165,250,0.2) !important; color: rgba(255,255,255,0.8) !important; }
+        .alert-warning { background: rgba(250,204,21,0.08) !important; border-color: rgba(250,204,21,0.2) !important; color: rgba(255,255,255,0.8) !important; }
+        .alert-danger { background: rgba(239,68,68,0.08) !important; border-color: rgba(239,68,68,0.2) !important; color: rgba(255,255,255,0.8) !important; }
+        .collapse.show { display: block; }
+        .badge { font-family: 'Inter', sans-serif; }
+        .favored { color: #00FF95; font-weight: bold; text-shadow: 0 0 8px rgba(0,255,149,0.3); }
+        .env-label { font-size: 0.72rem; font-weight: 600; padding: 3px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* ── Skeleton shimmer ── */
+        @keyframes shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position:  200% 0; }
+        }
+        .skeleton-card {
+            background: linear-gradient(90deg, #1f2937 0%, #374151 50%, #1f2937 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 0.75rem; height: 160px; margin-bottom: 0.75rem;
+        }
+
+        /* ── Grid ── */
+        .picks-grid { display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.75rem; }
+        @media(min-width: 640px)  { .picks-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media(min-width: 1024px) { .picks-grid { grid-template-columns: repeat(3, 1fr); } }
+
+        /* ── Section headers ── */
+        .section-header-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700; font-size: 1.2rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            color: #fff;
+        }
+        .pill-badge {
+            font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 700;
+            padding: 0.2rem 0.6rem; border-radius: 50rem; display: inline-block;
+        }
+
+        /* ── Book affiliate cards ── */
+        .book-card {
+            background: #1f2937; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 0.75rem; padding: 1rem; display: flex; flex-direction: column;
+            align-items: center; gap: 0.5rem; transition: border-color 0.2s;
+        }
+        .book-card:hover { border-color: rgba(250,204,21,0.4); }
+        .book-cta {
+            background: #facc15; color: #111827;
+            font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+            font-size: 0.85rem; padding: 0.4rem 0.9rem; border-radius: 0.4rem;
+            text-decoration: none; display: inline-block; transition: background 0.15s;
+        }
+        .book-cta:hover { background: #d97706; color: #fff; }
+
+        /* ── Sticky bar affiliate buttons ── */
+        .bar-affiliate-btn {
+            font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.78rem;
+            padding: 0.35rem 0.9rem; border-radius: 50rem;
+            background: rgba(255,255,255,0.1); color: #fff;
+            text-decoration: none; white-space: nowrap; transition: all 0.15s;
+        }
+        .bar-affiliate-btn:hover { background: #facc15; color: #111827; }
+
+        /* ── Disciplined Hand section ── */
+        #disciplined-hand-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.5rem; padding: 0.65rem 1rem; cursor: pointer;
+            color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-size: 0.85rem;
+            width: 100%; text-align: left; display: flex; justify-content: space-between;
+            transition: background 0.15s;
+        }
+        #disciplined-hand-btn:hover { background: rgba(255,255,255,0.09); }
+
+        /* ── Status bar ── */
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 4px; }
+    </style>
 </head>
 <body>
-    <!-- Sticky Back Header (shown when inside a matchup) -->
-    <div id="sticky-back-header">
-        <button class="back-btn" onclick="resetToSportHome()">
-            <i class="fas fa-arrow-left me-1"></i> Today's Games
+
+<!-- ── Sticky Back Header (shown when inside a matchup) ── -->
+<div id="sticky-back-header">
+    <button class="back-btn" onclick="resetToSportHome()">
+        <i class="fas fa-arrow-left me-1"></i> Today's Games
+    </button>
+    <span class="matchup-label" id="sticky-matchup-label"></span>
+</div>
+
+<!-- ── Navigation ── -->
+<nav style="background:#091f35;border-bottom:1px solid rgba(255,255,255,0.1);position:sticky;top:0;z-index:50;">
+    <div style="max-width:1280px;margin:0 auto;padding:0.7rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;">
+        <!-- Logo -->
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+            <div style="width:32px;height:32px;background:#facc15;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1rem;color:#111827;">M</span>
+            </div>
+            <div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.2rem;letter-spacing:0.1em;color:#fff;text-transform:uppercase;">MORA BETS</div>
+                <div style="font-family:'Inter',sans-serif;font-size:0.68rem;color:rgba(255,255,255,0.35);letter-spacing:0.08em;text-transform:uppercase;display:none;" class="nav-sub">Free daily picks · Real math</div>
+            </div>
+        </div>
+        <!-- Right: status + how it works -->
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <div style="display:none;font-family:'Space Grotesk',sans-serif;font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:right;" id="quota-display">
+                <span id="quota-remaining">--</span> API calls left
+            </div>
+            <div style="font-size:0.75rem;font-family:'Inter',sans-serif;color:rgba(255,255,255,0.4);">
+                <span class="status-dot"></span><span id="odds-status">Synced</span>
+            </div>
+            <a href="/how-it-works" style="font-family:'Inter',sans-serif;font-size:0.8rem;color:rgba(255,255,255,0.55);text-decoration:none;white-space:nowrap;transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.55)'">How It Works</a>
+        </div>
+    </div>
+</nav>
+
+<!-- ── Thin Status Bar ── -->
+<div style="background:#0d1b2a;border-bottom:1px solid rgba(255,255,255,0.06);padding:0.3rem 1rem;">
+    <div style="max-width:1280px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+        <div style="font-family:'Inter',sans-serif;font-size:0.7rem;color:rgba(255,255,255,0.35);">
+            Updated <span id="last-updated" style="color:rgba(255,255,255,0.55);">--:--</span>
+        </div>
+        <div style="font-family:'Inter',sans-serif;font-size:0.7rem;color:rgba(255,255,255,0.35);">
+            <span id="total-props-label">Total Props</span>: <span id="total-props" style="color:rgba(255,255,255,0.55);">--</span>
+        </div>
+    </div>
+</div>
+
+<!-- ── Main Tab Buttons ── -->
+<div style="max-width:1280px;margin:0 auto;padding:1rem 1rem 0;">
+    <div style="background:#1f2937;border-radius:0.75rem;padding:0.25rem;display:inline-flex;gap:0.25rem;">
+        <button onclick="switchMainTab('player-props')" id="player-props-tab" class="main-tab-btn active">
+            <i class="fas fa-users" style="margin-right:0.3rem;font-size:0.8em;"></i>Player Props
         </button>
-        <span class="matchup-label" id="sticky-matchup-label"></span>
+        <button onclick="switchMainTab('how-to-profit')" id="how-to-profit-tab" class="main-tab-btn">
+            <i class="fas fa-graduation-cap" style="margin-right:0.3rem;font-size:0.8em;"></i>Betting Strategy
+        </button>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     PLAYER PROPS TAB
+════════════════════════════════════════════════════ -->
+<div id="player-props" style="max-width:1280px;margin:0 auto;padding:0.75rem 1rem;">
+
+    <!-- Sport Tabs + View Mode Row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+        <div id="sport-tabs" style="background:#1f2937;border-radius:0.75rem;padding:0.25rem;display:inline-flex;gap:0.25rem;">
+            <button class="sport-tab active-tab" data-sport="mlb" type="button">⚾ MLB</button>
+            <button class="sport-tab" data-sport="nfl" type="button">🏈 NFL</button>
+            <button class="sport-tab" data-sport="nhl" type="button">🏒 NHL</button>
+        </div>
+        <div style="display:flex;gap:0.4rem;" id="view-mode-toggle">
+            <button id="mode-lines-btn" onclick="switchMode('lines')" class="view-btn active-view">🎯 Best Lines</button>
+            <button id="mode-props-btn" onclick="switchMode('props')" class="view-btn">📊 Player Props</button>
+        </div>
     </div>
 
-    <div class="container-fluid py-4">
-        <!-- Platform Header -->
-        <div class="platform-header p-4 text-white">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h1 class="display-6 fw-bold mb-2" style="cursor: pointer;" onclick="resetToSportHome()" title="Back to Today's Games">
-                        <i class="fas fa-chart-line me-2"></i>Mora Bets
-                    </h1>
-                    <p class="mb-0 fs-5">Real-Time Prop Betting Edge Tool</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <div class="d-flex justify-content-md-end align-items-center gap-3 flex-wrap">
-                        <div class="text-center">
-                            <small class="d-block text-light opacity-75">Last Updated</small>
-                            <strong id="last-updated">--:--</strong>
-                        </div>
-                        <div class="text-center">
-                            <small class="d-block text-light opacity-75" id="total-props-label">Total MLB Props</small>
-                            <strong id="total-props">--</strong>
-                        </div>
-                        <div class="text-center">
-                            <small class="d-block text-light opacity-75">Live Odds</small>
-                            <span class="status-indicator status-live"></span>
-                            <strong id="odds-status">Synced</strong>
-                        </div>
-                        <div class="text-center" id="quota-display" style="display:none;">
-                            <small class="d-block text-light opacity-75">API Calls Left</small>
-                            <strong id="quota-remaining" class="text-warning">--</strong>
-                        </div>
-                        <a href="/logout" class="btn btn-outline-light btn-sm">
-                            <i class="fas fa-sign-out-alt me-1"></i>Logout
-                        </a>
-                    </div>
-                </div>
-            </div>
+    <!-- Games Header + Count -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+        <div>
+            <h2 id="games-header" style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:700;color:#fff;cursor:pointer;margin:0;text-transform:uppercase;letter-spacing:0.04em;" onclick="resetToSportHome()">
+                <i class="fas fa-users" style="color:#facc15;margin-right:0.4rem;font-size:1rem;"></i>Today's Games
+            </h2>
+            <small style="display:block;font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.45);margin-top:0.15rem;" id="games-subtitle">Player props grouped by matchup</small>
         </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+            <span id="prop-count-display" style="font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;background:rgba(250,204,21,0.15);color:#facc15;border:1px solid rgba(250,204,21,0.3);padding:0.2rem 0.7rem;border-radius:50rem;">Loading...</span>
+            <button id="load-more-props" style="display:none;font-family:'Inter',sans-serif;font-size:0.8rem;padding:0.3rem 0.8rem;background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.3);border-radius:50rem;cursor:pointer;">Load More</button>
+        </div>
+    </div>
 
-        <!-- Main Navigation -->
-        <ul class="nav nav-pills justify-content-center mb-4" id="main-tabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="player-props-tab" data-bs-toggle="pill" data-bs-target="#player-props" type="button" role="tab">
-                    <i class="fas fa-users me-2"></i>Player Props
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="how-to-profit-tab" data-bs-toggle="pill" data-bs-target="#how-to-profit" type="button" role="tab">
-                    <i class="fas fa-graduation-cap me-2"></i>Betting Strategy
-                </button>
-            </li>
-        </ul>
+    <!-- Search + Filter -->
+    <div style="display:flex;gap:0.6rem;margin-bottom:1rem;flex-wrap:wrap;">
+        <input type="text" id="player-search" class="form-control" placeholder="Search players or stats..." onkeyup="applyFilters()" style="flex:1;min-width:180px;">
+        <select id="confidence-filter" class="form-select" onchange="applyFilters()" style="min-width:160px;max-width:220px;">
+            <option value="">All Tiers</option>
+            <option value="high">🔒 LOCK (≥70% true prob)</option>
+            <option value="medium">🔥 FIRE (50–69%)</option>
+            <option value="low">— EDGE (&lt;50%)</option>
+        </select>
+    </div>
 
-        <!-- Tab Content -->
-        <div class="tab-content" id="pills-tabContent">
-            <!-- Player Props Tab -->
-            <div class="tab-pane fade show active" id="player-props" role="tabpanel">
-                <div class="container">
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <!-- Sport Selection Tabs -->
-                            <div class="d-flex justify-content-center mb-4">
-                                <ul class="nav nav-pills nav-fill" id="sport-tabs" style="max-width: 560px;" role="tablist">
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link active" id="mlb-tab" data-sport="mlb" type="button" role="tab">
-                                            <i class="fas fa-baseball-ball me-2"></i>MLB Props
-                                        </button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="nfl-tab" data-sport="nfl" type="button" role="tab">
-                                            <i class="fas fa-football-ball me-2"></i>NFL Props
-                                        </button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="nhl-tab" data-sport="nhl" type="button" role="tab">
-                                            <i class="fas fa-hockey-puck me-2"></i>NHL Props
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                            
-                            <!-- View Mode Toggle -->
-                            <div class="d-flex justify-content-center mb-3">
-                                <div class="d-flex gap-2" id="view-mode-toggle">
-                                    <button id="mode-lines-btn" onclick="switchMode('lines')"
-                                        class="px-4 py-2 rounded-lg fw-semibold border-0"
-                                        style="background:#8b5cf6;color:#fff;cursor:pointer;">
-                                        🎯 Best Lines
-                                    </button>
-                                    <button id="mode-props-btn" onclick="switchMode('props')"
-                                        class="px-4 py-2 rounded-lg fw-semibold border-0"
-                                        style="background:#e5e7eb;color:#374151;cursor:pointer;">
-                                        📊 Player Props
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h2 id="games-header" style="cursor: pointer;" onclick="resetToSportHome()">
-                                    <i class="fas fa-users text-primary me-2"></i>Today's Games
-                                    <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">Player props grouped by matchup</small>
-                                </h2>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-primary" id="prop-count-display">Loading...</span>
-                                    <button id="load-more-props" class="btn btn-outline-primary" style="display: none;">
-                                        Load More Props
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Search and Filter Controls -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-5">
-                                    <input type="text" id="player-search" class="form-control" placeholder="Search players or stats..." onkeyup="applyFilters()">
-                                </div>
-                                <div class="col-md-4">
-                                    <select id="confidence-filter" class="form-select" onchange="applyFilters()">
-                                        <option value="">All Tiers</option>
-                                        <option value="high">🔒 LOCK (≥70% true prob)</option>
-                                        <option value="medium">🔥 FIRE (50–69%)</option>
-                                        <option value="low">— LOW (&lt;50%)</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="text-muted small text-center">
-                                        <div id="prop-count-display">-- props</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-12">
-                            <div id="player-props-container" class="loading">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading props...</span>
-                                </div>
-                                <p class="mt-3">Loading player props...</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Disciplined Hand -->
-                    <div class="mt-4 mb-2">
-                        <button class="btn btn-outline-secondary w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#disciplined-hand-section">
-                            <i class="fas fa-hand-paper me-2 text-warning"></i><strong>Disciplined Hand</strong> <small class="text-muted ms-2">— When to pass & bankroll guardrails</small>
-                            <i class="fas fa-chevron-down float-end mt-1"></i>
-                        </button>
-                        <div class="collapse" id="disciplined-hand-section">
-                            <div class="card bg-dark border-warning mt-2">
-                                <div class="card-body">
-                                    <p class="text-warning fw-bold mb-3"><i class="fas fa-exclamation-triangle me-2"></i>The best edge is knowing when NOT to bet.</p>
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <h6 class="text-success"><i class="fas fa-check-circle me-1"></i>Play it when...</h6>
-                                            <ul class="small text-muted">
-                                                <li>True probability ≥ 65% (LOCK tier)</li>
-                                                <li>Best book offers +100 or better</li>
-                                                <li>At least 2 books have the line</li>
-                                                <li>Player is confirmed in the lineup</li>
-                                            </ul>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <h6 class="text-danger"><i class="fas fa-times-circle me-1"></i>Pass when...</h6>
-                                            <ul class="small text-muted">
-                                                <li>Only one sportsbook has the line</li>
-                                                <li>True probability &lt; 55% (LOW tier)</li>
-                                                <li>Lineup not yet posted</li>
-                                                <li>You're chasing losses from yesterday</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    <div class="alert alert-secondary small mt-3 mb-0">
-                                        <strong>Bankroll Rule:</strong> Never risk more than 5% of your roll on a single leg. LOCK = up to 3 units. FIRE = 1-2 units. LOW = 0-1 unit (or skip).
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- How to Profit Tab -->
-            <div class="tab-pane fade" id="how-to-profit" role="tabpanel">
-                <div class="container">
-                    <h2 class="text-center mb-5">
-                        <i class="fas fa-graduation-cap text-info me-2"></i>Betting Strategy Guide
-                    </h2>
-                    
-                    <div class="row">
-                        <div class="col-lg-8 mx-auto">
-                            <div class="card mb-4 bg-dark border-secondary">
-                                <div class="card-header bg-primary">
-                                    <h4 class="mb-0"><i class="fas fa-piggy-bank me-2"></i>1. Bankroll Management</h4>
-                                </div>
-                                <div class="card-body">
-                                    <p>The foundation of profitable betting is proper bankroll management:</p>
-                                    <ul>
-                                        <li><strong>Unit System:</strong> Bet 1-5% of your total bankroll per wager</li>
-                                        <li><strong>High Confidence:</strong> 3-5% of bankroll (60%+ hit probability)</li>
-                                        <li><strong>Medium Confidence:</strong> 2-3% of bankroll (50-59% hit probability)</li>
-                                        <li><strong>Low/Speculative:</strong> 1-2% of bankroll (under 50% hit probability)</li>
-                                    </ul>
-                                    <div class="alert alert-info mt-3"><strong>Example:</strong> With a $300 bankroll, your max bet should be $15 (5%) on high-confidence plays</div>
-                                </div>
-                            </div>
-
-                            <div class="card mb-4 bg-dark border-secondary">
-                                <div class="card-header bg-success">
-                                    <h4 class="mb-0"><i class="fas fa-users me-2"></i>2. Player Diversification</h4>
-                                </div>
-                                <div class="card-body">
-                                    <p>Avoid correlation risk by diversifying your selections:</p>
-                                    <ul>
-                                        <li><strong>Different Teams:</strong> Don't stack multiple players from the same team</li>
-                                        <li><strong>Different Games:</strong> Spread picks across multiple matchups</li>
-                                        <li><strong>Different Stat Types:</strong> Mix hitting, pitching, and fielding props</li>
-                                        <li><strong>Avoid Same-Game Parlays:</strong> One bad game kills multiple legs</li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <div class="card mb-4 bg-dark border-secondary">
-                                <div class="card-header bg-warning">
-                                    <h4 class="mb-0"><i class="fas fa-list me-2"></i>3. Optimal Slip Sizing</h4>
-                                </div>
-                                <div class="card-body">
-                                    <p>Structure your bet slips for maximum profitability:</p>
-                                    <ul>
-                                        <li><strong>3-4 Pick Maximum:</strong> Sweet spot for risk vs. reward</li>
-                                        <li><strong>Focus on Expected Value:</strong> Target positive EV over big payouts</li>
-                                        <li><strong>Quality Over Quantity:</strong> Better to place fewer, well-researched bets</li>
-                                        <li><strong>Single Bets:</strong> Consider straight bets on high-confidence props</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Main Content Container -->
+    <div id="player-props-container">
+        <!-- Skeleton Loader (shown while picks fetch) -->
+        <div id="skeleton-loader">
+            <div style="display:grid;grid-template-columns:repeat(1,1fr);gap:0.75rem;" class="picks-grid">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        // ---------- Globals ----------
-        let allProps = [];
-        let allFilteredProps = [];
-        let matchupData = null;
-        let environmentData = null;
-        let currentPropsDisplayed = 50;
+    <!-- Disciplined Hand Section -->
+    <div style="margin-top:1.5rem;margin-bottom:0.5rem;">
+        <button id="disciplined-hand-btn" onclick="toggleDisciplinedHand()">
+            <span><i class="fas fa-hand-paper" style="color:#facc15;margin-right:0.5rem;"></i><strong>Disciplined Hand</strong> <span style="color:rgba(255,255,255,0.4);font-size:0.8em;margin-left:0.5rem;">— When to pass & bankroll guardrails</span></span>
+            <i class="fas fa-chevron-down" id="disciplined-hand-chevron" style="color:rgba(255,255,255,0.4);font-size:0.8rem;"></i>
+        </button>
+        <div id="disciplined-hand-body" style="display:none;background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;padding:1.25rem;margin-top:0.4rem;">
+            <p style="color:#facc15;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:1rem;margin:0 0 1rem;"><i class="fas fa-exclamation-triangle" style="margin-right:0.4rem;"></i>THE BEST EDGE IS KNOWING WHEN NOT TO BET.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <div>
+                    <h6 style="color:#22c55e;font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;"><i class="fas fa-check-circle" style="margin-right:0.3rem;"></i>PLAY IT WHEN...</h6>
+                    <ul style="font-size:0.8rem;color:rgba(255,255,255,0.55);padding-left:1rem;line-height:1.7;">
+                        <li>True probability ≥ 65% (LOCK tier)</li>
+                        <li>Best book offers +100 or better</li>
+                        <li>At least 2 books have the line</li>
+                        <li>Player is confirmed in the lineup</li>
+                    </ul>
+                </div>
+                <div>
+                    <h6 style="color:#ef4444;font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;"><i class="fas fa-times-circle" style="margin-right:0.3rem;"></i>PASS WHEN...</h6>
+                    <ul style="font-size:0.8rem;color:rgba(255,255,255,0.55);padding-left:1rem;line-height:1.7;">
+                        <li>Only one sportsbook has the line</li>
+                        <li>True probability &lt; 55% (LOW tier)</li>
+                        <li>Lineup not yet posted</li>
+                        <li>You're chasing losses from yesterday</li>
+                    </ul>
+                </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.04);border-left:3px solid rgba(250,204,21,0.5);padding:0.75rem 1rem;border-radius:0 0.5rem 0.5rem 0;margin-top:0.75rem;font-size:0.8rem;color:rgba(255,255,255,0.65);">
+                <strong style="color:#facc15;">Bankroll Rule:</strong> Never risk more than 5% of your roll on a single leg. LOCK = up to 3 units. FIRE = 1–2 units. EDGE = 0–1 unit (or skip).
+            </div>
+        </div>
+    </div>
 
-        let currentSport = 'mlb'; // default
-        let currentMode  = 'lines'; // 'lines' or 'props'
-        let nflProps = [];
-        
-        // ---------- Utilities ----------
-        function sportLabel() {
-            return currentSport === 'mlb' ? 'MLB' : currentSport === 'nfl' ? 'NFL' : 'NHL';
-        }
-        function setPropsLabel() {
-            const propsLabel = document.getElementById('total-props-label');
-            if (propsLabel) propsLabel.textContent = `Total ${sportLabel()} Props`;
-            const gamesSubtitle = document.getElementById('games-subtitle');
-            if (gamesSubtitle) gamesSubtitle.textContent = `${sportLabel()} player props grouped by matchup`;
-        }
+    <!-- Sportsbook Affiliate Grid -->
+    <div style="margin-top:2rem;">
+        <div style="font-family:'Inter',sans-serif;font-size:0.68rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem;">Line Shop — Best Books</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.6rem;" id="book-affiliate-grid">
+            <div class="book-card">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;">FanDuel</div>
+                <a href="#" id="aff-fanduel" target="_blank" rel="noopener noreferrer" class="book-cta">Bet Now →</a>
+            </div>
+            <div class="book-card">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;">DraftKings</div>
+                <a href="#" id="aff-draftkings" target="_blank" rel="noopener noreferrer" class="book-cta">Bet Now →</a>
+            </div>
+            <div class="book-card">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;">BetMGM</div>
+                <a href="#" id="aff-betmgm" target="_blank" rel="noopener noreferrer" class="book-cta">Bet Now →</a>
+            </div>
+            <div class="book-card">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;">Caesars</div>
+                <a href="#" id="aff-caesars" target="_blank" rel="noopener noreferrer" class="book-cta">Bet Now →</a>
+            </div>
+        </div>
+    </div>
+</div>
 
-        // Auto-refresh platform status every 5 minutes
-        setInterval(updatePlatformStatus, 300000);
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            updatePlatformStatus();
-            loadMLBLines(); // start on MLB Best Lines
-            // sport tabs
-            document.querySelectorAll('#sport-tabs button').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const sport = this.getAttribute('data-sport');
-                    switchSport(sport);
-                });
+<!-- ════════════════════════════════════════════════════
+     BETTING STRATEGY TAB
+════════════════════════════════════════════════════ -->
+<div id="how-to-profit" style="display:none;max-width:1280px;margin:0 auto;padding:1.5rem 1rem;">
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;font-weight:700;text-align:center;margin-bottom:2rem;color:#fff;">BETTING STRATEGY GUIDE</h2>
+    <div style="max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:1rem;">
+        <div style="background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;overflow:hidden;">
+            <div style="background:#0d3b66;padding:0.75rem 1rem;">
+                <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;margin:0;">💰 1. Bankroll Management</h4>
+            </div>
+            <div style="padding:1rem;font-size:0.85rem;color:rgba(255,255,255,0.75);line-height:1.7;">
+                <p>The foundation of profitable betting is proper bankroll management:</p>
+                <ul style="padding-left:1.2rem;">
+                    <li><strong>Unit System:</strong> Bet 1–5% of your total bankroll per wager</li>
+                    <li><strong>High Confidence:</strong> 3–5% of bankroll (60%+ hit probability)</li>
+                    <li><strong>Medium Confidence:</strong> 2–3% of bankroll (50–59%)</li>
+                    <li><strong>Low/Speculative:</strong> 1–2% of bankroll (under 50%)</li>
+                </ul>
+                <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:0.5rem;padding:0.75rem;margin-top:0.75rem;font-size:0.82rem;color:rgba(255,255,255,0.65);">
+                    <strong>Example:</strong> With a $300 bankroll, your max bet should be $15 (5%) on high-confidence plays.
+                </div>
+            </div>
+        </div>
+        <div style="background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;overflow:hidden;">
+            <div style="background:#14532d;padding:0.75rem 1rem;">
+                <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;margin:0;">👥 2. Player Diversification</h4>
+            </div>
+            <div style="padding:1rem;font-size:0.85rem;color:rgba(255,255,255,0.75);line-height:1.7;">
+                <p>Avoid correlation risk by diversifying your selections:</p>
+                <ul style="padding-left:1.2rem;">
+                    <li><strong>Different Teams:</strong> Don't stack multiple players from the same team</li>
+                    <li><strong>Different Games:</strong> Spread picks across multiple matchups</li>
+                    <li><strong>Different Stat Types:</strong> Mix hitting, pitching, and fielding props</li>
+                    <li><strong>Avoid Same-Game Parlays:</strong> One bad game kills multiple legs</li>
+                </ul>
+            </div>
+        </div>
+        <div style="background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;overflow:hidden;">
+            <div style="background:#6b3c00;padding:0.75rem 1rem;">
+                <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;margin:0;">📋 3. Optimal Slip Sizing</h4>
+            </div>
+            <div style="padding:1rem;font-size:0.85rem;color:rgba(255,255,255,0.75);line-height:1.7;">
+                <p>Structure your bet slips for maximum profitability:</p>
+                <ul style="padding-left:1.2rem;">
+                    <li><strong>3–4 Pick Maximum:</strong> Sweet spot for risk vs. reward</li>
+                    <li><strong>Focus on Expected Value:</strong> Target positive EV over big payouts</li>
+                    <li><strong>Quality Over Quantity:</strong> Fewer, well-researched bets</li>
+                    <li><strong>Single Bets:</strong> Consider straight bets on high-confidence props</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer style="background:#091f35;border-top:1px solid rgba(255,255,255,0.08);padding:1.25rem 1rem;margin-top:2rem;">
+    <div style="max-width:1280px;margin:0 auto;text-align:center;font-family:'Inter',sans-serif;font-size:0.72rem;color:rgba(255,255,255,0.3);">
+        <p style="margin:0;">© 2026 Mora Bets. For informational and entertainment purposes only. Please bet responsibly.</p>
+        <p style="margin:0.25rem 0 0;"><a href="/how-it-works" style="color:rgba(255,255,255,0.3);text-decoration:none;">How It Works</a></p>
+    </div>
+</footer>
+
+<!-- ── Sticky Bottom Affiliate Bar ── -->
+<div id="sticky-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:40;background:#091f35;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -4px 20px rgba(0,0,0,0.4);transition:transform 0.3s;">
+    <div style="max-width:1280px;margin:0 auto;padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">
+        <!-- Rotating message -->
+        <div style="display:flex;align-items:center;gap:0.5rem;flex:1;min-width:0;">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;color:#facc15;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;display:none;" class="bar-label-lg">Line Shop:</span>
+            <span id="bar-rotating-text" style="font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity 0.3s;">Always bet at the book with the best line — half a point of juice compounds over 162 games</span>
+        </div>
+        <!-- Book CTAs -->
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+            <a href="#" id="bar-fanduel" target="_blank" rel="noopener noreferrer" class="bar-affiliate-btn">FanDuel</a>
+            <a href="#" id="bar-draftkings" target="_blank" rel="noopener noreferrer" class="bar-affiliate-btn">DraftKings</a>
+            <a href="#" id="bar-betmgm" target="_blank" rel="noopener noreferrer" class="bar-affiliate-btn" style="display:none;" class="bar-sm">BetMGM</a>
+            <a href="#" id="bar-caesars" target="_blank" rel="noopener noreferrer" class="bar-affiliate-btn" style="display:none;" class="bar-md">Caesars</a>
+        </div>
+        <!-- Dismiss -->
+        <button id="bar-dismiss" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:1.2rem;cursor:pointer;flex-shrink:0;padding:0 0.25rem;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.color='rgba(255,255,255,0.3)'">×</button>
+    </div>
+</div>
+<div style="height:3rem;"></div>
+
+<!-- ── Email Capture Slide-in ── -->
+<div id="email-slide" style="position:fixed;bottom:5rem;right:1rem;z-index:50;width:17rem;background:#1f2937;border:1px solid rgba(255,255,255,0.1);border-radius:1rem;box-shadow:0 20px 40px rgba(0,0,0,0.5);padding:1.25rem;transform:translateY(2rem);opacity:0;transition:all 0.4s;pointer-events:none;">
+    <button id="email-slide-close" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;color:rgba(255,255,255,0.3);font-size:1.1rem;cursor:pointer;line-height:1;">×</button>
+    <div style="margin-bottom:0.75rem;">
+        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.1rem;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.3rem;">Get today's best picks</p>
+        <p style="font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.5);margin:0;">Free edge picks + best lines delivered before first pitch. No spam.</p>
+    </div>
+    <form id="email-capture-form" style="display:flex;flex-direction:column;gap:0.5rem;">
+        <input type="email" id="slide-email-input" placeholder="your@email.com" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:0.5rem;padding:0.5rem 0.75rem;color:#fff;font-family:'Inter',sans-serif;font-size:0.82rem;outline:none;width:100%;" onfocus="this.style.borderColor='rgba(250,204,21,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <button type="submit" style="background:#facc15;color:#111827;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.9rem;padding:0.6rem;border-radius:0.5rem;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;transition:background 0.15s;" onmouseover="this.style.background='#d97706';this.style.color='#fff'" onmouseout="this.style.background='#facc15';this.style.color='#111827'">Send Me Today's Picks →</button>
+    </form>
+    <p style="font-family:'Inter',sans-serif;font-size:0.68rem;color:rgba(255,255,255,0.2);text-align:center;margin:0.5rem 0 0;">Free forever. Unsubscribe anytime.</p>
+</div>
+
+<!-- Bootstrap Bundle JS (for accordion collapse functionality) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // ─────────────────────────────────────────────
+    //  Affiliate links — loaded from config
+    // ─────────────────────────────────────────────
+    (function() {
+        const a = typeof MORA_AFFILIATES !== 'undefined' ? MORA_AFFILIATES : {};
+        const set = (id, key) => { const el = document.getElementById(id); if (el && a[key] && a[key] !== key.toUpperCase()+'_AFFILIATE_LINK_HERE') el.href = a[key]; };
+        set('aff-fanduel',    'fanduel');
+        set('aff-draftkings', 'draftkings');
+        set('aff-betmgm',     'betmgm');
+        set('aff-caesars',    'caesars');
+        set('bar-fanduel',    'fanduel');
+        set('bar-draftkings', 'draftkings');
+        set('bar-betmgm',     'betmgm');
+        set('bar-caesars',    'caesars');
+    })();
+
+    // ─────────────────────────────────────────────
+    //  Sticky Bar — rotating messages + dismiss
+    // ─────────────────────────────────────────────
+    const barMessages = [
+        "Always bet at the book with the best line — half a point of juice compounds over 162 games",
+        "FanDuel vs DraftKings on the same pick can be worth 3–5% over a full season",
+        "Line shopping is the one free edge every bettor has access to — use it every single bet",
+        "The no-vig board shows you the best book for every pick automatically",
+        "Open accounts at multiple books — it's free and it's your biggest edge"
+    ];
+    let barMsgIndex = 0;
+    const barText = document.getElementById('bar-rotating-text');
+    if (sessionStorage.getItem('barDismissed')) {
+        document.getElementById('sticky-bar').style.transform = 'translateY(100%)';
+    }
+    setInterval(() => {
+        barMsgIndex = (barMsgIndex + 1) % barMessages.length;
+        barText.style.opacity = '0';
+        setTimeout(() => { barText.textContent = barMessages[barMsgIndex]; barText.style.opacity = '1'; }, 300);
+    }, 5000);
+    document.getElementById('bar-dismiss').addEventListener('click', () => {
+        document.getElementById('sticky-bar').style.transform = 'translateY(100%)';
+        sessionStorage.setItem('barDismissed', '1');
+    });
+
+    // ─────────────────────────────────────────────
+    //  Email Slide-in
+    // ─────────────────────────────────────────────
+    const emailSlide = document.getElementById('email-slide');
+    function showEmailSlide() {
+        if (sessionStorage.getItem('slideShown')) return;
+        if (window.innerWidth < 375) return;
+        sessionStorage.setItem('slideShown', '1');
+        emailSlide.style.transform = 'translateY(0)';
+        emailSlide.style.opacity = '1';
+        emailSlide.style.pointerEvents = 'auto';
+    }
+    const slideTimer = setTimeout(showEmailSlide, 45000);
+    window.addEventListener('scroll', () => {
+        const scrolled = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+        if (scrolled > 0.6) { clearTimeout(slideTimer); showEmailSlide(); }
+    }, { passive: true });
+    document.getElementById('email-slide-close').addEventListener('click', () => {
+        emailSlide.style.transform = 'translateY(2rem)';
+        emailSlide.style.opacity = '0';
+        emailSlide.style.pointerEvents = 'none';
+    });
+    document.getElementById('email-capture-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('slide-email-input').value;
+        if (!email) return;
+        fetch('/api/subscribe', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email: email})
+        });
+        emailSlide.innerHTML = `
+            <div style="text-align:center;padding:0.5rem 0;">
+                <div style="font-size:2rem;margin-bottom:0.5rem;">✓</div>
+                <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#facc15;font-size:1.1rem;text-transform:uppercase;margin:0;">You're in.</p>
+                <p style="font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.5);margin:0.3rem 0 0;">First pitch picks hit your inbox tomorrow morning.</p>
+            </div>`;
+        setTimeout(() => {
+            emailSlide.style.transform = 'translateY(2rem)';
+            emailSlide.style.opacity = '0';
+            emailSlide.style.pointerEvents = 'none';
+        }, 3000);
+    });
+
+    // ─────────────────────────────────────────────
+    //  Disciplined Hand toggle
+    // ─────────────────────────────────────────────
+    function toggleDisciplinedHand() {
+        const body = document.getElementById('disciplined-hand-body');
+        const chevron = document.getElementById('disciplined-hand-chevron');
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : 'block';
+        chevron.style.transform = open ? '' : 'rotate(180deg)';
+    }
+
+    // ─────────────────────────────────────────────
+    //  Main Tab switching
+    // ─────────────────────────────────────────────
+    function switchMainTab(id) {
+        document.getElementById('player-props').style.display = id === 'player-props' ? 'block' : 'none';
+        document.getElementById('how-to-profit').style.display = id === 'how-to-profit' ? 'block' : 'none';
+        document.getElementById('player-props-tab').classList.toggle('active', id === 'player-props');
+        document.getElementById('how-to-profit-tab').classList.toggle('active', id === 'how-to-profit');
+    }
+
+    // ─────────────────────────────────────────────
+    //  Globals
+    // ─────────────────────────────────────────────
+    let allProps = [];
+    let allFilteredProps = [];
+    let matchupData = null;
+    let environmentData = null;
+    let currentPropsDisplayed = 50;
+    let currentSport = 'mlb';
+    let currentMode  = 'lines';
+    let nflProps = [];
+
+    function sportLabel() {
+        return currentSport === 'mlb' ? 'MLB' : currentSport === 'nfl' ? 'NFL' : 'NHL';
+    }
+    function setPropsLabel() {
+        const propsLabel = document.getElementById('total-props-label');
+        if (propsLabel) propsLabel.textContent = `Total ${sportLabel()} Props`;
+        const gamesSubtitle = document.getElementById('games-subtitle');
+        if (gamesSubtitle) gamesSubtitle.textContent = `${sportLabel()} player props grouped by matchup`;
+    }
+
+    setInterval(updatePlatformStatus, 300000);
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePlatformStatus();
+        loadMLBLines();
+        document.querySelectorAll('#sport-tabs button').forEach(tab => {
+            tab.addEventListener('click', function() {
+                switchSport(this.getAttribute('data-sport'));
             });
         });
+    });
 
-        async function updatePlatformStatus() {
+    async function updatePlatformStatus() {
+        try {
+            await fetch('/api/status');
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
             try {
-                const statusResponse = await fetch('/api/status');
-                await statusResponse.json();
-                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
-                try {
-                    const propsResponse = await fetch('/player_props');
-                    const propsData = await propsResponse.json();
-                    const propsCount = Array.isArray(propsData) ? propsData.length : Object.keys(propsData || {}).length;
-                    document.getElementById('total-props').textContent = propsCount.toLocaleString();
-                } catch { document.getElementById('total-props').textContent = '--'; }
-                // Quota
-                try {
-                    const quotaRes = await fetch('/api/quota');
-                    const quotaData = await quotaRes.json();
-                    const rem = quotaData.remaining;
-                    if (rem != null) {
-                        document.getElementById('quota-remaining').textContent = rem.toLocaleString();
-                        document.getElementById('quota-display').style.display = '';
-                        if (rem < 50) {
-                            document.getElementById('quota-remaining').className = 'text-danger';
-                        } else if (rem < 200) {
-                            document.getElementById('quota-remaining').className = 'text-warning';
-                        } else {
-                            document.getElementById('quota-remaining').className = 'text-success';
-                        }
-                    }
-                } catch { /* quota not critical */ }
-            } catch (error) { console.error('Error updating platform status:', error); }
-        }
-
-        function switchMode(mode) {
-            currentMode = mode;
-            const linesBtn = document.getElementById('mode-lines-btn');
-            const propsBtn = document.getElementById('mode-props-btn');
-            if (linesBtn && propsBtn) {
-                if (mode === 'lines') {
-                    linesBtn.style.background = '#8b5cf6'; linesBtn.style.color = '#fff';
-                    propsBtn.style.background = '#e5e7eb'; propsBtn.style.color = '#374151';
-                } else {
-                    propsBtn.style.background = '#8b5cf6'; propsBtn.style.color = '#fff';
-                    linesBtn.style.background = '#e5e7eb'; linesBtn.style.color = '#374151';
-                }
-            }
-            resetToSportHome();
-        }
-
-        function switchSport(sport) {
-            if (currentSport === sport) return;
-            currentSport = sport;
-            document.querySelectorAll('#sport-tabs button').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(`${sport}-tab`).classList.add('active');
-            setPropsLabel();
-            resetToSportHome();
-        }
-
-        function resetToSportHome() {
-            matchupData = null;
-            environmentData = null;
-            allProps = [];
-            allFilteredProps = [];
-            document.getElementById('player-search').value = '';
-            document.getElementById('confidence-filter').value = '';
-            const stickyBar = document.getElementById('sticky-back-header');
-            stickyBar.style.display = 'none';
-            document.body.classList.remove('sticky-header-visible');
-            const gamesHeader = document.getElementById('games-header');
-            if (gamesHeader) {
-                gamesHeader.innerHTML = `
-                    <i class="fas fa-users text-primary me-2"></i>Today's Games
-                    <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${sportLabel()} player props grouped by matchup</small>
-                `;
-            }
-
-            if (currentMode === 'lines') {
-                if (currentSport === 'mlb') loadMLBLines();
-                else if (currentSport === 'nfl') loadNFLProps();
-                else loadNHLLines();
-            } else {
-                if (currentSport === 'mlb') loadMLBProps();
-                else if (currentSport === 'nfl') loadNFLProps();
-                else loadNHLProps();
-            }
-        }
-
-        // ---------- Best Lines loaders ----------
-        async function loadMLBLines() {
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="loading text-center">
-                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
-                    <p class="mt-3">Loading today's best MLB lines...</p>
-                </div>`;
+                const propsResponse = await fetch('/player_props');
+                const propsData = await propsResponse.json();
+                const propsCount = Array.isArray(propsData) ? propsData.length : Object.keys(propsData || {}).length;
+                document.getElementById('total-props').textContent = propsCount.toLocaleString();
+            } catch { document.getElementById('total-props').textContent = '--'; }
             try {
-                const res  = await fetch('/api/mlb/odds?t=' + Date.now());
-                const data = await res.json();
-                const noVigPicks = data.no_vig_picks || data.picks || [];
-                const edgePicks  = data.edge_picks  || [];
-                const counts     = data.counts || { no_vig: noVigPicks.length, edge: edgePicks.length };
-                if (noVigPicks.length === 0 && edgePicks.length === 0) {
-                    document.getElementById('player-props-container').innerHTML = `
-                        <div class="text-center py-16" style="padding:4rem 0;">
-                            <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
-                            <p class="fw-bold fs-5 text-light mb-2">No lines available right now.</p>
-                            <p class="text-muted small">Lines load daily at 10 AM ET when sharp odds open.<br>Check back this morning for today's best picks.</p>
-                        </div>`;
-                    document.getElementById('prop-count-display').textContent = '0 picks';
-                    return;
+                const quotaRes = await fetch('/api/quota');
+                const quotaData = await quotaRes.json();
+                const rem = quotaData.remaining;
+                if (rem != null) {
+                    document.getElementById('quota-remaining').textContent = rem.toLocaleString();
+                    document.getElementById('quota-display').style.display = 'block';
+                    const el = document.getElementById('quota-remaining');
+                    el.style.color = rem < 50 ? '#ef4444' : rem < 200 ? '#f59e0b' : '#22c55e';
                 }
-                document.getElementById('prop-count-display').textContent =
-                    `${noVigPicks.length} lines · ${edgePicks.length} edge`;
-                renderLinesBoard(noVigPicks, edgePicks, counts, 'MLB');
-            } catch(e) {
-                console.error('[MLB] Error loading best lines:', e);
-                document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">MLB lines temporarily unavailable.</div>`;
-            }
+            } catch { }
+        } catch (error) { console.error('Error updating platform status:', error); }
+    }
+
+    function switchMode(mode) {
+        currentMode = mode;
+        const linesBtn = document.getElementById('mode-lines-btn');
+        const propsBtn = document.getElementById('mode-props-btn');
+        if (linesBtn && propsBtn) {
+            linesBtn.classList.toggle('active-view', mode === 'lines');
+            propsBtn.classList.toggle('active-view', mode === 'props');
         }
+        resetToSportHome();
+    }
 
-        async function loadNHLLines() {
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="loading text-center">
-                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
-                    <p class="mt-3">Loading today's best NHL lines...</p>
-                </div>`;
-            try {
-                const res  = await fetch('/api/nhl/odds?t=' + Date.now());
-                const data = await res.json();
-                const noVigPicks = data.no_vig_picks || data.picks || [];
-                const edgePicks  = data.edge_picks  || [];
-                const counts     = data.counts || { no_vig: noVigPicks.length, edge: edgePicks.length };
-                if (noVigPicks.length === 0 && edgePicks.length === 0) {
-                    document.getElementById('player-props-container').innerHTML = `
-                        <div class="text-center py-16" style="padding:4rem 0;">
-                            <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
-                            <p class="fw-bold fs-5 text-light mb-2">No lines available right now.</p>
-                            <p class="text-muted small">Lines load daily at 10 AM ET when sharp odds open.<br>Check back this morning for today's best picks.</p>
-                        </div>`;
-                    document.getElementById('prop-count-display').textContent = '0 picks';
-                    return;
-                }
-                document.getElementById('prop-count-display').textContent =
-                    `${noVigPicks.length} lines · ${edgePicks.length} edge`;
-                renderLinesBoard(noVigPicks, edgePicks, counts, 'NHL');
-            } catch(e) {
-                console.error('[NHL] Error loading best lines:', e);
-                document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NHL lines temporarily unavailable.</div>`;
-            }
+    function switchSport(sport) {
+        if (currentSport === sport) return;
+        currentSport = sport;
+        document.querySelectorAll('#sport-tabs button').forEach(tab => tab.classList.remove('active-tab'));
+        const activeTab = document.querySelector(`#sport-tabs button[data-sport="${sport}"]`);
+        if (activeTab) activeTab.classList.add('active-tab');
+        setPropsLabel();
+        resetToSportHome();
+    }
+
+    function resetToSportHome() {
+        matchupData = null; environmentData = null; allProps = []; allFilteredProps = [];
+        document.getElementById('player-search').value = '';
+        document.getElementById('confidence-filter').value = '';
+        const stickyBar = document.getElementById('sticky-back-header');
+        stickyBar.style.display = 'none';
+        document.body.classList.remove('sticky-header-visible');
+        const gamesHeader = document.getElementById('games-header');
+        if (gamesHeader) {
+            gamesHeader.innerHTML = `<i class="fas fa-users" style="color:#facc15;margin-right:0.4rem;font-size:1rem;"></i>Today's Games`;
         }
+        const sub = document.getElementById('games-subtitle');
+        if (sub) sub.textContent = `${sportLabel()} player props grouped by matchup`;
 
-        // ─────────────────────────────────────────────────────────────
-        //  renderLinesBoard — two-section layout for Best Lines mode
-        // ─────────────────────────────────────────────────────────────
-        function renderLinesBoard(noVigPicks, edgePicks, counts, sport) {
-            const container = document.getElementById('player-props-container');
-            container.innerHTML = '';
-
-            // ── SECTION 1: EDGE PICKS (shown first — these are the signal) ──
-            if (edgePicks.length > 0) {
-                const edgeSection = document.createElement('div');
-                edgeSection.className = 'mb-4';
-                const avgEv = edgePicks.length
-                    ? (edgePicks.reduce((s,p)=>s+(p.ev_pct||0),0)/edgePicks.length).toFixed(1)
-                    : null;
-                edgeSection.innerHTML = `
-                    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                        <span style="font-size:1.2rem;">⚡</span>
-                        <h5 class="mb-0 fw-bold text-warning">Edge Picks</h5>
-                        <span class="badge text-bg-warning" style="font-size:0.75em;">${edgePicks.length} today</span>
-                        ${avgEv ? `<span class="badge text-bg-success" style="font-size:0.75em;">avg EV +${avgEv}%</span>` : ''}
-                        <span class="text-muted small d-none d-md-inline">Lines where the math shows real edge vs the market</span>
-                        <span title="These picks passed the EV threshold — the offered odds are better than the fair market price. Positive EV means value over the long run." style="cursor:help;font-size:0.9rem;">ℹ️</span>
-                    </div>
-                    <div class="row" id="edge-cards-row"></div>`;
-                container.appendChild(edgeSection);
-                const edgeRow = edgeSection.querySelector('#edge-cards-row');
-                edgePicks.forEach(pick => {
-                    const col = document.createElement('div');
-                    col.className = 'col-md-6 col-lg-4 mb-3';
-                    col.innerHTML = renderEdgeCard(pick);
-                    edgeRow.appendChild(col);
-                });
-            }
-
-            // ── SECTION 2: NO-VIG LINES (full board, probability-sorted) ──
-            const noVigSection = document.createElement('div');
-            noVigSection.innerHTML = `
-                <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                    <span style="font-size:1.2rem;">📊</span>
-                    <h5 class="mb-0 fw-bold text-light">Today's Lines</h5>
-                    <span class="badge text-bg-secondary" style="font-size:0.75em;">${noVigPicks.length} picks · 50%+ probability</span>
-                    <span class="text-muted small d-none d-md-inline">All picks above 50% no-vig probability</span>
-                </div>
-                <div class="row" id="novig-cards-row"></div>`;
-            container.appendChild(noVigSection);
-
-            const noVigRow = noVigSection.querySelector('#novig-cards-row');
-            if (noVigPicks.length === 0) {
-                noVigRow.innerHTML = `
-                    <div class="col-12 text-center py-5">
-                        <div style="font-size:2.5rem;">📋</div>
-                        <p class="text-muted mt-2">No lines above 50% today.<br><small>Check back after 10 AM ET when lines refresh.</small></p>
-                    </div>`;
-            } else {
-                noVigPicks.forEach(pick => {
-                    const col = document.createElement('div');
-                    col.className = 'col-md-6 col-lg-4 mb-3';
-                    col.innerHTML = renderNoVigCard(pick);
-                    noVigRow.appendChild(col);
-                });
-            }
+        if (currentMode === 'lines') {
+            if (currentSport === 'mlb') loadMLBLines();
+            else if (currentSport === 'nfl') loadNFLProps();
+            else loadNHLLines();
+        } else {
+            if (currentSport === 'mlb') loadMLBProps();
+            else if (currentSport === 'nfl') loadNFLProps();
+            else loadNHLProps();
         }
+    }
 
-        // ─────────────────────────────────────────────────────────────
-        //  renderEdgeCard — highlighted card for EV+ picks
-        // ─────────────────────────────────────────────────────────────
-        function renderEdgeCard(pick) {
-            const fmtOdds = o => (o == null ? '—' : (o > 0 ? `+${o}` : `${o}`));
-            const ev      = parseFloat(pick.ev_pct) || 0;
-            const nvp     = parseFloat(pick.no_vig_prob) || 0;
-            const tier    = pick.confidence_tier || 'EDGE';
-            const tierColor = tier === 'LOCK' ? '#198754' : tier === 'FIRE' ? '#ffc107' : '#0dcaf0';
-            const tierLabel = tier === 'LOCK' ? '🔒 STRONG' : tier === 'FIRE' ? '🔥 FIRE' : '⚡ EDGE';
+    // ─────────────────────────────────────────────
+    //  Skeleton loader helper
+    // ─────────────────────────────────────────────
+    function showSkeleton() {
+        document.getElementById('player-props-container').innerHTML = `
+            <div class="picks-grid">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>`;
+    }
 
-            const mt = pick.market_type || '';
-            let marketBadge = '';
-            if (mt === 'moneyline') marketBadge = `<span class="badge me-1" style="background:#e5e7eb;color:#374151;font-size:0.68em;">💰 ML</span>`;
-            else if (mt === 'spread') marketBadge = `<span class="badge me-1" style="background:#dbeafe;color:#1d4ed8;font-size:0.68em;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
-            else if (mt === 'total')  marketBadge = `<span class="badge me-1" style="background:#ede9fe;color:#6d28d9;font-size:0.68em;">📊 O/U</span>`;
-
-            let gameTimeHtml = '';
-            if (pick.game_time) {
-                const gt = new Date(pick.game_time);
-                if (!isNaN(gt)) gameTimeHtml = `<small class="text-muted" style="font-size:0.68em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
-            }
-
-            const line = pick.line != null ? pick.line : null;
-            const lineHtml = line != null ? `<span class="badge bg-primary ms-1">${line}</span>` : '';
-
-            const bookCount = pick.book_count || (Array.isArray(pick.all_books) ? pick.all_books.length : 1);
-
-            // Line shop accordion
-            const allBooks = Array.isArray(pick.all_books) ? pick.all_books : [];
-            let lineShopHtml = '';
-            if (allBooks.length > 1) {
-                const cardId = `es-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}`;
-                const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
-                    const isBest = b.over_price === pick.best_over_price;
-                    const fmt = o => o > 0 ? `+${o}` : `${o}`;
-                    return `<div class="d-flex justify-content-between small py-1 border-bottom border-secondary ${isBest?'text-success fw-bold':'text-muted'}">
-                        <span>${b.book}</span><span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
-                    </div>`;
-                }).join('');
-                lineShopHtml = `
-                    <div class="mt-2">
-                        <button class="btn btn-sm btn-outline-secondary w-100 py-1" style="font-size:0.7em;" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}">
-                            <i class="fas fa-store me-1"></i>Compare ${allBooks.length} books
-                        </button>
-                        <div class="collapse mt-1" id="${cardId}"><div class="px-1">${bookRows}</div></div>
-                    </div>`;
-            }
-
-            return `
-                <div class="prop-card card border-0 h-100" style="background:linear-gradient(135deg,#1a1f2e 0%,#0f1420 100%);border-left:3px solid ${tierColor} !important;box-shadow:0 0 12px rgba(${tier==='LOCK'?'25,135,84':tier==='FIRE'?'255,193,7':'13,202,240'},0.25);">
-                    <div class="card-body">
-                        <div class="d-flex align-items-start justify-content-between mb-2">
-                            <div>
-                                <h6 class="mb-0 fw-bold text-light">${pick.player || 'Unknown'}</h6>
-                                <div class="text-muted mt-1" style="font-size:0.8em;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
-                                <div class="mt-1">${gameTimeHtml}</div>
-                            </div>
-                            <div class="d-flex flex-column align-items-end gap-1">
-                                <span class="badge fw-bold" style="background:${tierColor};color:${tier==='FIRE'?'#000':'#fff'};font-size:0.72em;">${tierLabel}</span>
-                                ${marketBadge}
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center mb-2 px-1 py-1 rounded" style="background:rgba(255,255,255,0.05);">
-                            <div class="text-center">
-                                <div style="font-size:0.68em;color:#adb5bd;">EV</div>
-                                <div class="fw-bold" style="font-size:1em;color:${ev>=0?'#20c997':'#dc3545'};">${ev>=0?'+':''}${ev.toFixed(2)}%</div>
-                            </div>
-                            <div class="text-center">
-                                <div style="font-size:0.68em;color:#adb5bd;">Fair Odds</div>
-                                <div class="fw-bold" style="font-size:0.9em;">${fmtOdds(pick.fair_odds)}</div>
-                            </div>
-                            <div class="text-center">
-                                <div style="font-size:0.68em;color:#adb5bd;">True Prob</div>
-                                <div class="fw-bold" style="font-size:0.9em;">${nvp.toFixed(1)}%</div>
-                            </div>
-                            <div class="text-center">
-                                <div style="font-size:0.68em;color:#adb5bd;">BE%</div>
-                                <div class="fw-bold" style="font-size:0.9em;">${pick.break_even_prob!=null ? parseFloat(pick.break_even_prob).toFixed(1)+'%' : '—'}</div>
-                            </div>
-                        </div>
-
-                        <div class="mb-2">
-                            <div class="d-flex justify-content-between" style="font-size:0.7em;"><span class="text-muted">True Probability</span><strong style="color:${tierColor};">${nvp.toFixed(1)}%</strong></div>
-                            <div class="progress" style="height:5px;border-radius:3px;"><div class="progress-bar" style="width:${Math.min(100,nvp)}%;background:${tierColor};"></div></div>
-                        </div>
-
-                        <div class="text-center">
-                            <small class="text-warning"><i class="fas fa-star me-1"></i>Best: <strong>${pick.best_book || '—'}</strong> ${fmtOdds(pick.best_over_price)}</small>
-                            ${bookCount > 1 ? `<small class="text-muted ms-2">${bookCount} books</small>` : ''}
-                        </div>
-                        ${lineShopHtml}
-                    </div>
-                </div>`;
-        }
-
-        // ─────────────────────────────────────────────────────────────
-        //  renderNoVigCard — standard card for Today's Lines section
-        // ─────────────────────────────────────────────────────────────
-        function renderNoVigCard(pick) {
-            const fmtOdds = o => (o == null ? '—' : (o > 0 ? `+${o}` : `${o}`));
-            const nvp   = parseFloat(pick.no_vig_prob) || 0;
-            const ev    = pick.ev_pct != null ? parseFloat(pick.ev_pct) : null;
-            const tier  = pick.confidence_tier || (nvp >= 70 ? 'LOCK' : nvp >= 55 ? 'FIRE' : 'EDGE');
-            const barColor = tier === 'LOCK' ? '#198754' : tier === 'FIRE' ? '#ffc107' : '#0dcaf0';
-
-            const mt = pick.market_type || '';
-            let marketBadge = '';
-            if (mt === 'moneyline') marketBadge = `<span class="badge me-1" style="background:#e5e7eb;color:#374151;font-size:0.65em;">💰 ML</span>`;
-            else if (mt === 'spread') marketBadge = `<span class="badge me-1" style="background:#dbeafe;color:#1d4ed8;font-size:0.65em;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
-            else if (mt === 'total')  marketBadge = `<span class="badge me-1" style="background:#ede9fe;color:#6d28d9;font-size:0.65em;">📊 O/U</span>`;
-
-            let tierBadgeHtml = '';
-            if (tier === 'LOCK')      tierBadgeHtml = `<span class="badge bg-success" style="font-size:0.68em;"><i class="fas fa-lock me-1"></i>STRONG</span>`;
-            else if (tier === 'FIRE') tierBadgeHtml = `<span class="badge bg-warning text-dark" style="font-size:0.68em;"><i class="fas fa-fire me-1"></i>FIRE</span>`;
-            else                      tierBadgeHtml = `<span class="badge text-bg-info" style="font-size:0.68em;"><i class="fas fa-angle-double-up me-1"></i>EDGE</span>`;
-
-            let gameTimeHtml = '';
-            if (pick.game_time) {
-                const gt = new Date(pick.game_time);
-                if (!isNaN(gt)) gameTimeHtml = `<small class="text-muted d-block" style="font-size:0.65em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
-            }
-
-            const line = pick.line != null ? pick.line : null;
-            const lineHtml = line != null ? `<span class="badge bg-primary ms-1">${line}</span>` : '';
-
-            // Line shop accordion
-            const allBooks = Array.isArray(pick.all_books) ? pick.all_books : [];
-            let lineShopHtml = '';
-            if (allBooks.length > 1) {
-                const cardId = `nv-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}-${line||'ml'}`;
-                const savings = pick.line_shop_savings_pct || 0;
-                const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
-                    const isBest = b.over_price === pick.best_over_price;
-                    const fmt = o => o > 0 ? `+${o}` : `${o}`;
-                    return `<div class="d-flex justify-content-between small py-1 border-bottom border-secondary ${isBest?'text-success fw-bold':'text-muted'}">
-                        <span>${b.book}</span><span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
-                    </div>`;
-                }).join('');
-                lineShopHtml = `
-                    <div class="mt-2">
-                        <button class="btn btn-sm btn-outline-secondary w-100 py-1" style="font-size:0.7em;" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}">
-                            <i class="fas fa-store me-1"></i>Line Shop (${allBooks.length} books${savings>0?` · save ~${savings}%`:''})
-                        </button>
-                        <div class="collapse mt-1" id="${cardId}"><div class="px-1">${bookRows}</div></div>
-                    </div>`;
-            }
-
-            const evBadge = ev != null
-                ? `<span class="badge ms-1" style="background:${ev>0?'rgba(32,201,151,0.15)':'rgba(220,53,69,0.1)'};color:${ev>0?'#20c997':'#dc3545'};font-size:0.65em;border:1px solid ${ev>0?'#20c997':'#dc3545'};">${ev>0?'+':''}${ev.toFixed(2)}% EV</span>`
-                : '';
-
-            return `
-                <div class="prop-card card bg-dark border-secondary h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-start justify-content-between mb-2">
-                            <div>
-                                <h6 class="mb-1 fw-bold">${pick.player || 'Unknown'}</h6>
-                                <div class="text-muted" style="font-size:0.8em;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
-                                ${gameTimeHtml}
-                            </div>
-                            <div class="d-flex flex-column align-items-end gap-1">
-                                ${tierBadgeHtml}
-                                ${marketBadge}
-                            </div>
-                        </div>
-                        <div class="mb-2">
-                            <div class="d-flex justify-content-between" style="font-size:0.73em;">
-                                <span class="text-muted">True Probability (no-vig)</span>
-                                <strong style="color:${barColor};">${nvp.toFixed(1)}%</strong>
-                            </div>
-                            <div class="progress" style="height:5px;border-radius:3px;">
-                                <div class="progress-bar" style="width:${Math.min(100,nvp)}%;background:${barColor};"></div>
-                            </div>
-                        </div>
-                        <div class="text-center">
-                            <small class="text-warning"><i class="fas fa-star me-1"></i>Best: ${pick.best_book || '—'} <strong>${fmtOdds(pick.best_over_price)}</strong></small>
-                            ${evBadge}
-                        </div>
-                        ${lineShopHtml}
-                    </div>
-                </div>`;
-        }
-
-        // ---------- MLB + Moneyline fallback helper ----------
-        function convertMoneylinesToPicks(oddsData, sport) {
-            const picks = [];
-            const games = Array.isArray(oddsData) ? oddsData : (oddsData.odds || []);
-            for (const game of games) {
-                for (const book of (game.bookmakers || [])) {
-                    const h2h = (book.markets || []).find(m => m.key === 'h2h');
-                    if (!h2h) continue;
-                    const outcomes = h2h.outcomes || [];
-                    if (outcomes.length < 2) continue;
-
-                    function toImplied(o) {
-                        return o > 0 ? 100 / (o + 100) : Math.abs(o) / (Math.abs(o) + 100);
-                    }
-                    const imp1 = toImplied(outcomes[0].price);
-                    const imp2 = toImplied(outcomes[1].price);
-                    const total = imp1 + imp2;
-                    const prob1 = Math.round((imp1 / total) * 1000) / 10;
-                    const prob2 = Math.round((imp2 / total) * 1000) / 10;
-
-                    function getTier(p) { return p >= 70 ? 'LOCK' : p >= 50 ? 'FIRE' : 'LOW'; }
-
-                    picks.push({
-                        player: outcomes[0].name,
-                        stat: 'Moneyline',
-                        stat_label: 'Moneyline Win',
-                        line: null,
-                        no_vig_prob: prob1,
-                        confidence_tier: getTier(prob1),
-                        best_over_price: outcomes[0].price,
-                        best_book: book.title,
-                        all_books: [{ book: book.title, over_price: outcomes[0].price, under_price: outcomes[1].price }],
-                        game_time: game.commence_time,
-                        sport: sport
-                    });
-                    picks.push({
-                        player: outcomes[1].name,
-                        stat: 'Moneyline',
-                        stat_label: 'Moneyline Win',
-                        line: null,
-                        no_vig_prob: prob2,
-                        confidence_tier: getTier(prob2),
-                        best_over_price: outcomes[1].price,
-                        best_book: book.title,
-                        all_books: [{ book: book.title, over_price: outcomes[1].price, under_price: outcomes[0].price }],
-                        game_time: game.commence_time,
-                        sport: sport
-                    });
-                    break; // one book per game is enough for fallback
-                }
-            }
-            const teamSeen = new Set();
-            return picks
-                .filter(p => { if (teamSeen.has(p.player)) return false; teamSeen.add(p.player); return true; })
-                .sort((a, b) => {
-                    if (b.no_vig_prob !== a.no_vig_prob) return b.no_vig_prob - a.no_vig_prob;
-                    return b.best_over_price - a.best_over_price;
-                });
-        }
-
-        async function loadMLBProps() {
-            setPropsLabel();
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="loading text-center">
-                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading MLB props...</span></div>
-                    <p class="mt-3">Loading MLB player props...</p>
-                </div>
-            `;
-            await loadPlayerPropsGeneric('/player_props', '/api/mlb/environment');
-            // Fallback: if props are sparse, show game moneylines
-            if (allProps.length < 5) {
-                try {
-                    const oddsRes = await fetch('/api/odds');
-                    const oddsData = await oddsRes.json();
-                    const mlPicks = convertMoneylinesToPicks(oddsData, 'MLB');
-                    if (mlPicks.length > 0) {
-                        allProps = mlPicks;
-                        allFilteredProps = mlPicks;
-                        matchupData = null;
-                        displayProps();
-                    }
-                } catch(e) { console.warn('[MLB] Moneyline fallback failed:', e); }
-            }
-        }
-
-        // ---------- NHL ----------
-        async function loadNHLProps() {
-            setPropsLabel();
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="loading text-center">
-                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading NHL props...</span></div>
-                    <p class="mt-3">Loading NHL player props...</p>
-                </div>
-            `;
-            try {
-                const [propsRes, envRes] = await Promise.all([
-                    fetch('/api/nhl/props'),
-                    fetch('/api/nhl/environment').catch(() => ({ json: async () => ({}) }))
-                ]);
-                const data = await propsRes.json();
-                const envData = await envRes.json().catch(() => ({}));
-
-                // Support both flat array (legacy) and {props:[...]} envelope
-                const rawProps = Array.isArray(data) ? data : (data.props || []);
-                allProps = rawProps;
-                environmentData = envData.environments || {};
-                matchupData = {};
-
-                if (allProps.length < 5) {
-                    // Fallback: show game moneylines when props are sparse
-                    try {
-                        const oddsRes = await fetch('/api/nhl/odds');
-                        const oddsData = await oddsRes.json();
-                        const mlPicks = convertMoneylinesToPicks(oddsData, 'NHL');
-                        if (mlPicks.length > 0) {
-                            allProps = mlPicks;
-                            allFilteredProps = mlPicks;
-                            matchupData = null;
-                            document.getElementById('prop-count-display').textContent = `${mlPicks.length} games`;
-                            displayProps();
-                            return;
-                        }
-                    } catch(e) { console.warn('[NHL] Moneyline fallback failed:', e); }
-                    // Nothing to show
-                    document.getElementById('player-props-container').innerHTML = `
-                        <div class="alert alert-info text-center">
-                            <h4><i class="fas fa-hockey-puck me-2"></i>No NHL Props Available Yet</h4>
-                            <p class="mb-0 text-muted">Props load daily at 10 AM ET when the NHL season is active. Check back tomorrow.</p>
-                        </div>`;
-                    document.getElementById('prop-count-display').textContent = '0 props';
-                    return;
-                }
-
-                allProps.forEach(p => {
-                    const away = p.away_team || '';
-                    const home = p.home_team || '';
-                    const key = away && home ? `${away} @ ${home}` : 'NHL Props';
-                    if (!matchupData[key]) matchupData[key] = [];
-                    matchupData[key].push(p);
-                });
-                if (Object.keys(matchupData).length === 0) matchupData = null;
-                displayTodaysGames();
-            } catch (e) {
-                console.error('[NHL] Error loading props:', e);
-                document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NHL props unavailable — no games scheduled or off-season.</div>`;
-            }
-        }
-
-        // ---------- NFL (now uses the same layout) ----------
-        async function loadNFLProps() {
-            setPropsLabel();
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="loading text-center">
-                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading NFL props...</span></div>
-                    <p class="mt-3">Loading NFL player props...</p>
-                </div>
-            `;
-            // fetch props and environment together
-            try {
-                const [propsRes, envRes] = await Promise.all([
-                    fetch('/api/nfl/props'),
-                    fetch('/api/nfl/environment').catch(() => ({ json: async () => ({}) }))
-                ]);
-                const props = await propsRes.json();
-                const envData = await envRes.json();
-
-                nflProps = Array.isArray(props) ? props : [];
-                if (envData && envData.environments) environmentData = envData.environments; else environmentData = null;
-
-                if (nflProps.length === 0) {
-                    document.getElementById('player-props-container').innerHTML = `
-                        <div class="alert alert-info text-center">
-                            <h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season / No Props</h4>
-                            <p class="mb-0 text-muted">Check back during the NFL season for live player props.</p>
-                        </div>`;
-                    document.getElementById('prop-count-display').textContent = '0 props';
-                    return;
-                }
-
-                // Build matchupData in the same way MLB backend returns grouped data
-                matchupData = {};
-                nflProps.forEach(p => {
-                    const rawKey = `${p.away_team} @ ${p.home_team}`;
-                    let envLabel = '';
-                    if (environmentData && environmentData[rawKey]) {
-                        const e = environmentData[rawKey].environment || environmentData[rawKey].Environment || '';
-                        // Normalize: support "High", "HIGH", "High Scoring", etc.
-                        if (/high/i.test(e)) envLabel = 'HIGH';
-                        else if (/low/i.test(e)) envLabel = 'LOW';
-                        else envLabel = 'NEUTRAL';
-                    }
-                    const key = envLabel ? `${rawKey} — ${envLabel}` : rawKey;
-                    if (!matchupData[key]) matchupData[key] = [];
-                    matchupData[key].push(p);
-                });
-
-                // keep allProps for filters/search (normalize shapes a little)
-                allProps = nflProps.map(p => ({
-                    player: p.player || p.player_name,
-                    player_name: p.player_name || p.player,
-                    stat: p.market || p.stat_type || p.stat,
-                    stat_type: p.market || p.stat_type || p.stat,
-                    line: p.point || p.line,
-                    point: p.point || p.line,
-                    bookmaker: p.bookmaker || p.sportsbook,
-                    sportsbook: p.sportsbook || p.bookmaker,
-                    team: p.team || '',
-                    team_status: p.team_status,
-                    team_abbr: p.team_abbr || '',
-                    contextual_hit_rate: p.hit_probability // aligns with display logic
-                }));
-
-                // Default High confidence
-                document.getElementById('confidence-filter').value = 'high';
-                displayTodaysGames();
-            } catch (err) {
-                console.error('Error loading NFL props:', err);
+    // ─────────────────────────────────────────────
+    //  Best Lines loaders
+    // ─────────────────────────────────────────────
+    async function loadMLBLines() {
+        showSkeleton();
+        try {
+            const res  = await fetch('/api/mlb/odds?t=' + Date.now());
+            const data = await res.json();
+            const noVigPicks = data.no_vig_picks || data.picks || [];
+            const edgePicks  = data.edge_picks  || [];
+            const counts     = data.counts || { no_vig: noVigPicks.length, edge: edgePicks.length };
+            if (noVigPicks.length === 0 && edgePicks.length === 0) {
                 document.getElementById('player-props-container').innerHTML = `
-                    <div class="alert alert-danger text-center">
-                        <h4><i class="fas fa-exclamation-triangle me-2"></i>Error Loading NFL Props</h4>
-                        <p class="mb-0">Please try again later.</p>
+                    <div style="text-align:center;padding:4rem 0;">
+                        <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
+                        <p style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;color:rgba(255,255,255,0.7);margin:0 0 0.5rem;">No lines available right now.</p>
+                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:rgba(255,255,255,0.4);">Lines load daily at 10 AM ET when sharp odds open.<br>Check back this morning for today's best picks.</p>
                     </div>`;
-            }
-        }
-
-        // ---------- Shared generic loader for MLB (player_props returns grouped or array) ----------
-        async function loadPlayerPropsGeneric(propsEndpoint, envEndpoint) {
-            try {
-                const [propsResponse, envResponse] = await Promise.all([
-                    fetch(propsEndpoint),
-                    fetch(envEndpoint).catch(() => ({ json: async () => ({}) }))
-                ]);
-                
-                const data = await propsResponse.json();
-                
-                try {
-                    const envData = await envResponse.json();
-                    if (envData && envData.environments) {
-                        environmentData = envData.environments;
-                        console.log(`Loaded ${currentSport.toUpperCase()} environment data with favored teams:`, Object.keys(environmentData));
-                    }
-                } catch { environmentData = null; }
-
-                if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-                    matchupData = data;
-                    allProps = [];
-                    Object.values(data).forEach(matchupProps => {
-                        if (Array.isArray(matchupProps)) allProps = allProps.concat(matchupProps);
-                    });
-                } else if (Array.isArray(data)) {
-                    matchupData = null;
-                    allProps = data;
-                } else {
-                    matchupData = null;
-                    allProps = [];
-                }
-                
-                // MLB hits filtering
-                allProps = allProps.filter(prop => {
-                    const statType = prop.stat || prop.stat_type || '';
-                    const line = parseFloat(prop.line || prop.point || 0);
-                    if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) return false;
-                    return true;
-                });
-
-                if (matchupData) {
-                    const filtered = {};
-                    Object.entries(matchupData).forEach(([m, props]) => {
-                        if (Array.isArray(props)) {
-                            filtered[m] = props.filter(prop => {
-                                const statType = prop.stat || prop.stat_type || '';
-                                const line = parseFloat(prop.line || prop.point || 0);
-                                if ((statType === 'batter_hits' || statType === 'hits') && line >= 2.5) return false;
-                                return true;
-                            });
-                        }
-                    });
-                    matchupData = filtered;
-                }
-
-                if (allProps.length === 0) {
-                    document.getElementById('player-props-container').innerHTML = `
-                        <div class="alert alert-info text-center">
-                            <h5><i class="fas fa-info-circle me-2"></i>No Props Available</h5>
-                            <p class="mb-0">No player props currently available. Check back later.</p>
-                        </div>`;
-                    return;
-                }
-
-                document.getElementById('confidence-filter').value = 'high';
-                displayTodaysGames();
-            } catch (error) {
-                console.error('Error loading props:', error);
-                document.getElementById('player-props-container').innerHTML = `
-                    <div class="alert alert-danger">
-                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Error Loading Props</h5>
-                        <p class="mb-0">Unable to load player props. Please try again later.</p>
-                    </div>`;
-            }
-        }
-
-        // ---------- Filters / Display ----------
-        function applyFilters() {
-            const searchTerm = document.getElementById('player-search').value.toLowerCase().trim();
-            const confidenceFilter = document.getElementById('confidence-filter').value;
-            if (!allProps || allProps.length === 0) return;
-            
-            allFilteredProps = allProps.filter(prop => {
-                let ok = true;
-                if (searchTerm) {
-                    const playerName = (prop.player || prop.player_name || '').toLowerCase();
-                    const statType = (prop.stat || prop.stat_type || prop.market || '').toLowerCase();
-                    const humanStat = getHumanStatName(prop.stat || prop.stat_type || prop.market || '').toLowerCase();
-                    ok = ok && (playerName.includes(searchTerm) || statType.includes(searchTerm) || humanStat.includes(searchTerm));
-                }
-                // MLB hits line filter already baked for MLB; harmless for NFL
-                const st = prop.stat || prop.stat_type || '';
-                const line = parseFloat(prop.line || prop.point || 0);
-                if ((st === 'batter_hits' || st === 'hits') && line >= 2.5) ok = false;
-
-                if (confidenceFilter) {
-                    const tier = prop.confidence_tier;
-                    if (tier) {
-                        // Use tier if available (new pipeline)
-                        if (confidenceFilter === 'high') ok = ok && tier === 'LOCK';
-                        else if (confidenceFilter === 'medium') ok = ok && tier === 'FIRE';
-                        else if (confidenceFilter === 'low') ok = ok && tier === 'LOW';
-                    } else {
-                        // Fall back to hit rate for legacy props
-                        let hitRate = 0;
-                        if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
-                            hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
-                        } else {
-                            hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0;
-                        }
-                        if (confidenceFilter === 'high') ok = ok && hitRate >= 0.7;
-                        else if (confidenceFilter === 'medium') ok = ok && hitRate >= 0.5 && hitRate < 0.7;
-                        else if (confidenceFilter === 'low') ok = ok && hitRate < 0.5;
-                    }
-                }
-                return ok;
-            });
-            
-            displayProps();
-            updatePropCount();
-        }
-
-        function displayProps() {
-            // Step 1: deduplicate by player+stat+line
-            const seen = new Set();
-            const uniqueProps = allFilteredProps.filter(p => {
-                const key = (p.player || p.player_name || '') + '_' +
-                            (p.stat || p.stat_type || '') + '_' +
-                            (p.line || p.point || '');
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-            });
-
-            // Step 2: drop one-sided props (no-vig requires both sides)
-            const validProps = uniqueProps.filter(p => {
-                const nvp = parseFloat(p.no_vig_prob);
-                const books = Array.isArray(p.all_books) ? p.all_books : [];
-                const bestPrice = p.best_over_price || 0;
-                if (nvp === 50.0 && books.length <= 1 && bestPrice > 200) return false;
-                return true;
-            });
-
-            // Step 3: sort — highest true prob first; ties broken by best payout
-            validProps.sort((a, b) => {
-                const pa = parseFloat(a.no_vig_prob) || 0;
-                const pb = parseFloat(b.no_vig_prob) || 0;
-                if (pb !== pa) return pb - pa;
-                return (b.best_over_price || 0) - (a.best_over_price || 0);
-            });
-
-            const propsToShow = validProps.slice(0, currentPropsDisplayed);
-
-            if (propsToShow.length === 0) {
-                document.getElementById('player-props-container').innerHTML = `
-                    <div class="alert alert-info text-center">
-                        <h5><i class="fas fa-search me-2"></i>No Props Match Your Filters</h5>
-                        <p class="mb-0">Try adjusting your search or filter criteria.</p>
-                    </div>`;
+                document.getElementById('prop-count-display').textContent = '0 picks';
                 return;
             }
+            document.getElementById('prop-count-display').textContent = `${noVigPicks.length} lines · ${edgePicks.length} edge`;
+            renderLinesBoard(noVigPicks, edgePicks, counts, 'MLB');
+        } catch(e) {
+            console.error('[MLB] Error loading best lines:', e);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">MLB lines temporarily unavailable.</div>`;
+        }
+    }
 
-            // Board summary — EV-based counts
-            const lockCount = validProps.filter(p => p.confidence_tier === 'LOCK').length;
-            const fireCount = validProps.filter(p => p.confidence_tier === 'FIRE').length;
-            const edgeCount = validProps.filter(p => p.confidence_tier === 'EDGE').length;
-            const evValues  = validProps.map(p => parseFloat(p.ev_pct) || 0).filter(v => !isNaN(v));
-            const avgEv     = evValues.length ? (evValues.reduce((a,b)=>a+b,0)/evValues.length).toFixed(1) : null;
-            const evLine    = avgEv ? ` · avg EV: +${avgEv}%` : '';
-            const summaryLine = currentMode === 'lines'
-                ? `${validProps.length} positive EV picks today${evLine} · ${lockCount} 🔒 Strong · ${fireCount} 🔥 Fire · ${edgeCount} 📐 Edge`
-                : `${validProps.length} positive EV props${evLine} · ${lockCount} 🔒 Strong · ${fireCount} 🔥 Fire · ${edgeCount} 📐 Edge`;
-            const boardSummary = `
-                <div class="d-flex align-items-center justify-content-center gap-2 mb-2 flex-wrap">
-                    <span class="text-muted small">${summaryLine}</span>
-                    <span title="Only picks with positive expected value (+EV) vs the fair market price are shown. EV = edge over the book's vig-free price." style="cursor:help;font-size:0.85em;">ℹ️</span>
+    async function loadNHLLines() {
+        showSkeleton();
+        try {
+            const res  = await fetch('/api/nhl/odds?t=' + Date.now());
+            const data = await res.json();
+            const noVigPicks = data.no_vig_picks || data.picks || [];
+            const edgePicks  = data.edge_picks  || [];
+            const counts     = data.counts || { no_vig: noVigPicks.length, edge: edgePicks.length };
+            if (noVigPicks.length === 0 && edgePicks.length === 0) {
+                document.getElementById('player-props-container').innerHTML = `
+                    <div style="text-align:center;padding:4rem 0;">
+                        <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
+                        <p style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;color:rgba(255,255,255,0.7);margin:0 0 0.5rem;">No lines available right now.</p>
+                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:rgba(255,255,255,0.4);">Lines load daily at 10 AM ET when sharp odds open.</p>
+                    </div>`;
+                document.getElementById('prop-count-display').textContent = '0 picks';
+                return;
+            }
+            document.getElementById('prop-count-display').textContent = `${noVigPicks.length} lines · ${edgePicks.length} edge`;
+            renderLinesBoard(noVigPicks, edgePicks, counts, 'NHL');
+        } catch(e) {
+            console.error('[NHL] Error loading best lines:', e);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NHL lines temporarily unavailable.</div>`;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  renderLinesBoard — two-section layout
+    // ─────────────────────────────────────────────
+    function renderLinesBoard(noVigPicks, edgePicks, counts, sport) {
+        const container = document.getElementById('player-props-container');
+        container.innerHTML = '';
+
+        // ── SECTION 1: EDGE PICKS ──
+        if (edgePicks.length > 0) {
+            const avgEv = edgePicks.length
+                ? (edgePicks.reduce((s,p)=>s+(p.ev_pct||0),0)/edgePicks.length).toFixed(1) : null;
+            const edgeSection = document.createElement('div');
+            edgeSection.style.marginBottom = '1.5rem';
+            edgeSection.innerHTML = `
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+                    <span class="section-header-title">⚡ Edge Picks</span>
+                    <span class="pill-badge" style="background:#facc15;color:#111827;">${edgePicks.length} today</span>
+                    ${avgEv ? `<span class="pill-badge" style="background:rgba(34,197,94,0.2);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">avg EV +${avgEv}%</span>` : ''}
+                    <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.4);">Lines where the math shows real edge vs the market</span>
+                    <span title="These picks passed the EV threshold — the offered odds are better than the fair market price. Positive EV means value over the long run." style="cursor:help;font-size:0.85rem;">ℹ️</span>
                 </div>
-                <div class="d-flex justify-content-center gap-3 mb-3">
-                    <span class="badge bg-success fs-6"><i class="fas fa-lock me-1"></i>Strong: ${lockCount}</span>
-                    <span class="badge bg-warning text-dark fs-6"><i class="fas fa-fire me-1"></i>Fire: ${fireCount}</span>
-                    <span class="badge bg-info text-dark fs-6"><i class="fas fa-angle-double-up me-1"></i>Edge: ${edgeCount}</span>
+                <div class="picks-grid" id="edge-cards-row"></div>`;
+            container.appendChild(edgeSection);
+            const edgeRow = edgeSection.querySelector('#edge-cards-row');
+            edgePicks.forEach(pick => {
+                const div = document.createElement('div');
+                div.innerHTML = renderEdgeCard(pick);
+                edgeRow.appendChild(div.firstElementChild);
+            });
+        }
+
+        // ── SECTION 2: TODAY'S LINES ──
+        const noVigSection = document.createElement('div');
+        noVigSection.innerHTML = `
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+                <span class="section-header-title">📊 Today's Lines</span>
+                <span class="pill-badge" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.55);">${noVigPicks.length} picks · 50%+</span>
+                <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.4);">All picks above 50% no-vig probability</span>
+            </div>
+            <div class="picks-grid" id="novig-cards-row"></div>`;
+        container.appendChild(noVigSection);
+
+        const noVigRow = noVigSection.querySelector('#novig-cards-row');
+        if (noVigPicks.length === 0) {
+            noVigRow.innerHTML = `
+                <div style="grid-column:1/-1;text-align:center;padding:3rem 0;">
+                    <div style="font-size:2.5rem;margin-bottom:0.75rem;">📋</div>
+                    <p style="font-family:'Inter',sans-serif;font-size:0.85rem;color:rgba(255,255,255,0.4);">No lines above 50% today.<br><small>Check back after 10 AM ET when lines refresh.</small></p>
                 </div>`;
+        } else {
+            noVigPicks.forEach(pick => {
+                const div = document.createElement('div');
+                div.innerHTML = renderNoVigCard(pick);
+                noVigRow.appendChild(div.firstElementChild);
+            });
+        }
+    }
 
-            const propCards = propsToShow.map(prop => {
-                // ---- probability ----
-                const noVigProb = prop.no_vig_prob != null ? parseFloat(prop.no_vig_prob) : null;
-                let hitRate = 0;
-                if (noVigProb != null) {
-                    hitRate = noVigProb / 100;
-                } else if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
-                    hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
-                } else {
-                    hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0;
+    // ─────────────────────────────────────────────
+    //  renderEdgeCard — EV+ picks (gold border)
+    // ─────────────────────────────────────────────
+    function renderEdgeCard(pick) {
+        const fmtOdds = o => (o == null ? '—' : (o > 0 ? `+${o}` : `${o}`));
+        const ev  = parseFloat(pick.ev_pct) || 0;
+        const nvp = parseFloat(pick.no_vig_prob) || 0;
+        const tier = pick.confidence_tier || 'EDGE';
+
+        let tierBg, tierColor, tierLabel;
+        if (tier === 'LOCK')      { tierBg = '#facc15'; tierColor = '#111827'; tierLabel = '🔒 LOCK'; }
+        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#fff';    tierLabel = '🔥 FIRE'; }
+        else                      { tierBg = '#0d3b66'; tierColor = '#fff';    tierLabel = '⚡ EDGE'; }
+
+        const barColor = tier === 'LOCK' ? '#facc15' : tier === 'FIRE' ? '#f97316' : '#60a5fa';
+
+        const mt = pick.market_type || '';
+        let marketBadge = '';
+        if (mt === 'moneyline') marketBadge = `<span style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">💰 ML</span>`;
+        else if (mt === 'spread') marketBadge = `<span style="background:rgba(96,165,250,0.2);color:#60a5fa;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
+        else if (mt === 'total')  marketBadge = `<span style="background:rgba(167,139,250,0.2);color:#a78bfa;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">📊 O/U</span>`;
+
+        let gameTimeHtml = '';
+        if (pick.game_time) {
+            const gt = new Date(pick.game_time);
+            if (!isNaN(gt)) gameTimeHtml = `<small style="font-family:'Inter',sans-serif;color:rgba(255,255,255,0.35);font-size:0.68em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
+        }
+        const line = pick.line != null ? pick.line : null;
+        const lineHtml = line != null ? `<span style="background:#3b82f6;color:#fff;font-size:0.65em;padding:0.15rem 0.4rem;border-radius:0.3rem;margin-left:0.25rem;">${line}</span>` : '';
+        const bookCount = pick.book_count || (Array.isArray(pick.all_books) ? pick.all_books.length : 1);
+
+        const allBooks = Array.isArray(pick.all_books) ? pick.all_books : [];
+        let lineShopHtml = '';
+        if (allBooks.length > 1) {
+            const cardId = `es-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}`;
+            const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
+                const isBest = b.over_price === pick.best_over_price;
+                const fmt = o => o > 0 ? `+${o}` : `${o}`;
+                return `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.06);font-family:'Inter',sans-serif;font-size:0.72rem;${isBest?'color:#22c55e;font-weight:700;':'color:rgba(255,255,255,0.45);'}">
+                    <span>${b.book}</span><span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
+                </div>`;
+            }).join('');
+            lineShopHtml = `
+                <div style="margin-top:0.6rem;">
+                    <button class="btn btn-outline-secondary w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}" style="font-size:0.68em;">
+                        <i class="fas fa-store" style="margin-right:0.25rem;"></i>Compare ${allBooks.length} books
+                    </button>
+                    <div class="collapse mt-1" id="${cardId}"><div style="padding:0 0.25rem;">${bookRows}</div></div>
+                </div>`;
+        }
+
+        return `
+        <div style="background:#1f2937;border:1px solid rgba(250,204,21,0.25);border-top:3px solid #facc15;border-radius:0.75rem;padding:0.9rem 1rem;height:100%;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.6rem;">
+                <div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;color:#fff;">${pick.player || 'Unknown'}</div>
+                    <div style="font-family:'Inter',sans-serif;font-size:0.78rem;color:rgba(255,255,255,0.5);margin-top:0.1rem;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
+                    <div style="margin-top:0.2rem;">${gameTimeHtml}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+                    <span style="background:${tierBg};color:${tierColor};font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.78rem;padding:0.15rem 0.5rem;border-radius:0.35rem;">${tierLabel}</span>
+                    ${marketBadge}
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.25rem;background:rgba(255,255,255,0.04);border-radius:0.5rem;padding:0.5rem;margin-bottom:0.6rem;">
+                <div style="text-align:center;">
+                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:rgba(255,255,255,0.4);">EV</div>
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.95em;color:${ev>=0?'#22c55e':'#ef4444'};">${ev>=0?'+':''}${ev.toFixed(2)}%</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:rgba(255,255,255,0.4);">Fair Odds</div>
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;">${fmtOdds(pick.fair_odds)}</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:rgba(255,255,255,0.4);">True Prob</div>
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;">${nvp.toFixed(1)}%</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:rgba(255,255,255,0.4);">BE%</div>
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;">${pick.break_even_prob!=null ? parseFloat(pick.break_even_prob).toFixed(1)+'%' : '—'}</div>
+                </div>
+            </div>
+            <div style="margin-bottom:0.5rem;">
+                <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.68em;margin-bottom:0.2rem;">
+                    <span style="color:rgba(255,255,255,0.4);">True Probability</span>
+                    <strong style="color:${barColor};">${nvp.toFixed(1)}%</strong>
+                </div>
+                <div style="background:rgba(255,255,255,0.1);border-radius:3px;height:5px;">
+                    <div style="width:${Math.min(100,nvp)}%;background:${barColor};border-radius:3px;height:100%;"></div>
+                </div>
+            </div>
+            <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
+                <span style="color:#facc15;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;"></i>Best: <strong>${pick.best_book || '—'}</strong> ${fmtOdds(pick.best_over_price)}</span>
+                ${bookCount > 1 ? `<span style="color:rgba(255,255,255,0.35);margin-left:0.5rem;font-size:0.85em;">${bookCount} books</span>` : ''}
+            </div>
+            ${lineShopHtml}
+        </div>`;
+    }
+
+    // ─────────────────────────────────────────────
+    //  renderNoVigCard — standard lines card
+    // ─────────────────────────────────────────────
+    function renderNoVigCard(pick) {
+        const fmtOdds = o => (o == null ? '—' : (o > 0 ? `+${o}` : `${o}`));
+        const nvp  = parseFloat(pick.no_vig_prob) || 0;
+        const ev   = pick.ev_pct != null ? parseFloat(pick.ev_pct) : null;
+        const tier = pick.confidence_tier || (nvp >= 70 ? 'LOCK' : nvp >= 55 ? 'FIRE' : 'EDGE');
+        const barColor = tier === 'LOCK' ? '#22c55e' : tier === 'FIRE' ? '#f59e0b' : '#60a5fa';
+
+        let tierBg, tierColor, tierLabel;
+        if (tier === 'LOCK')      { tierBg = '#facc15'; tierColor = '#111827'; tierLabel = '🔒 LOCK'; }
+        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#fff';    tierLabel = '🔥 FIRE'; }
+        else                      { tierBg = '#0d3b66'; tierColor = '#fff';    tierLabel = '⚡ EDGE'; }
+
+        const mt = pick.market_type || '';
+        let marketBadge = '';
+        if (mt === 'moneyline') marketBadge = `<span style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">💰 ML</span>`;
+        else if (mt === 'spread') marketBadge = `<span style="background:rgba(96,165,250,0.2);color:#60a5fa;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
+        else if (mt === 'total')  marketBadge = `<span style="background:rgba(167,139,250,0.2);color:#a78bfa;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">📊 O/U</span>`;
+
+        let gameTimeHtml = '';
+        if (pick.game_time) {
+            const gt = new Date(pick.game_time);
+            if (!isNaN(gt)) gameTimeHtml = `<small style="display:block;font-family:'Inter',sans-serif;color:rgba(255,255,255,0.35);font-size:0.65em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
+        }
+        const line = pick.line != null ? pick.line : null;
+        const lineHtml = line != null ? `<span style="background:#3b82f6;color:#fff;font-size:0.62em;padding:0.12rem 0.35rem;border-radius:0.3rem;margin-left:0.2rem;">${line}</span>` : '';
+
+        const allBooks = Array.isArray(pick.all_books) ? pick.all_books : [];
+        let lineShopHtml = '';
+        if (allBooks.length > 1) {
+            const cardId = `nv-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}-${line||'ml'}`;
+            const savings = pick.line_shop_savings_pct || 0;
+            const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
+                const isBest = b.over_price === pick.best_over_price;
+                const fmt = o => o > 0 ? `+${o}` : `${o}`;
+                return `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.06);font-family:'Inter',sans-serif;font-size:0.72rem;${isBest?'color:#22c55e;font-weight:700;':'color:rgba(255,255,255,0.45);'}">
+                    <span>${b.book}</span><span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
+                </div>`;
+            }).join('');
+            lineShopHtml = `
+                <div style="margin-top:0.5rem;">
+                    <button class="btn btn-outline-secondary w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}" style="font-size:0.68em;">
+                        <i class="fas fa-store" style="margin-right:0.25rem;"></i>Line Shop (${allBooks.length} books${savings>0?` · save ~${savings}%`:''})
+                    </button>
+                    <div class="collapse mt-1" id="${cardId}"><div style="padding:0 0.25rem;">${bookRows}</div></div>
+                </div>`;
+        }
+
+        const evBadge = ev != null
+            ? `<span style="background:${ev>0?'rgba(34,197,94,0.12)':'rgba(239,68,68,0.1)'};color:${ev>0?'#22c55e':'#ef4444'};border:1px solid ${ev>0?'rgba(34,197,94,0.3)':'rgba(239,68,68,0.3)'};font-family:'Space Grotesk',sans-serif;font-size:0.7em;padding:0.1rem 0.4rem;border-radius:0.3rem;margin-left:0.3rem;">${ev>0?'+':''}${ev.toFixed(2)}% EV</span>`
+            : '';
+
+        return `
+        <div style="background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;padding:0.9rem 1rem;height:100%;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.5rem;">
+                <div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;color:#fff;">${pick.player || 'Unknown'}</div>
+                    <div style="font-family:'Inter',sans-serif;font-size:0.76rem;color:rgba(255,255,255,0.5);margin-top:0.1rem;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
+                    ${gameTimeHtml}
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+                    <span style="background:${tierBg};color:${tierColor};font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.75rem;padding:0.12rem 0.45rem;border-radius:0.3rem;">${tierLabel}</span>
+                    ${marketBadge}
+                </div>
+            </div>
+            <div style="margin-bottom:0.5rem;">
+                <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.7em;margin-bottom:0.2rem;">
+                    <span style="color:rgba(255,255,255,0.4);">True Probability (no-vig)</span>
+                    <strong style="color:${barColor};">${nvp.toFixed(1)}%</strong>
+                </div>
+                <div style="background:rgba(255,255,255,0.1);border-radius:3px;height:5px;">
+                    <div style="width:${Math.min(100,nvp)}%;background:${barColor};border-radius:3px;height:100%;"></div>
+                </div>
+            </div>
+            <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
+                <span style="color:#facc15;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;"></i>Best: ${pick.best_book || '—'} <strong>${fmtOdds(pick.best_over_price)}</strong></span>
+                ${evBadge}
+            </div>
+            ${lineShopHtml}
+        </div>`;
+    }
+
+    // ─────────────────────────────────────────────
+    //  Moneyline fallback helper
+    // ─────────────────────────────────────────────
+    function convertMoneylinesToPicks(oddsData, sport) {
+        const picks = [];
+        const games = Array.isArray(oddsData) ? oddsData : (oddsData.odds || []);
+        for (const game of games) {
+            for (const book of (game.bookmakers || [])) {
+                const h2h = (book.markets || []).find(m => m.key === 'h2h');
+                if (!h2h) continue;
+                const outcomes = h2h.outcomes || [];
+                if (outcomes.length < 2) continue;
+                function toImplied(o) { return o > 0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100); }
+                const imp1 = toImplied(outcomes[0].price), imp2 = toImplied(outcomes[1].price);
+                const total = imp1 + imp2;
+                const prob1 = Math.round((imp1/total)*1000)/10, prob2 = Math.round((imp2/total)*1000)/10;
+                function getTier(p) { return p >= 70 ? 'LOCK' : p >= 50 ? 'FIRE' : 'LOW'; }
+                picks.push({ player: outcomes[0].name, stat: 'Moneyline', stat_label: 'Moneyline Win', line: null, no_vig_prob: prob1, confidence_tier: getTier(prob1), best_over_price: outcomes[0].price, best_book: book.title, all_books: [{ book: book.title, over_price: outcomes[0].price, under_price: outcomes[1].price }], game_time: game.commence_time, sport });
+                picks.push({ player: outcomes[1].name, stat: 'Moneyline', stat_label: 'Moneyline Win', line: null, no_vig_prob: prob2, confidence_tier: getTier(prob2), best_over_price: outcomes[1].price, best_book: book.title, all_books: [{ book: book.title, over_price: outcomes[1].price, under_price: outcomes[0].price }], game_time: game.commence_time, sport });
+                break;
+            }
+        }
+        const teamSeen = new Set();
+        return picks.filter(p => { if (teamSeen.has(p.player)) return false; teamSeen.add(p.player); return true; })
+            .sort((a, b) => b.no_vig_prob !== a.no_vig_prob ? b.no_vig_prob - a.no_vig_prob : b.best_over_price - a.best_over_price);
+    }
+
+    // ─────────────────────────────────────────────
+    //  MLB Props loader
+    // ─────────────────────────────────────────────
+    async function loadMLBProps() {
+        setPropsLabel();
+        showSkeleton();
+        await loadPlayerPropsGeneric('/player_props', '/api/mlb/environment');
+        if (allProps.length < 5) {
+            try {
+                const oddsRes = await fetch('/api/odds');
+                const oddsData = await oddsRes.json();
+                const mlPicks = convertMoneylinesToPicks(oddsData, 'MLB');
+                if (mlPicks.length > 0) { allProps = mlPicks; allFilteredProps = mlPicks; matchupData = null; displayProps(); }
+            } catch(e) { console.warn('[MLB] Moneyline fallback failed:', e); }
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  NHL Props loader
+    // ─────────────────────────────────────────────
+    async function loadNHLProps() {
+        setPropsLabel();
+        showSkeleton();
+        try {
+            const [propsRes, envRes] = await Promise.all([fetch('/api/nhl/props'), fetch('/api/nhl/environment').catch(() => ({ json: async () => ({}) }))]);
+            const data = await propsRes.json();
+            const envData = await envRes.json().catch(() => ({}));
+            const rawProps = Array.isArray(data) ? data : (data.props || []);
+            allProps = rawProps; environmentData = envData.environments || {}; matchupData = {};
+            if (allProps.length < 5) {
+                try {
+                    const oddsRes = await fetch('/api/nhl/odds');
+                    const oddsData = await oddsRes.json();
+                    const mlPicks = convertMoneylinesToPicks(oddsData, 'NHL');
+                    if (mlPicks.length > 0) { allProps = mlPicks; allFilteredProps = mlPicks; matchupData = null; document.getElementById('prop-count-display').textContent = `${mlPicks.length} games`; displayProps(); return; }
+                } catch(e) { console.warn('[NHL] Moneyline fallback failed:', e); }
+                document.getElementById('player-props-container').innerHTML = `<div class="alert alert-info text-center"><h4><i class="fas fa-hockey-puck me-2"></i>No NHL Props Available Yet</h4><p class="mb-0">Props load daily at 10 AM ET when the NHL season is active.</p></div>`;
+                document.getElementById('prop-count-display').textContent = '0 props';
+                return;
+            }
+            allProps.forEach(p => {
+                const key = (p.away_team && p.home_team) ? `${p.away_team} @ ${p.home_team}` : 'NHL Props';
+                if (!matchupData[key]) matchupData[key] = [];
+                matchupData[key].push(p);
+            });
+            if (Object.keys(matchupData).length === 0) matchupData = null;
+            displayTodaysGames();
+        } catch(e) {
+            console.error('[NHL] Error loading props:', e);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NHL props unavailable — no games scheduled or off-season.</div>`;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  NFL Props loader
+    // ─────────────────────────────────────────────
+    async function loadNFLProps() {
+        setPropsLabel();
+        showSkeleton();
+        try {
+            const [propsRes, envRes] = await Promise.all([fetch('/api/nfl/props'), fetch('/api/nfl/environment').catch(() => ({ json: async () => ({}) }))]);
+            const props = await propsRes.json();
+            const envData = await envRes.json();
+            nflProps = Array.isArray(props) ? props : [];
+            if (envData && envData.environments) environmentData = envData.environments; else environmentData = null;
+            if (nflProps.length === 0) {
+                document.getElementById('player-props-container').innerHTML = `<div class="alert alert-info text-center"><h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season / No Props</h4><p class="mb-0">Check back during the NFL season for live player props.</p></div>`;
+                document.getElementById('prop-count-display').textContent = '0 props';
+                return;
+            }
+            matchupData = {};
+            nflProps.forEach(p => {
+                const rawKey = `${p.away_team} @ ${p.home_team}`;
+                let envLabel = '';
+                if (environmentData && environmentData[rawKey]) {
+                    const e = environmentData[rawKey].environment || environmentData[rawKey].Environment || '';
+                    if (/high/i.test(e)) envLabel = 'HIGH'; else if (/low/i.test(e)) envLabel = 'LOW'; else envLabel = 'NEUTRAL';
                 }
-                const displayPct = noVigProb != null ? noVigProb.toFixed(1) : (hitRate * 100).toFixed(1);
+                const key = envLabel ? `${rawKey} — ${envLabel}` : rawKey;
+                if (!matchupData[key]) matchupData[key] = [];
+                matchupData[key].push(p);
+            });
+            allProps = nflProps.map(p => ({ player: p.player || p.player_name, player_name: p.player_name || p.player, stat: p.market || p.stat_type || p.stat, stat_type: p.market || p.stat_type || p.stat, line: p.point || p.line, point: p.point || p.line, bookmaker: p.bookmaker || p.sportsbook, sportsbook: p.sportsbook || p.bookmaker, team: p.team || '', team_status: p.team_status, team_abbr: p.team_abbr || '', contextual_hit_rate: p.hit_probability }));
+            document.getElementById('confidence-filter').value = 'high';
+            displayTodaysGames();
+        } catch(err) {
+            console.error('Error loading NFL props:', err);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-danger text-center"><h4><i class="fas fa-exclamation-triangle me-2"></i>Error Loading NFL Props</h4><p class="mb-0">Please try again later.</p></div>`;
+        }
+    }
 
-                // ---- tier badge ----
-                const tier = prop.confidence_tier || (hitRate >= 0.70 ? 'LOCK' : hitRate >= 0.50 ? 'FIRE' : 'EDGE');
-                let tierBadgeClass = 'bg-info text-dark';
-                let tierIcon = 'fas fa-angle-double-up';
-                let tierLabel = 'EDGE';
-                if (tier === 'LOCK')      { tierBadgeClass = 'bg-success'; tierIcon = 'fas fa-lock'; tierLabel = 'STRONG'; }
-                else if (tier === 'FIRE') { tierBadgeClass = 'bg-warning text-dark'; tierIcon = 'fas fa-fire'; tierLabel = 'FIRE'; }
-                else if (tier === 'EDGE') { tierBadgeClass = 'bg-info text-dark'; tierIcon = 'fas fa-angle-double-up'; tierLabel = 'EDGE'; }
-                const tierBadge = `<span class="badge ${tierBadgeClass}" style="font-size:0.75em;"><i class="${tierIcon} me-1"></i>${tierLabel}</span>`;
+    // ─────────────────────────────────────────────
+    //  Generic MLB props loader
+    // ─────────────────────────────────────────────
+    async function loadPlayerPropsGeneric(propsEndpoint, envEndpoint) {
+        try {
+            const [propsResponse, envResponse] = await Promise.all([fetch(propsEndpoint), fetch(envEndpoint).catch(() => ({ json: async () => ({}) }))]);
+            const data = await propsResponse.json();
+            try {
+                const envData = await envResponse.json();
+                if (envData && envData.environments) environmentData = envData.environments;
+            } catch { environmentData = null; }
+            if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+                matchupData = data; allProps = [];
+                Object.values(data).forEach(mp => { if (Array.isArray(mp)) allProps = allProps.concat(mp); });
+            } else if (Array.isArray(data)) {
+                matchupData = null; allProps = data;
+            } else { matchupData = null; allProps = []; }
+            allProps = allProps.filter(prop => {
+                const st = prop.stat || prop.stat_type || '';
+                const line = parseFloat(prop.line || prop.point || 0);
+                if ((st === 'batter_hits' || st === 'hits') && line >= 2.5) return false;
+                return true;
+            });
+            if (matchupData) {
+                const filtered = {};
+                Object.entries(matchupData).forEach(([m, props]) => {
+                    if (Array.isArray(props)) {
+                        filtered[m] = props.filter(prop => {
+                            const st = prop.stat || prop.stat_type || '';
+                            const line = parseFloat(prop.line || prop.point || 0);
+                            if ((st === 'batter_hits' || st === 'hits') && line >= 2.5) return false;
+                            return true;
+                        });
+                    }
+                });
+                matchupData = filtered;
+            }
+            if (allProps.length === 0) {
+                document.getElementById('player-props-container').innerHTML = `<div class="alert alert-info text-center"><h5><i class="fas fa-info-circle me-2"></i>No Props Available</h5><p class="mb-0">No player props currently available. Check back later.</p></div>`;
+                return;
+            }
+            document.getElementById('confidence-filter').value = 'high';
+            displayTodaysGames();
+        } catch(error) {
+            console.error('Error loading props:', error);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-danger"><h5><i class="fas fa-exclamation-triangle me-2"></i>Error Loading Props</h5><p class="mb-0">Unable to load player props. Please try again later.</p></div>`;
+        }
+    }
 
-                // ---- probability bar ----
-                const probBarWidth = Math.min(100, Math.max(0, parseFloat(displayPct)));
-                const barColor = tier === 'LOCK' ? '#198754' : tier === 'FIRE' ? '#ffc107' : tier === 'EDGE' ? '#0dcaf0' : '#6c757d';
-                const probBar = `
-                    <div class="mb-2">
-                        <div class="d-flex justify-content-between" style="font-size:0.75em;">
-                            <span class="text-muted">True Probability (no-vig)</span>
+    // ─────────────────────────────────────────────
+    //  Filters + Display
+    // ─────────────────────────────────────────────
+    function applyFilters() {
+        const searchTerm = document.getElementById('player-search').value.toLowerCase().trim();
+        const confidenceFilter = document.getElementById('confidence-filter').value;
+        if (!allProps || allProps.length === 0) return;
+        allFilteredProps = allProps.filter(prop => {
+            let ok = true;
+            if (searchTerm) {
+                const playerName = (prop.player || prop.player_name || '').toLowerCase();
+                const statType = (prop.stat || prop.stat_type || prop.market || '').toLowerCase();
+                const humanStat = getHumanStatName(prop.stat || prop.stat_type || prop.market || '').toLowerCase();
+                ok = ok && (playerName.includes(searchTerm) || statType.includes(searchTerm) || humanStat.includes(searchTerm));
+            }
+            const st = prop.stat || prop.stat_type || '';
+            const line = parseFloat(prop.line || prop.point || 0);
+            if ((st === 'batter_hits' || st === 'hits') && line >= 2.5) ok = false;
+            if (confidenceFilter) {
+                const tier = prop.confidence_tier;
+                if (tier) {
+                    if (confidenceFilter === 'high') ok = ok && tier === 'LOCK';
+                    else if (confidenceFilter === 'medium') ok = ok && tier === 'FIRE';
+                    else if (confidenceFilter === 'low') ok = ok && tier === 'LOW';
+                } else {
+                    let hitRate = 0;
+                    if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') {
+                        hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
+                    } else { hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0; }
+                    if (confidenceFilter === 'high') ok = ok && hitRate >= 0.7;
+                    else if (confidenceFilter === 'medium') ok = ok && hitRate >= 0.5 && hitRate < 0.7;
+                    else if (confidenceFilter === 'low') ok = ok && hitRate < 0.5;
+                }
+            }
+            return ok;
+        });
+        displayProps();
+        updatePropCount();
+    }
+
+    function displayProps() {
+        const seen = new Set();
+        const uniqueProps = allFilteredProps.filter(p => {
+            const key = (p.player || p.player_name || '') + '_' + (p.stat || p.stat_type || '') + '_' + (p.line || p.point || '');
+            if (seen.has(key)) return false; seen.add(key); return true;
+        });
+        const validProps = uniqueProps.filter(p => {
+            const nvp = parseFloat(p.no_vig_prob);
+            const books = Array.isArray(p.all_books) ? p.all_books : [];
+            const bestPrice = p.best_over_price || 0;
+            if (nvp === 50.0 && books.length <= 1 && bestPrice > 200) return false;
+            return true;
+        });
+        validProps.sort((a, b) => {
+            const pa = parseFloat(a.no_vig_prob) || 0, pb = parseFloat(b.no_vig_prob) || 0;
+            if (pb !== pa) return pb - pa;
+            return (b.best_over_price || 0) - (a.best_over_price || 0);
+        });
+        const propsToShow = validProps.slice(0, currentPropsDisplayed);
+        if (propsToShow.length === 0) {
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-info text-center"><h5><i class="fas fa-search me-2"></i>No Props Match Your Filters</h5><p class="mb-0">Try adjusting your search or filter criteria.</p></div>`;
+            return;
+        }
+
+        const lockCount = validProps.filter(p => p.confidence_tier === 'LOCK').length;
+        const fireCount = validProps.filter(p => p.confidence_tier === 'FIRE').length;
+        const edgeCount = validProps.filter(p => p.confidence_tier === 'EDGE').length;
+        const evValues  = validProps.map(p => parseFloat(p.ev_pct) || 0).filter(v => !isNaN(v));
+        const avgEv     = evValues.length ? (evValues.reduce((a,b)=>a+b,0)/evValues.length).toFixed(1) : null;
+        const evLine    = avgEv ? ` · avg EV: +${avgEv}%` : '';
+        const summaryLine = `${validProps.length} positive EV picks today${evLine}`;
+
+        const boardSummary = `
+            <div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;font-family:'Inter',sans-serif;font-size:0.78rem;color:rgba(255,255,255,0.45);">
+                <span>${summaryLine}</span>
+                <span title="Only picks with positive expected value (+EV) vs the fair market price are shown." style="cursor:help;">ℹ️</span>
+            </div>
+            <div style="display:flex;justify-content:center;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+                <span style="background:#facc15;color:#111827;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;padding:0.2rem 0.7rem;border-radius:0.35rem;">🔒 Lock: ${lockCount}</span>
+                <span style="background:#f97316;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;padding:0.2rem 0.7rem;border-radius:0.35rem;">🔥 Fire: ${fireCount}</span>
+                <span style="background:#0d3b66;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;padding:0.2rem 0.7rem;border-radius:0.35rem;">⚡ Edge: ${edgeCount}</span>
+            </div>`;
+
+        const propCards = propsToShow.map(prop => {
+            const noVigProb = prop.no_vig_prob != null ? parseFloat(prop.no_vig_prob) : null;
+            let hitRate = 0;
+            if (noVigProb != null) hitRate = noVigProb / 100;
+            else if (prop.contextual_hit_rate && typeof prop.contextual_hit_rate === 'object') hitRate = parseFloat(prop.contextual_hit_rate.enhanced_hit_rate || prop.contextual_hit_rate.hit_rate) || 0;
+            else hitRate = parseFloat(prop.contextual_hit_rate || prop.hit_probability) || 0;
+            const displayPct = noVigProb != null ? noVigProb.toFixed(1) : (hitRate * 100).toFixed(1);
+            const tier = prop.confidence_tier || (hitRate >= 0.70 ? 'LOCK' : hitRate >= 0.50 ? 'FIRE' : 'EDGE');
+
+            let tierBg, tierClr, tierLabel;
+            if (tier === 'LOCK')      { tierBg = '#facc15'; tierClr = '#111827'; tierLabel = '🔒 LOCK'; }
+            else if (tier === 'FIRE') { tierBg = '#f97316'; tierClr = '#fff';    tierLabel = '🔥 FIRE'; }
+            else                      { tierBg = '#0d3b66'; tierClr = '#fff';    tierLabel = '⚡ EDGE'; }
+            const barColor = tier === 'LOCK' ? '#22c55e' : tier === 'FIRE' ? '#f59e0b' : '#60a5fa';
+            const probBarWidth = Math.min(100, Math.max(0, parseFloat(displayPct)));
+
+            const playerName = prop.player || prop.player_name || 'Unknown Player';
+            const statType = prop.stat || prop.stat_type || prop.market || '';
+            const statDisplay = prop.stat_label || getHumanStatName(statType) || statType;
+            const line = prop.line != null ? prop.line : (prop.point != null ? prop.point : null);
+            const lineDisplay = line != null ? `<span style="background:#3b82f6;color:#fff;font-size:0.62em;padding:0.12rem 0.35rem;border-radius:0.3rem;margin-left:0.2rem;">${line}</span>` : '';
+            const bestBook = prop.best_book || prop.bookmaker || prop.sportsbook || 'Best Book';
+
+            const mt = prop.market_type || '';
+            let marketBadge = '';
+            if (mt === 'moneyline') marketBadge = `<span style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:0.62em;padding:0.12rem 0.35rem;border-radius:0.3rem;">💰 ML</span>`;
+            else if (mt === 'spread') marketBadge = `<span style="background:rgba(96,165,250,0.2);color:#60a5fa;font-size:0.62em;padding:0.12rem 0.35rem;border-radius:0.3rem;">📐 ${prop.sport==='NHL'?'PL':'RL'}</span>`;
+            else if (mt === 'total')  marketBadge = `<span style="background:rgba(167,139,250,0.2);color:#a78bfa;font-size:0.62em;padding:0.12rem 0.35rem;border-radius:0.3rem;">📊 O/U</span>`;
+
+            let gameTimeHtml = '';
+            if (prop.game_time) {
+                const gt = new Date(prop.game_time);
+                if (!isNaN(gt)) gameTimeHtml = `<small style="display:block;font-family:'Inter',sans-serif;color:rgba(255,255,255,0.35);font-size:0.65em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
+            }
+
+            const allBooks = Array.isArray(prop.all_books) ? prop.all_books : [];
+            let lineShopHtml = '';
+            if (allBooks.length > 1) {
+                const cardId = `ls-${playerName.replace(/\s/g,'-')}-${statType}`.replace(/[^a-zA-Z0-9-]/g,'');
+                const savings = prop.line_shop_savings_pct != null ? prop.line_shop_savings_pct : 0;
+                const bookRows = allBooks.slice().sort((a,b) => b.over_price - a.over_price).map(b => {
+                    const isBest = b.over_price === (prop.best_over_price || -9999);
+                    const fmt = o => o > 0 ? `+${o}` : `${o}`;
+                    return `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.06);font-family:'Inter',sans-serif;font-size:0.72rem;${isBest?'color:#22c55e;font-weight:700;':'color:rgba(255,255,255,0.45);'}">
+                        <span>${b.book}</span><span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
+                    </div>`;
+                }).join('');
+                lineShopHtml = `
+                    <div style="margin-top:0.5rem;">
+                        <button class="btn btn-outline-secondary w-100 py-1" style="font-size:0.68em;" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}">
+                            <i class="fas fa-store" style="margin-right:0.25rem;"></i>Line Shop (${allBooks.length} books${savings > 0 ? ` · save ~${savings}%` : ''})
+                        </button>
+                        <div class="collapse mt-1" id="${cardId}"><div style="padding:0 0.25rem;">${bookRows}</div></div>
+                    </div>`;
+            }
+
+            const fmtOdds = o => o != null ? (o > 0 ? `+${o}` : `${o}`) : '—';
+            return `
+                <div style="background:#1f2937;border:1px solid rgba(255,255,255,0.08);border-radius:0.75rem;padding:0.9rem 1rem;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.5rem;">
+                        <div>
+                            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;color:#fff;">${playerName}</div>
+                            <div style="font-family:'Inter',sans-serif;font-size:0.76rem;color:rgba(255,255,255,0.5);margin-top:0.1rem;">${statDisplay} ${lineDisplay}</div>
+                            ${gameTimeHtml}
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+                            <span style="background:${tierBg};color:${tierClr};font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.75rem;padding:0.12rem 0.45rem;border-radius:0.3rem;">${tierLabel}</span>
+                            ${marketBadge}
+                        </div>
+                    </div>
+                    <div style="margin-bottom:0.5rem;">
+                        <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.7em;margin-bottom:0.2rem;">
+                            <span style="color:rgba(255,255,255,0.4);">True Probability (no-vig)</span>
                             <strong style="color:${barColor};">${displayPct}%</strong>
                         </div>
-                        <div class="progress" style="height:6px;border-radius:3px;">
-                            <div class="progress-bar" role="progressbar" style="width:${probBarWidth}%;background:${barColor};" aria-valuenow="${probBarWidth}" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div style="background:rgba(255,255,255,0.1);border-radius:3px;height:5px;">
+                            <div style="width:${probBarWidth}%;background:${barColor};border-radius:3px;height:100%;"></div>
                         </div>
-                    </div>`;
+                    </div>
+                    ${prop.ev_pct != null ? `
+                    <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.72em;margin-bottom:0.4rem;padding:0 0.1rem;">
+                        <span style="color:rgba(255,255,255,0.4);">EV%</span>
+                        <strong style="color:${parseFloat(prop.ev_pct)>=0?'#22c55e':'#ef4444'};">${parseFloat(prop.ev_pct)>=0?'+':''}${parseFloat(prop.ev_pct).toFixed(2)}%</strong>
+                        <span style="color:rgba(255,255,255,0.4);">Fair</span>
+                        <strong>${fmtOdds(prop.fair_odds)}</strong>
+                        <span style="color:rgba(255,255,255,0.4);">BE%</span>
+                        <strong>${prop.break_even_prob != null ? parseFloat(prop.break_even_prob).toFixed(1)+'%' : '—'}</strong>
+                    </div>` : ''}
+                    <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
+                        <span style="color:#facc15;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;"></i>Best: ${bestBook} <strong>${fmtOdds(prop.best_over_price)}</strong></span>
+                    </div>
+                    ${lineShopHtml}
+                </div>`;
+        }).join('');
 
-                // ---- player / stat info ----
-                const playerName = prop.player || prop.player_name || 'Unknown Player';
-                const statType = prop.stat || prop.stat_type || prop.market || '';
-                const statDisplay = prop.stat_label || getHumanStatName(statType) || statType;
-                const line = prop.line != null ? prop.line : (prop.point != null ? prop.point : null);
-                const lineDisplay = line != null ? `<span class="badge bg-primary">${line}</span>` : '';
-                const bestBook = prop.best_book || prop.bookmaker || prop.sportsbook || 'Best Book';
+        document.getElementById('player-props-container').innerHTML = `${boardSummary}<div class="picks-grid">${propCards}</div>`;
+        const loadMoreBtn = document.getElementById('load-more-props');
+        loadMoreBtn.style.display = validProps.length > currentPropsDisplayed ? 'inline-block' : 'none';
+    }
 
-                // ---- market type badge ----
-                let marketBadge = '';
-                const mt = prop.market_type || '';
-                if (mt === 'moneyline') {
-                    marketBadge = `<span class="badge me-1" style="background:#e5e7eb;color:#374151;font-size:0.68em;">💰 ML</span>`;
-                } else if (mt === 'spread') {
-                    marketBadge = `<span class="badge me-1" style="background:#dbeafe;color:#1d4ed8;font-size:0.68em;">📐 ${prop.sport === 'NHL' ? 'PL' : 'RL'}</span>`;
-                } else if (mt === 'total') {
-                    marketBadge = `<span class="badge me-1" style="background:#ede9fe;color:#6d28d9;font-size:0.68em;">📊 O/U</span>`;
-                }
+    function displayTodaysGames() {
+        if (!matchupData) { displayRegularProps(); return; }
+        document.getElementById('confidence-filter').value = '';
+        document.getElementById('player-search').value = '';
+        const gamesHeader = document.getElementById('games-header');
+        if (gamesHeader) gamesHeader.innerHTML = `<i class="fas fa-users" style="color:#facc15;margin-right:0.4rem;font-size:1rem;"></i>Today's Games`;
+        const sub = document.getElementById('games-subtitle');
+        if (sub) sub.textContent = `${sportLabel()} player props grouped by matchup`;
 
-                // ---- game time (small, non-prominent) ----
-                let gameTimeHtml = '';
-                if (prop.game_time) {
-                    const gt = new Date(prop.game_time);
-                    if (!isNaN(gt)) {
-                        gameTimeHtml = `<small class="text-muted d-block" style="font-size:0.68em;">${gt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</small>`;
-                    }
-                }
-
-                // ---- line shop rows ----
-                const allBooks = Array.isArray(prop.all_books) ? prop.all_books : [];
-                let lineShopHtml = '';
-                if (allBooks.length > 1) {
-                    const cardId = `lineshop-${playerName.replace(/\s/g,'-')}-${statType}`.replace(/[^a-zA-Z0-9-]/g,'');
-                    const savings = prop.line_shop_savings_pct != null ? prop.line_shop_savings_pct : 0;
-                    const bookRows = allBooks
-                        .slice().sort((a,b) => b.over_price - a.over_price)
-                        .map(b => {
-                            const isBest = b.over_price === (prop.best_over_price || -9999);
-                            const fmt = o => o > 0 ? `+${o}` : `${o}`;
-                            return `<div class="d-flex justify-content-between small py-1 border-bottom border-secondary ${isBest ? 'text-success fw-bold' : 'text-muted'}">
-                                <span>${b.book}</span>
-                                <span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
-                            </div>`;
-                        }).join('');
-                    lineShopHtml = `
-                        <div class="mt-2">
-                            <button class="btn btn-sm btn-outline-secondary w-100 py-1" style="font-size:0.72em;" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}">
-                                <i class="fas fa-store me-1"></i>Line Shop (${allBooks.length} books${savings > 0 ? ` · save ~${savings}%` : ''})
-                            </button>
-                            <div class="collapse mt-1" id="${cardId}">
-                                <div class="px-1">${bookRows}</div>
-                            </div>
-                        </div>`;
-                }
-
-                const fmtOdds = o => o != null ? (o > 0 ? `+${o}` : `${o}`) : '—';
-                return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="prop-card card bg-dark border-secondary">
-                            <div class="card-body">
-                                <div class="mb-2 d-flex align-items-start justify-content-between">
-                                    <div>
-                                        <h6 class="mb-1 fw-bold">${playerName}</h6>
-                                        <div class="text-muted" style="font-size:0.82em;">${statDisplay} &nbsp;${lineDisplay}</div>
-                                        ${gameTimeHtml}
-                                    </div>
-                                    <div class="d-flex flex-column align-items-end gap-1">
-                                        ${tierBadge}
-                                        ${marketBadge}
-                                    </div>
-                                </div>
-                                ${probBar}
-                                ${prop.ev_pct != null ? `
-                                <div class="d-flex justify-content-between small mb-2 px-1">
-                                    <span style="font-size:0.73em;color:#adb5bd;">EV%</span>
-                                    <strong style="font-size:0.78em;color:${parseFloat(prop.ev_pct)>=0?'#20c997':'#dc3545'};">${parseFloat(prop.ev_pct)>=0?'+':''}${parseFloat(prop.ev_pct).toFixed(2)}%</strong>
-                                    <span style="font-size:0.73em;color:#adb5bd;">Fair</span>
-                                    <strong style="font-size:0.78em;">${fmtOdds(prop.fair_odds)}</strong>
-                                    <span style="font-size:0.73em;color:#adb5bd;">BE%</span>
-                                    <strong style="font-size:0.78em;">${prop.break_even_prob != null ? parseFloat(prop.break_even_prob).toFixed(1)+'%' : '—'}</strong>
-                                </div>` : ''}
-                                <div class="text-center">
-                                    <small class="text-warning"><i class="fas fa-star me-1"></i>Best: ${bestBook} <strong>${fmtOdds(prop.best_over_price)}</strong></small>
-                                </div>
-                                ${lineShopHtml}
-                            </div>
-                        </div>
-                    </div>`;
-            }).join('');
-
-            document.getElementById('player-props-container').innerHTML = `${boardSummary}<div class="row">${propCards}</div>`;
-            const loadMoreBtn = document.getElementById('load-more-props');
-            loadMoreBtn.style.display = validProps.length > currentPropsDisplayed ? 'block' : 'none';
-        }
-
-        function displayTodaysGames() {
-            if (!matchupData) { displayRegularProps(); return; }
-            
-            document.getElementById('confidence-filter').value = '';
-            document.getElementById('player-search').value = '';
-            
-            document.getElementById('games-header').innerHTML = `
-                <i class="fas fa-users text-primary me-2"></i>Today's Games
-                <small class="text-muted d-block fs-6 mt-1" id="games-subtitle">${sportLabel()} player props grouped by matchup</small>
-            `;
-            
-            const matchupCards = Object.entries(matchupData).map(([matchup, props]) => {
-                const propCount = Array.isArray(props) ? props.length : 0;
-                const sportIcon = currentSport === 'mlb' ? 'fas fa-baseball' : currentSport === 'nhl' ? 'fas fa-hockey-puck' : 'fas fa-football-ball';
-                
-                // Parse matchup + environment label
-                let displayMatchup = matchup;
-                let environmentLabel = '';
-                let environmentClass = 'bg-secondary';
-                if (matchup.includes(' — ')) {
-                    const parts = matchup.split(' — ');
-                    displayMatchup = parts[0];
-                    environmentLabel = parts[1];
-                }
-                // Normalize class for HIGH/LOW/Neutral
-                if (/high/i.test(environmentLabel)) environmentClass = 'bg-success';
-                else if (/low/i.test(environmentLabel)) environmentClass = 'bg-danger';
-
-                // Favored highlight
-                const teamParts = displayMatchup.split(' @ ');
-                const awayTeam = teamParts[0] || '';
-                const homeTeam = teamParts[1] || '';
-                let favoredTeam = null;
-                if (environmentData && environmentData[`${awayTeam} @ ${homeTeam}`]) {
-                    favoredTeam = environmentData[`${awayTeam} @ ${homeTeam}`].favored_team;
-                }
-                const awayClass = favoredTeam === awayTeam ? 'favored' : '';
-                const homeClass = favoredTeam === homeTeam ? 'favored' : '';
-                
-                const environmentBadge = environmentLabel ? 
-                    `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>` : '';
-                
-                return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card bg-dark border-secondary matchup-card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title text-primary">
-                                    <i class="${sportIcon} me-2"></i><span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${environmentBadge}
-                                </h5>
-                                <p class="card-text text-muted mb-3">${propCount} props available</p>
-                                <button class="btn btn-outline-primary w-100" onclick="showMatchupProps('${matchup.replace(/'/g, "\\'")}')">View Props</button>
-                            </div>
-                        </div>
-                    </div>`;
-            }).join('');
-            
-            const totalProps = allProps.length;
-            document.getElementById('prop-count-display').textContent = `${totalProps} props`;
-            
-            document.getElementById('player-props-container').innerHTML = `
-                <div class="mb-4">
-                    <h4 class="text-center text-muted">Today's ${sportLabel()} Games</h4>
-                    <p class="text-center text-muted">Click on any matchup to view player props</p>
-                </div>
-                <div class="row">${matchupCards}</div>`;
-        }
-        
-        function showMatchupProps(matchup) {
-            if (!matchupData || !matchupData[matchup]) return;
-            const matchupProps = matchupData[matchup];
-            const stickyBar = document.getElementById('sticky-back-header');
-            const displayName = matchup.includes(' — ') ? matchup.split(' — ')[0] : matchup;
-            document.getElementById('sticky-matchup-label').textContent = displayName;
-            stickyBar.style.display = 'flex';
-            document.body.classList.add('sticky-header-visible');
-
-            // Normalize props — preserve all enriched fields for card renderer
-            allProps = matchupProps.map(p => ({
-                player: p.player || p.player_name,
-                player_name: p.player_name || p.player,
-                stat: p.stat || p.stat_type || p.market,
-                stat_label: p.stat_label || '',
-                stat_type: p.stat_type || p.stat || p.market,
-                line: p.line || p.point,
-                point: p.point || p.line,
-                bookmaker: p.bookmaker || p.sportsbook,
-                sportsbook: p.sportsbook || p.bookmaker,
-                team: p.team || '',
-                no_vig_prob: p.no_vig_prob,
-                confidence_tier: p.confidence_tier,
-                best_book: p.best_book || p.bookmaker || p.sportsbook,
-                best_over_price: p.best_over_price,
-                worst_over_price: p.worst_over_price,
-                all_books: p.all_books || [],
-                line_shop_savings_pct: p.line_shop_savings_pct,
-                odds: p.odds || p.best_over_price,
-                game_time: p.game_time,
-                away_team: p.away_team || '',
-                home_team: p.home_team || '',
-                contextual_hit_rate: p.contextual_hit_rate || p.hit_probability
-            }));
-            
-            document.getElementById('confidence-filter').value = 'high';
-            applyFilters();
-            currentPropsDisplayed = 50;
-            displayProps();
-            updatePropCount();
-            
-            // Header (with favored/env badge)
-            let displayMatchup = matchup;
-            let environmentLabel = '';
-            if (matchup.includes(' — ')) {
-                const parts = matchup.split(' — ');
-                displayMatchup = parts[0];
-                environmentLabel = parts[1];
-            }
+        const matchupCards = Object.entries(matchupData).map(([matchup, props]) => {
+            const propCount = Array.isArray(props) ? props.length : 0;
+            const sportIcon = currentSport === 'mlb' ? '⚾' : currentSport === 'nhl' ? '🏒' : '🏈';
+            let displayMatchup = matchup, environmentLabel = '';
+            if (matchup.includes(' — ')) { const parts = matchup.split(' — '); displayMatchup = parts[0]; environmentLabel = parts[1]; }
             const teamParts = displayMatchup.split(' @ ');
-            const awayTeam = teamParts[0] || '';
-            const homeTeam = teamParts[1] || '';
+            const awayTeam = teamParts[0] || '', homeTeam = teamParts[1] || '';
             let favoredTeam = null;
-            if (environmentData && environmentData[displayMatchup]) {
-                favoredTeam = environmentData[displayMatchup].favored_team;
-            }
+            if (environmentData && environmentData[`${awayTeam} @ ${homeTeam}`]) favoredTeam = environmentData[`${awayTeam} @ ${homeTeam}`].favored_team;
             const awayClass = favoredTeam === awayTeam ? 'favored' : '';
             const homeClass = favoredTeam === homeTeam ? 'favored' : '';
-            let environmentClass = 'bg-secondary';
-            if (/high/i.test(environmentLabel)) environmentClass = 'bg-success';
-            else if (/low/i.test(environmentLabel)) environmentClass = 'bg-danger';
-            const environmentBadge = environmentLabel ? `<span class="badge ${environmentClass} ms-2 env-label">${environmentLabel}</span>` : '';
-            
-            document.getElementById('games-header').innerHTML = `
-                <i class="fas fa-arrow-left text-primary me-2" style="cursor: pointer;" onclick="resetToSportHome()"></i>
-                <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${environmentBadge}
-                <small class="text-muted d-block fs-6 mt-1">${sportLabel()} Player Props</small>`;
-        }
-        
-        function displayRegularProps() {
-            allFilteredProps = allProps.slice(0, currentPropsDisplayed);
-            displayProps();
-            updatePropCount();
-        }
-        
-        function updatePropCount() {
-            document.getElementById('prop-count-display').textContent = `${allFilteredProps.length} props`;
-        }
+            let envBadgeBg = 'rgba(255,255,255,0.1)'; let envBadgeColor = 'rgba(255,255,255,0.6)';
+            if (/high/i.test(environmentLabel)) { envBadgeBg = 'rgba(34,197,94,0.15)'; envBadgeColor = '#22c55e'; }
+            else if (/low/i.test(environmentLabel)) { envBadgeBg = 'rgba(239,68,68,0.15)'; envBadgeColor = '#ef4444'; }
+            const envBadge = environmentLabel ? `<span style="background:${envBadgeBg};color:${envBadgeColor};font-size:0.68rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:0.3rem;text-transform:uppercase;letter-spacing:0.04em;margin-left:0.4rem;">${environmentLabel}</span>` : '';
 
-        function getHumanStatName(statType) {
-            const map = {
-                // MLB
-                'batter_hits': 'Hits', 'batter_total_bases': 'Total Bases', 'batter_home_runs': 'Home Runs',
-                'batter_rbis': 'RBIs', 'pitcher_strikeouts': 'Strikeouts', 'pitcher_earned_runs': 'Earned Runs',
-                'pitcher_outs': 'Pitching Outs', 'pitcher_hits_allowed': 'Hits Allowed',
-                'hits': 'Hits', 'total_bases': 'Total Bases', 'home_runs': 'Home Runs', 'rbis': 'RBIs',
-                'strikeouts': 'Strikeouts', 'earned_runs': 'Earned Runs', 'outs': 'Pitching Outs', 'hits_allowed': 'Hits Allowed'
-                // NFL markets will fall through (e.g., "Passing Yards", "Rushing Attempts")
-            };
-            const key = (statType || '').toLowerCase();
-            if (map[key]) return map[key];
-            // fallback: prettify unknown keys (including NFL markets if keys are snake_case)
-            return (statType || '').toString().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        }
+            return `
+                <div class="matchup-card" onclick="showMatchupProps('${matchup.replace(/'/g, "\\'")}')">
+                    <div class="card-body">
+                        <h5 style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:700;color:#facc15;margin:0 0 0.3rem;">
+                            ${sportIcon} <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${envBadge}
+                        </h5>
+                        <p style="font-family:'Inter',sans-serif;font-size:0.78rem;color:rgba(255,255,255,0.45);margin:0 0 0.6rem;">${propCount} props available</p>
+                        <button style="width:100%;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.25);color:#60a5fa;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;padding:0.35rem 0.75rem;border-radius:0.4rem;cursor:pointer;">View Props →</button>
+                    </div>
+                </div>`;
+        }).join('');
 
-        // Load more
-        document.getElementById('load-more-props').addEventListener('click', function() {
-            currentPropsDisplayed += 50;
-            displayProps();
-        });
+        document.getElementById('prop-count-display').textContent = `${allProps.length} props`;
+        document.getElementById('player-props-container').innerHTML = `
+            <div style="margin-bottom:1rem;text-align:center;">
+                <p style="font-family:'Inter',sans-serif;font-size:0.8rem;color:rgba(255,255,255,0.4);">Click on any matchup to view player props</p>
+            </div>
+            <div class="picks-grid">${matchupCards}</div>`;
+    }
 
-        console.log('Dashboard loaded successfully');
-    </script>
-    <!-- Meta Pixel ViewContent Event -->
-    <script>
-      fbq('track', 'ViewContent', {
-        content_name: 'Mora Bets Dashboard',
-        content_type: 'product'
-      });
-    </script>
-    <!-- End ViewContent Event -->
+    function showMatchupProps(matchup) {
+        if (!matchupData || !matchupData[matchup]) return;
+        const matchupProps = matchupData[matchup];
+        const stickyBar = document.getElementById('sticky-back-header');
+        const displayName = matchup.includes(' — ') ? matchup.split(' — ')[0] : matchup;
+        document.getElementById('sticky-matchup-label').textContent = displayName;
+        stickyBar.style.display = 'flex';
+        document.body.classList.add('sticky-header-visible');
+
+        allProps = matchupProps.map(p => ({
+            player: p.player || p.player_name, player_name: p.player_name || p.player,
+            stat: p.stat || p.stat_type || p.market, stat_label: p.stat_label || '',
+            stat_type: p.stat_type || p.stat || p.market, line: p.line || p.point, point: p.point || p.line,
+            bookmaker: p.bookmaker || p.sportsbook, sportsbook: p.sportsbook || p.bookmaker, team: p.team || '',
+            no_vig_prob: p.no_vig_prob, confidence_tier: p.confidence_tier,
+            best_book: p.best_book || p.bookmaker || p.sportsbook, best_over_price: p.best_over_price,
+            worst_over_price: p.worst_over_price, all_books: p.all_books || [],
+            line_shop_savings_pct: p.line_shop_savings_pct, odds: p.odds || p.best_over_price,
+            game_time: p.game_time, away_team: p.away_team || '', home_team: p.home_team || '',
+            contextual_hit_rate: p.contextual_hit_rate || p.hit_probability,
+            ev_pct: p.ev_pct, fair_odds: p.fair_odds, break_even_prob: p.break_even_prob,
+            market_type: p.market_type
+        }));
+
+        document.getElementById('confidence-filter').value = 'high';
+        applyFilters();
+        currentPropsDisplayed = 50;
+        displayProps();
+        updatePropCount();
+
+        let displayMatchup = matchup, environmentLabel = '';
+        if (matchup.includes(' — ')) { const parts = matchup.split(' — '); displayMatchup = parts[0]; environmentLabel = parts[1]; }
+        const teamParts = displayMatchup.split(' @ ');
+        const awayTeam = teamParts[0] || '', homeTeam = teamParts[1] || '';
+        let favoredTeam = null;
+        if (environmentData && environmentData[displayMatchup]) favoredTeam = environmentData[displayMatchup].favored_team;
+        const awayClass = favoredTeam === awayTeam ? 'favored' : '';
+        const homeClass = favoredTeam === homeTeam ? 'favored' : '';
+        let envBadgeBg = 'rgba(255,255,255,0.1)'; let envBadgeColor = 'rgba(255,255,255,0.6)';
+        if (/high/i.test(environmentLabel)) { envBadgeBg = 'rgba(34,197,94,0.15)'; envBadgeColor = '#22c55e'; }
+        else if (/low/i.test(environmentLabel)) { envBadgeBg = 'rgba(239,68,68,0.15)'; envBadgeColor = '#ef4444'; }
+        const envBadge = environmentLabel ? `<span style="background:${envBadgeBg};color:${envBadgeColor};font-size:0.72rem;font-weight:700;padding:0.15rem 0.5rem;border-radius:0.3rem;text-transform:uppercase;margin-left:0.4rem;">${environmentLabel}</span>` : '';
+
+        const gamesHeader = document.getElementById('games-header');
+        if (gamesHeader) gamesHeader.innerHTML = `
+            <i class="fas fa-arrow-left" style="color:#facc15;margin-right:0.4rem;font-size:1rem;cursor:pointer;" onclick="resetToSportHome()"></i>
+            <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${envBadge}`;
+        const sub = document.getElementById('games-subtitle');
+        if (sub) sub.textContent = `${sportLabel()} Player Props`;
+    }
+
+    function displayRegularProps() { allFilteredProps = allProps.slice(0, currentPropsDisplayed); displayProps(); updatePropCount(); }
+    function updatePropCount() { document.getElementById('prop-count-display').textContent = `${allFilteredProps.length} props`; }
+
+    function getHumanStatName(statType) {
+        const map = {
+            'batter_hits': 'Hits', 'batter_total_bases': 'Total Bases', 'batter_home_runs': 'Home Runs',
+            'batter_rbis': 'RBIs', 'pitcher_strikeouts': 'Strikeouts', 'pitcher_earned_runs': 'Earned Runs',
+            'pitcher_outs': 'Pitching Outs', 'pitcher_hits_allowed': 'Hits Allowed',
+            'hits': 'Hits', 'total_bases': 'Total Bases', 'home_runs': 'Home Runs', 'rbis': 'RBIs',
+            'strikeouts': 'Strikeouts', 'earned_runs': 'Earned Runs', 'outs': 'Pitching Outs', 'hits_allowed': 'Hits Allowed'
+        };
+        const key = (statType || '').toLowerCase();
+        if (map[key]) return map[key];
+        return (statType || '').toString().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    document.getElementById('load-more-props').addEventListener('click', function() {
+        currentPropsDisplayed += 50;
+        displayProps();
+    });
+
+    console.log('Dashboard loaded successfully');
+</script>
+
+<!-- Meta Pixel ViewContent Event -->
+<script>
+  fbq('track', 'ViewContent', { content_name: 'Mora Bets Dashboard', content_type: 'product' });
+</script>
 </body>
 </html>
-

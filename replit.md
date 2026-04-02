@@ -1,7 +1,15 @@
 # Mora Bets - Sports Betting Analytics Platform
 
 ## Overview
-Mora Bets is a sports betting analytics platform focused on MLB and NFL, offering insights through odds analysis, player prop evaluation, and probability calculations. It integrates real-time data from external APIs, processes it with custom algorithms, and delivers analytics via a web interface. The platform aims to provide a competitive edge for serious bettors by offering data-driven insights and advanced betting tools. The platform now focuses exclusively on a single $9.99/month subscription tier with 3-day free trial, removing the previous Mora Assist tier.
+Mora Bets is a free sports betting analytics platform for MLB, NHL, and NFL. It provides real-time odds comparison, EV (expected value) analysis, and player prop evaluation with no paywall, no login, and no subscription required. The platform is fully open — any visitor can access the dashboard and all tools.
+
+### Recent Updates (April 2026) — Premium Rebuild & Paywall Removal
+- **Paywall fully removed**: All Stripe/token/license-key code deleted from `app.py`. Dashboard is open to all visitors
+- **Email capture**: `/api/subscribe` + `save_subscriber()` saves emails to `email_subscribers.json`; slide-in modal in dashboard (45s delay / 60% scroll, once per session, skips <375px)
+- **New dashboard design**: Dark navy `#091f35`, Tailwind CDN + Google Fonts (Barlow Condensed, Space Grotesk, Inter), gold `#facc15` accents, sticky bottom bar with rotating affiliate messages
+- **Best Lines board**: Two sections — ⚡ Edge Picks (gold-bordered, EV+ only) + 📊 Today's Lines (all no-vig cards)
+- **Affiliate config**: `static/affiliate_config.js` — single source of truth for FanDuel, DraftKings, BetMGM, Caesars URLs
+- **How It Works page**: Updated to free-tool messaging, dark nav matching dashboard, all `/paywall` links replaced with `/dashboard`
 
 ### Recent Updates (March 2026) — EV Engine Overhaul
 - **EV Engine**: `ev_engine.py` with book weights (sharp/standard/soft), weighted fair probability, `evaluate_pick()`, EV%, edge%, break-even threshold

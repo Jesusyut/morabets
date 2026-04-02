@@ -1,0 +1,690 @@
+Full rebuild of Mora Bets dashboard. Three goals:
+1. Remove paywall and funnel completely — erase all files
+2. Upgrade visual design to premium sports analytics feel
+3. Add high-converting native-style ad units for males 25-45
+
+DO NOT touch odds fetching, EV engine, probability math,
+caching, scheduler, TikTok pixel, or Meta pixel code.
+Read every task fully before writing a single line of code.
+
+=== TASK 1: FULL PAYWALL AND FUNNEL ERASURE ===
+
+DELETE these files completely — do not comment out,
+do not keep, do not archive. Hard delete:
+
+  templates/pdfguide.html
+  templates/pdf_success.html
+
+In app.py REMOVE completely (not comment — delete):
+  - The /pdfguide route and function
+  - The /pdf-success route and function  
+  - The /paywall route and function
+  - The /success route if it only handles PDF
+  - The generate_access_token() function
+  - The get_token_by_email() function
+  - The deactivate_token_by_subscription() function
+  - The send_access_key_email() function
+  - The load_tokens() function
+  - The save_tokens() function
+  - The validate_token() function
+  - The LICENSE_DB variable and TOKENS_FILE variable
+  - All imports only used by the above functions
+  - The stripe checkout session route if PDF-only
+
+REMOVE these Stripe-related routes if they exist:
+  - /create-checkout-session (PDF only)
+  - /webhook (if only handling PDF purchases)
+
+Keep Stripe import if used elsewhere.
+Keep any route that serves the main dashboard.
+
+In all remaining templates find and DELETE:
+  - Any <a href="/pdfguide"> links
+  - Any <a href="/paywall"> links  
+  - Any "Enter your license key" elements
+  - Any id="keyModal" modals
+  - Any JavaScript that calls /api/validate-key
+  - Any "Already subscribed?" buttons
+  - The license key input form
+  - Any session-based auth checks
+
+Remove from app.py the auth gate on ALL api routes:
+  /api/mlb/odds, /api/mlb/props,
+  /api/nhl/odds, /api/nhl/props,
+  /api/nfl/props, /api/quota,
+  /api/cache-status, /api/performance
+
+These routes now return data to anyone, no key needed.
+
+=== TASK 2: PREMIUM DESIGN SYSTEM ===
+
+Add Google Fonts to the base template <head>:
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" 
+      crossorigin>
+<link href="https://fonts.googleapis.com/css2?
+family=Space+Grotesk:wght@300;400;500;600;700&
+family=Barlow+Condensed:wght@400;600;700;800&
+family=Inter:wght@300;400;500;600;700&
+display=swap" rel="stylesheet">
+
+Font usage rules:
+- Headlines and pick labels: 
+  font-family: 'Barlow Condensed', sans-serif
+  — condensed bold, high impact, reads fast
+- Body text, stats, numbers:
+  font-family: 'Space Grotesk', sans-serif
+  — modern, technical, data-forward
+- UI labels, nav, small text:
+  font-family: 'Inter', sans-serif
+  — clean, readable at small sizes
+
+Update the Tailwind config script to include
+custom font definitions:
+
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        'display':  ['Barlow Condensed', 'sans-serif'],
+        'data':     ['Space Grotesk', 'sans-serif'],
+        'ui':       ['Inter', 'sans-serif'],
+      },
+      colors: {
+        'brand-navy':    '#0d3b66',
+        'brand-navy-dark': '#091f35',
+        'brand-green':   '#14532d',
+        'brand-cta':     '#17603e',
+        'brand-gold':    '#facc15',
+        'brand-gold-dark': '#d97706',
+        'surface':       '#111827',
+        'surface-2':     '#1f2937',
+        'surface-3':     '#374151',
+      }
+    }
+  }
+}
+
+REDESIGN the dashboard body:
+
+Change body background from light (#f9fafb) 
+to deep dark navy:
+<body class="bg-surface min-h-screen text-white">
+
+This creates the premium dark analytics feel
+matching The Athletic, Action Network style.
+
+UPDATE the navigation to premium dark style:
+
+<nav class="bg-brand-navy-dark border-b 
+            border-white/10 sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3
+              flex justify-between items-center">
+    
+    <!-- Logo -->
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-brand-gold 
+                  rounded-sm flex items-center 
+                  justify-center">
+        <span class="text-gray-900 font-display 
+                     font-black text-sm">M</span>
+      </div>
+      <div>
+        <span class="font-display font-bold 
+                     text-white text-xl 
+                     tracking-wider uppercase">
+          MORA BETS
+        </span>
+        <span class="hidden md:block text-xs 
+                     text-white/40 font-ui 
+                     tracking-widest uppercase">
+          Free daily picks · Real math
+        </span>
+      </div>
+    </div>
+    
+    <!-- Nav right -->
+    <div class="flex items-center gap-4">
+      <a href="/how-it-works" 
+         class="text-white/60 hover:text-white 
+                text-sm font-ui transition-colors">
+        How It Works
+      </a>
+      <div id="quota-display"
+           class="hidden md:block text-xs 
+                  text-white/30 font-data">
+      </div>
+    </div>
+    
+  </div>
+</nav>
+
+UPDATE sport tab switcher to dark premium style:
+
+<div class="max-w-7xl mx-auto px-4 pt-6 pb-2">
+  <div class="flex gap-1 bg-surface-2 
+              rounded-xl p-1 w-fit">
+    <button data-sport="mlb"
+            class="sport-tab active-tab 
+                   font-display font-bold 
+                   text-sm px-5 py-2 
+                   rounded-lg transition-all">
+      ⚾ MLB
+    </button>
+    <button data-sport="nhl"
+            class="sport-tab font-display 
+                   font-bold text-sm px-5 py-2 
+                   rounded-lg transition-all">
+      🏒 NHL
+    </button>
+    <button data-sport="nfl"
+            class="sport-tab font-display 
+                   font-bold text-sm px-5 py-2 
+                   rounded-lg transition-all">
+      🏈 NFL
+    </button>
+  </div>
+</div>
+
+Tab CSS (add in a <style> tag):
+
+.sport-tab {
+  color: rgba(255,255,255,0.5);
+  background: transparent;
+}
+.sport-tab.active-tab {
+  color: #111827;
+  background: #facc15;
+}
+.sport-tab:hover:not(.active-tab) {
+  color: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.05);
+}
+
+UPDATE pick cards to dark premium style:
+
+Edge pick cards:
+background: #1f2937 (surface-2)
+border: 1px solid rgba(250,204,21,0.3) (gold tint)
+border-top: 3px solid #facc15
+
+No-vig pick cards:
+background: #1f2937 (surface-2)  
+border: 1px solid rgba(255,255,255,0.08)
+hover border: rgba(255,255,255,0.2)
+
+Tier badge updates for dark theme:
+LOCK: bg-yellow-400 text-gray-900
+FIRE: bg-orange-500 text-white
+EDGE: bg-brand-navy text-white
+LOW:  bg-white/10 text-white/60
+
+Probability bars: keep existing colors,
+update track from bg-gray-100 to bg-white/10
+
+Stat text: text-white/90 for primary,
+           text-white/50 for secondary
+
+UPDATE section headers:
+
+"⚡ Edge Picks" section header:
+<div class="flex items-center gap-3 mb-4 px-1">
+  <span class="font-display font-bold 
+               text-white text-xl uppercase 
+               tracking-wide">
+    ⚡ Edge Picks
+  </span>
+  <span class="bg-brand-gold text-gray-900 
+               text-xs font-ui font-bold 
+               px-2 py-0.5 rounded-full">
+    ${edgePicks.length} today
+  </span>
+</div>
+
+"📊 Today's Lines" section header:
+<div class="flex items-center gap-3 mb-4 px-1">
+  <span class="font-display font-bold 
+               text-white text-xl uppercase 
+               tracking-wide">
+    Today's Lines
+  </span>
+  <span class="bg-white/10 text-white/60 
+               text-xs font-ui font-bold 
+               px-2 py-0.5 rounded-full">
+    ${noVigPicks.length} picks · 50%+
+  </span>
+</div>
+
+UPDATE affiliate book section for dark theme:
+
+Section background: transparent (sits on dark body)
+Book cards: bg-surface-2 border border-white/10
+            hover:border-brand-gold/50
+Book name text: text-white font-display font-bold
+CTA button: bg-brand-gold text-gray-900 
+            hover:bg-brand-gold-dark
+Section label: text-white/40 uppercase tracking-widest
+
+UPDATE footer for dark theme:
+bg-brand-navy-dark border-t border-white/10
+text-white/40 for all footer text
+
+=== TASK 3: STICKY BOTTOM BAR ===
+
+Research shows sticky bottom bar converts 3-4x better
+than modal popups for males 25-45 who close popups
+reflexively. Implement this instead of a popup.
+
+Add this element just before </body> in dashboard.html:
+
+<!-- Sticky Bottom Affiliate Bar -->
+<div id="sticky-bar" 
+     class="fixed bottom-0 left-0 right-0 z-40
+            bg-brand-navy-dark border-t 
+            border-white/10 shadow-2xl
+            transform translate-y-0 
+            transition-transform duration-300">
+  
+  <div class="max-w-7xl mx-auto px-4 py-2.5
+              flex items-center justify-between 
+              gap-3">
+    
+    <!-- Left: rotating message -->
+    <div class="flex items-center gap-2 
+                flex-1 min-w-0">
+      <span class="text-brand-gold text-sm 
+                   font-display font-bold 
+                   uppercase tracking-wide 
+                   whitespace-nowrap hidden sm:block">
+        Line Shop:
+      </span>
+      <span id="bar-rotating-text"
+            class="text-white/80 text-xs 
+                   font-ui truncate">
+        Always bet at the book with the best line 
+        — a half-point of juice compounds over 
+        a full season
+      </span>
+    </div>
+    
+    <!-- Center: book CTAs -->
+    <div class="flex items-center gap-2 
+                flex-shrink-0">
+      <a href="FANDUEL_AFFILIATE_LINK_HERE"
+         target="_blank"
+         rel="noopener noreferrer"
+         data-book="fanduel"
+         class="bar-affiliate-btn text-xs 
+                font-ui font-bold px-3 py-1.5 
+                rounded-full bg-white/10 
+                text-white hover:bg-brand-gold 
+                hover:text-gray-900 
+                transition-all whitespace-nowrap">
+        FanDuel
+      </a>
+      <a href="DRAFTKINGS_AFFILIATE_LINK_HERE"
+         target="_blank"
+         rel="noopener noreferrer"
+         data-book="draftkings"
+         class="bar-affiliate-btn text-xs 
+                font-ui font-bold px-3 py-1.5 
+                rounded-full bg-white/10 
+                text-white hover:bg-brand-gold 
+                hover:text-gray-900 
+                transition-all whitespace-nowrap">
+        DraftKings
+      </a>
+      <a href="BETMGM_AFFILIATE_LINK_HERE"
+         target="_blank"
+         rel="noopener noreferrer"
+         data-book="betmgm"
+         class="bar-affiliate-btn hidden sm:flex 
+                text-xs font-ui font-bold 
+                px-3 py-1.5 rounded-full 
+                bg-white/10 text-white 
+                hover:bg-brand-gold 
+                hover:text-gray-900 
+                transition-all whitespace-nowrap">
+        BetMGM
+      </a>
+      <a href="CAESARS_AFFILIATE_LINK_HERE"
+         target="_blank"
+         rel="noopener noreferrer"
+         data-book="caesars"
+         class="bar-affiliate-btn hidden md:flex 
+                text-xs font-ui font-bold 
+                px-3 py-1.5 rounded-full 
+                bg-white/10 text-white 
+                hover:bg-brand-gold 
+                hover:text-gray-900 
+                transition-all whitespace-nowrap">
+        Caesars
+      </a>
+    </div>
+    
+    <!-- Right: dismiss -->
+    <button id="bar-dismiss"
+            class="text-white/30 hover:text-white/60 
+                   transition-colors flex-shrink-0 
+                   text-lg leading-none ml-1">
+      ×
+    </button>
+    
+  </div>
+</div>
+
+<!-- Add padding to body so cards don't hide 
+     behind sticky bar -->
+<div class="h-14"></div>
+
+Add sticky bar JavaScript:
+
+<script>
+// Rotating bar messages
+const barMessages = [
+  "Always bet at the book with the best line — "+
+  "half a point of juice compounds over 162 games",
+  "FanDuel vs DraftKings on the same pick can "+
+  "be worth 3-5% over a full season",
+  "Line shopping is the one free edge every "+
+  "bettor has access to — use it every single bet",
+  "The no-vig board shows you the best book "+
+  "for every pick automatically",
+  "Open accounts at multiple books — "+
+  "it's free and it's your biggest edge"
+];
+
+let barMsgIndex = 0;
+const barText = document.getElementById(
+  'bar-rotating-text'
+);
+
+setInterval(() => {
+  barMsgIndex = (barMsgIndex + 1) % barMessages.length;
+  barText.style.opacity = '0';
+  setTimeout(() => {
+    barText.textContent = barMessages[barMsgIndex];
+    barText.style.opacity = '1';
+  }, 300);
+  barText.style.transition = 'opacity 0.3s';
+}, 5000);
+
+// Dismiss button
+document.getElementById('bar-dismiss')
+  .addEventListener('click', () => {
+    document.getElementById('sticky-bar')
+      .style.transform = 'translateY(100%)';
+    // Remember for session
+    sessionStorage.setItem('barDismissed', '1');
+  });
+
+// Don't show if dismissed this session
+if (sessionStorage.getItem('barDismissed')) {
+  document.getElementById('sticky-bar')
+    .style.transform = 'translateY(100%)';
+}
+</script>
+
+=== TASK 4: EMAIL CAPTURE SLIDE-IN ===
+
+Appears 45 seconds after page load OR when user
+has scrolled 60% of the page — whichever comes first.
+Not a modal — a slide-in from the bottom-right corner.
+Can be dismissed. Does not reappear same session.
+
+Add before </body>:
+
+<!-- Email capture slide-in -->
+<div id="email-slide"
+     class="fixed bottom-20 right-4 z-50
+            w-72 bg-surface-2 border 
+            border-white/10 rounded-2xl 
+            shadow-2xl p-5
+            transform translate-y-8 opacity-0
+            transition-all duration-500
+            pointer-events-none">
+  
+  <button id="email-slide-close"
+          class="absolute top-3 right-3 
+                 text-white/30 hover:text-white/60 
+                 text-lg leading-none">
+    ×
+  </button>
+  
+  <div class="mb-3">
+    <p class="font-display font-bold text-white 
+              text-lg uppercase tracking-wide 
+              leading-tight">
+      Get today's best picks
+    </p>
+    <p class="text-white/50 text-xs font-ui mt-1">
+      Free edge picks + best lines delivered 
+      before first pitch. No spam.
+    </p>
+  </div>
+  
+  <form id="email-capture-form" class="space-y-2">
+    <input type="email" 
+           id="slide-email-input"
+           placeholder="your@email.com"
+           class="w-full bg-white/5 border 
+                  border-white/10 rounded-lg 
+                  px-3 py-2 text-white text-sm 
+                  font-ui placeholder-white/30 
+                  focus:outline-none 
+                  focus:border-brand-gold/50">
+    <button type="submit"
+            class="w-full bg-brand-gold 
+                   text-gray-900 font-display 
+                   font-bold text-sm py-2.5 
+                   rounded-lg hover:bg-brand-gold-dark 
+                   transition-colors uppercase 
+                   tracking-wide">
+      Send Me Today's Picks →
+    </button>
+  </form>
+  
+  <p class="text-white/20 text-xs font-ui 
+            mt-2 text-center">
+    Free forever. Unsubscribe anytime.
+  </p>
+  
+</div>
+
+Add slide-in JavaScript:
+
+<script>
+const emailSlide = document.getElementById(
+  'email-slide'
+);
+
+function showEmailSlide() {
+  if (sessionStorage.getItem('slideShown')) return;
+  sessionStorage.setItem('slideShown', '1');
+  emailSlide.classList.remove(
+    'translate-y-8', 'opacity-0', 'pointer-events-none'
+  );
+  emailSlide.classList.add(
+    'translate-y-0', 'opacity-100'
+  );
+}
+
+// Show after 45 seconds
+const slideTimer = setTimeout(showEmailSlide, 45000);
+
+// OR show when 60% scrolled
+window.addEventListener('scroll', () => {
+  const scrolled = window.scrollY / 
+    (document.body.scrollHeight - window.innerHeight);
+  if (scrolled > 0.6) {
+    clearTimeout(slideTimer);
+    showEmailSlide();
+  }
+}, { passive: true });
+
+// Dismiss
+document.getElementById('email-slide-close')
+  .addEventListener('click', () => {
+    emailSlide.classList.add(
+      'translate-y-8', 'opacity-0', 'pointer-events-none'
+    );
+  });
+
+// Form submit — wire to your email service later
+document.getElementById('email-capture-form')
+  .addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById(
+      'slide-email-input'
+    ).value;
+    if (!email) return;
+    
+    // TODO: POST to /api/subscribe with email
+    // For now just show success state
+    emailSlide.innerHTML = `
+      <div class="text-center py-2">
+        <div class="text-3xl mb-2">✓</div>
+        <p class="font-display font-bold 
+                   text-brand-gold text-base 
+                   uppercase">You're in.</p>
+        <p class="text-white/50 text-xs 
+                   font-ui mt-1">
+          First pitch picks hit your inbox 
+          tomorrow morning.
+        </p>
+      </div>
+    `;
+    setTimeout(() => {
+      emailSlide.classList.add(
+        'translate-y-8', 'opacity-0', 
+        'pointer-events-none'
+      );
+    }, 3000);
+  });
+</script>
+
+=== TASK 5: EMAIL SUBSCRIBE BACKEND ===
+
+Add a simple email list to the app.
+
+In app.py add:
+
+EMAIL_LIST_FILE = 'email_subscribers.json'
+
+def save_subscriber(email: str) -> bool:
+    """Save email to subscriber list."""
+    try:
+        try:
+            with open(EMAIL_LIST_FILE, 'r') as f:
+                subscribers = json.load(f)
+        except FileNotFoundError:
+            subscribers = []
+        
+        # Deduplicate
+        if email not in subscribers:
+            subscribers.append(email)
+            with open(EMAIL_LIST_FILE, 'w') as f:
+                json.dump(subscribers, f, indent=2)
+            logger.info(
+                f'[EMAIL LIST] Added: {email} '
+                f'({len(subscribers)} total)'
+            )
+        return True
+    except Exception as e:
+        logger.error(f'[EMAIL LIST] Error: {e}')
+        return False
+
+@app.route('/api/subscribe', methods=['POST'])
+def subscribe():
+    data = request.json or {}
+    email = data.get('email', '').strip().lower()
+    
+    if not email or '@' not in email:
+        return jsonify({"error": "Invalid email"}), 400
+    
+    success = save_subscriber(email)
+    return jsonify({
+        "success": success,
+        "message": "You're in. Picks hit your inbox 
+                    before first pitch."
+    })
+
+Update the email form JS to POST to this endpoint:
+
+Replace the TODO comment in the form submit with:
+
+fetch('/api/subscribe', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({email: email})
+});
+
+=== TASK 6: UPDATE AFFILIATE CONFIG ===
+
+Ensure affiliate_config.js exists in static/
+with these exact placeholders:
+
+const MORA_AFFILIATES = {
+  fanduel:    "FANDUEL_AFFILIATE_LINK_HERE",
+  draftkings: "DRAFTKINGS_AFFILIATE_LINK_HERE",
+  betmgm:     "BETMGM_AFFILIATE_LINK_HERE",
+  caesars:    "CAESARS_AFFILIATE_LINK_HERE"
+};
+
+Load it in dashboard.html <head>:
+<script src="/static/affiliate_config.js"></script>
+
+Update ALL affiliate link references throughout
+dashboard.html to read from MORA_AFFILIATES.
+Update sticky bar links to also use this config.
+
+=== TASK 7: HOW IT WORKS PAGE CLEANUP ===
+
+In templates/how_it_works.html:
+- Remove all subscription/payment CTAs
+- Remove PDF guide references  
+- Change all /paywall hrefs to /dashboard
+- Change all CTA button text to 
+  "View Today's Picks →"
+- Update any paid product language to 
+  reflect the free tool
+- Apply dark nav matching dashboard
+
+=== TASK 8: PERFORMANCE PASS ===
+
+Add to <head> of dashboard.html:
+<meta name="theme-color" content="#091f35">
+<meta name="color-scheme" content="dark">
+
+Add loading="lazy" to any images.
+Ensure the board shows a skeleton loader 
+while picks fetch — 3 dark pulsing card 
+placeholders matching new dark card style:
+
+background: linear-gradient(
+  90deg, 
+  #1f2937 0%, 
+  #374151 50%, 
+  #1f2937 100%
+)
+background-size: 200% 100%
+animation: shimmer 1.5s infinite
+
+=== CONSTRAINTS ===
+- Hard delete paywall files — no commenting out
+- Dark theme is the new default — no light mode
+- Sticky bar: always visible, dismissable,
+  rotates messages every 5 seconds
+- Email slide-in: 45 second delay OR 60% scroll,
+  once per session only, never on mobile < 375px
+- Barlow Condensed for all headlines and badges
+- Space Grotesk for all data and numbers
+- Inter for all UI labels and body text
+- affiliate_config.js is single source of truth
+  for all affiliate URLs across entire site
+- All affiliate links open target="_blank"
+  with rel="noopener noreferrer"
+- Body needs padding-bottom to clear sticky bar
+- Do not touch EV engine, odds fetching,
+  caching, scheduler, TikTok, or Meta pixel

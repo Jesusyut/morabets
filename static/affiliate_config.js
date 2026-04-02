@@ -1,0 +1,6 @@
+const MORA_AFFILIATES = {
+  fanduel:    "FANDUEL_AFFILIATE_LINK_HERE",
+  draftkings: "DRAFTKINGS_AFFILIATE_LINK_HERE",
+  betmgm:     "BETMGM_AFFILIATE_LINK_HERE",
+  caesars:    "CAESARS_AFFILIATE_LINK_HERE"
+};

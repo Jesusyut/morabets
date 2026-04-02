@@ -94,30 +94,19 @@
 </head>
 <body class="bg-brand-bg text-brand-text min-h-screen">
     <!-- Navigation Bar -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
+    <nav style="background:#091f35;border-bottom:1px solid rgba(255,255,255,0.1);">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="text-2xl font-bold text-brand-navy">MORA BETS</div>
-            <button id="userKeySignIn" class="bg-brand-cta hover:bg-brand-green text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                🔓 Already Subscribed? Enter Key
-            </button>
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+                <div style="width:32px;height:32px;background:#facc15;border-radius:4px;display:flex;align-items:center;justify-content:center;">
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1rem;color:#111827;">M</span>
+                </div>
+                <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.2rem;letter-spacing:0.1em;color:#fff;text-transform:uppercase;">MORA BETS</span>
+            </div>
+            <a href="/dashboard" style="background:#facc15;color:#111827;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.9rem;padding:0.45rem 1.1rem;border-radius:0.4rem;text-decoration:none;transition:background 0.15s;" onmouseover="this.style.background='#d97706';this.style.color='#fff'" onmouseout="this.style.background='#facc15';this.style.color='#111827'">
+                → Today's Picks
+            </a>
         </div>
     </nav>
-
-    <!-- User Key Input Modal -->
-    <div id="keyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 max-w-md mx-4">
-            <h3 class="text-lg font-bold mb-4 text-brand-navy">Enter Your License Key</h3>
-            <form id="keyForm">
-                <input type="text" id="userKeyInput" placeholder="Enter your license key" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-cta mb-4">
-                <div id="keyError" class="hidden text-red-500 text-sm mb-4"></div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" id="cancelKey" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                    <button type="submit" id="submitKeyBtn" class="px-4 py-2 bg-brand-cta text-white rounded-md hover:bg-brand-green">Sign In</button>
-                </div>
-            </form>
-        </div>
-    </div>
 
     <!-- SECTION 1: HERO -->
     <section class="py-20 bg-brand-bg">
@@ -129,8 +118,8 @@
                 Most bettors chase names and big parlays. The books know it. They price your picks to keep you losing — just often enough to come back.
             </p>
             <div class="mt-8">
-                <a href="/paywall" class="inline-block bg-brand-cta text-white px-8 py-4 rounded-md font-semibold hover:bg-brand-green transition-colors text-lg">
-                    Get Started
+                <a href="/dashboard" class="inline-block bg-brand-cta text-white px-8 py-4 rounded-md font-semibold hover:bg-brand-green transition-colors text-lg">
+                    View Free Tool — No Sign Up
                 </a>
             </div>
         </div>
@@ -253,8 +242,8 @@
                         ⚾ Baseball Season Is Live
                     </div>
                     <div class="text-center">
-                        <a href="/paywall" class="bg-brand-cta hover:bg-brand-green text-white font-bold py-3 px-8 rounded-md text-lg transition-colors inline-block">
-                            Get Started
+                        <a href="/dashboard" class="bg-brand-cta hover:bg-brand-green text-white font-bold py-3 px-8 rounded-md text-lg transition-colors inline-block">
+                            View Free Tool
                         </a>
                     </div>
                 </div>
@@ -317,8 +306,8 @@
                 </div>
             </div>
             <div class="mt-8">
-                <a href="/paywall" class="inline-block bg-brand-cta text-white px-10 py-4 rounded-md font-bold hover:bg-brand-green transition-colors text-xl">
-                    Get Started
+                <a href="/dashboard" class="inline-block bg-brand-cta text-white px-10 py-4 rounded-md font-bold hover:bg-brand-green transition-colors text-xl">
+                    View Free Tool — No Sign Up
                 </a>
             </div>
         </div>
@@ -328,7 +317,7 @@
     <footer class="bg-gray-800 text-white py-8">
         <div class="container mx-auto px-6 text-center">
             <p>&copy; 2025 Mora Bets. All rights reserved.</p>
-            <p class="mt-2 text-gray-400">Secure payments powered by Stripe</p>
+            <p class="mt-2 text-gray-400">Free sports analytics tool — no account required</p>
         </div>
     </footer>
 
@@ -339,38 +328,6 @@
             content_category: 'Landing Page'
         });
 
-        // User key sign-in functionality
-        document.getElementById('userKeySignIn').addEventListener('click', function() {
-            document.getElementById('keyModal').classList.remove('hidden');
-        });
-
-        document.getElementById('cancelKey').addEventListener('click', function() {
-            document.getElementById('keyModal').classList.add('hidden');
-        });
-
-        document.getElementById('keyForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const key = document.getElementById('userKeyInput').value.trim();
-            const errorDiv = document.getElementById('keyError');
-            
-            if (!key) {
-                errorDiv.textContent = 'Please enter a license key';
-                errorDiv.classList.remove('hidden');
-                return;
-            }
-
-            // Direct redirect to dashboard with key parameter
-            window.location.href = `/dashboard?key=${encodeURIComponent(key)}`;
-        });
-
-        // Alternative button click handler as requested
-        document.getElementById('submitKeyBtn').onclick = function () {
-            const key = document.getElementById('userKeyInput').value;
-            if (key) {
-                window.location.href = `/dashboard?key=${key}`;
-            }
-        };
     </script>
 </body>
 </html>
