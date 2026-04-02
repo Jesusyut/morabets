@@ -1374,7 +1374,7 @@ def mlb_odds():
                                 total_over_prices.append( {"book": bk_name, "over_price": op,  "under_price": up})
                                 total_under_prices.append({"book": bk_name, "over_price": up,  "under_price": op})
 
-            # ── Evaluate h2h ──
+            # ── Evaluate h2h — collect ALL picks regardless of EV threshold ──
             for team, prices in [(home, h2h_side1), (away, h2h_side2)]:
                 if not prices:
                     continue
@@ -1382,8 +1382,6 @@ def mlb_odds():
                     player_or_team=team, market_type="h2h", side="over",
                     line=None, book_prices=prices, game_time=game_time
                 )
-                if not ev["passes_threshold"]:
-                    continue
                 picks.append({
                     "player":          team,
                     "stat":            "h2h",
@@ -1403,8 +1401,8 @@ def mlb_odds():
                     "sport":           "MLB",
                     "market_type":     "moneyline",
                     "all_books":       prices,
-                    "passes_threshold": True,
-                    "surfaced":        True,
+                    "passes_threshold": ev["passes_threshold"],
+                    "surfaced":        ev["passes_threshold"],
                 })
 
             # ── Evaluate spreads ──
@@ -1413,8 +1411,6 @@ def mlb_odds():
                     player_or_team=team, market_type="spreads", side="over",
                     line=point, book_prices=prices, game_time=game_time
                 )
-                if not ev["passes_threshold"]:
-                    continue
                 label = f"Run Line {'+' if point > 0 else ''}{point}"
                 picks.append({
                     "player":          team,
@@ -1435,8 +1431,8 @@ def mlb_odds():
                     "sport":           "MLB",
                     "market_type":     "spread",
                     "all_books":       prices,
-                    "passes_threshold": True,
-                    "surfaced":        True,
+                    "passes_threshold": ev["passes_threshold"],
+                    "surfaced":        ev["passes_threshold"],
                 })
 
             # ── Evaluate totals ──
@@ -1450,8 +1446,6 @@ def mlb_odds():
                     player_or_team=matchup, market_type="totals", side=side,
                     line=total_point, book_prices=prices, game_time=game_time
                 )
-                if not ev["passes_threshold"]:
-                    continue
                 picks.append({
                     "player":          matchup,
                     "stat":            "totals",
@@ -1471,20 +1465,26 @@ def mlb_odds():
                     "sport":           "MLB",
                     "market_type":     "total",
                     "all_books":       prices,
-                    "passes_threshold": True,
-                    "surfaced":        True,
+                    "passes_threshold": ev["passes_threshold"],
+                    "surfaced":        ev["passes_threshold"],
                 })
 
-        # Sort by EV descending, then fair probability, then best payout
-        final = sorted(
-            picks,
-            key=lambda p: (-(p.get("ev_pct") or 0), -(p.get("no_vig_prob") or 0), -(p.get("best_over_price") or -999))
-        )[:30]
+        # ── Split into two independent lists ──
+        no_vig_picks = [p for p in picks if (p.get("no_vig_prob") or 0) >= 50]
+        no_vig_picks.sort(key=lambda p: -(p.get("no_vig_prob") or 0))
 
-        # CLV logging — fire-and-forget, never block response
+        edge_picks = [
+            p for p in picks
+            if p.get("passes_threshold") is True
+            and p.get("ev_pct") is not None
+            and (p.get("ev_pct") or 0) > 0
+        ]
+        edge_picks.sort(key=lambda p: -(p.get("ev_pct") or 0))
+
+        # CLV logging — only for edge picks (confirmed +EV), fire-and-forget
         try:
             from clv_tracker import log_bet_entry
-            for pick in final:
+            for pick in edge_picks:
                 try:
                     log_bet_entry(
                         event_id=f"{pick.get('game_time','')}_{pick.get('player','')}",
@@ -1494,7 +1494,7 @@ def mlb_odds():
                         line=pick.get("line"),
                         book=pick.get("best_book", ""),
                         offered_odds=pick.get("best_over_price", 0),
-                        fair_probability=pick.get("fair_probability") or (pick.get("no_vig_prob", 50) / 100),
+                        fair_probability=(pick.get("no_vig_prob", 50) / 100),
                         fair_odds=pick.get("fair_odds", 0),
                         ev_pct=pick.get("ev_pct", 0),
                         edge_pct=pick.get("edge_pct", 0),
@@ -1505,24 +1505,29 @@ def mlb_odds():
         except Exception as clv_import_e:
             logger.warning(f"[CLV] Import failed: {clv_import_e}")
 
-        avg_ev = round(sum(p.get("ev_pct") or 0 for p in final) / len(final), 1) if final else 0
+        avg_ev = round(sum(p.get("ev_pct") or 0 for p in edge_picks) / len(edge_picks), 1) if edge_picks else 0
 
         return jsonify({
-            "picks": final,
-            "count": len(final),
-            "sport": "MLB",
-            "avg_ev": avg_ev,
+            "no_vig_picks": no_vig_picks[:30],
+            "edge_picks":   edge_picks,
+            "picks":        no_vig_picks[:30],   # backward compat
+            "counts": {
+                "no_vig": len(no_vig_picks),
+                "edge":   len(edge_picks),
+            },
+            "count":   len(no_vig_picks),
+            "sport":   "MLB",
+            "avg_ev":  avg_ev,
             "tiers": {
-                "LOCK": len([p for p in final if p["confidence_tier"] == "LOCK"]),
-                "FIRE": len([p for p in final if p["confidence_tier"] == "FIRE"]),
-                "EDGE": len([p for p in final if p["confidence_tier"] == "EDGE"]),
-                "LOW":  len([p for p in final if p["confidence_tier"] == "LOW"]),
+                "LOCK": len([p for p in edge_picks if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in edge_picks if p.get("confidence_tier") == "FIRE"]),
+                "EDGE": len([p for p in edge_picks if p.get("confidence_tier") == "EDGE"]),
             },
         })
 
     except Exception as e:
         logger.error(f"[MLB] /api/mlb/odds error: {e}")
-        return jsonify({"picks": [], "count": 0, "sport": "MLB", "error": str(e)}), 500
+        return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "MLB", "error": str(e)}), 500
 
 
 @app.route("/api/mlb/environment")
@@ -1677,6 +1682,7 @@ def api_nhl_odds():
                                 total_over_prices.append( {"book": bk_name, "over_price": op, "under_price": up})
                                 total_under_prices.append({"book": bk_name, "over_price": up, "under_price": op})
 
+            # ── Evaluate h2h — collect ALL picks regardless of EV threshold ──
             for team, prices in [(home, h2h_home), (away, h2h_away)]:
                 if not prices:
                     continue
@@ -1684,8 +1690,6 @@ def api_nhl_odds():
                     player_or_team=team, market_type="h2h", side="over",
                     line=None, book_prices=prices, game_time=game_time
                 )
-                if not ev["passes_threshold"]:
-                    continue
                 picks.append({
                     "player":          team,
                     "stat":            "h2h",
@@ -1705,8 +1709,8 @@ def api_nhl_odds():
                     "sport":           "NHL",
                     "market_type":     "moneyline",
                     "all_books":       prices,
-                    "passes_threshold": True,
-                    "surfaced":        True,
+                    "passes_threshold": ev["passes_threshold"],
+                    "surfaced":        ev["passes_threshold"],
                 })
 
             for (team, point), prices in spread_sides.items():
@@ -1714,8 +1718,6 @@ def api_nhl_odds():
                     player_or_team=team, market_type="spreads", side="over",
                     line=point, book_prices=prices, game_time=game_time
                 )
-                if not ev["passes_threshold"]:
-                    continue
                 label = f"Puck Line {'+' if point > 0 else ''}{point}"
                 picks.append({
                     "player":          team,
@@ -1736,8 +1738,8 @@ def api_nhl_odds():
                     "sport":           "NHL",
                     "market_type":     "spread",
                     "all_books":       prices,
-                    "passes_threshold": True,
-                    "surfaced":        True,
+                    "passes_threshold": ev["passes_threshold"],
+                    "surfaced":        ev["passes_threshold"],
                 })
 
             for side_label, prices, side in [
@@ -1750,8 +1752,6 @@ def api_nhl_odds():
                     player_or_team=matchup, market_type="totals", side=side,
                     line=total_point, book_prices=prices, game_time=game_time
                 )
-                if not ev["passes_threshold"]:
-                    continue
                 picks.append({
                     "player":          matchup,
                     "stat":            "totals",
@@ -1771,33 +1771,45 @@ def api_nhl_odds():
                     "sport":           "NHL",
                     "market_type":     "total",
                     "all_books":       prices,
-                    "passes_threshold": True,
-                    "surfaced":        True,
+                    "passes_threshold": ev["passes_threshold"],
+                    "surfaced":        ev["passes_threshold"],
                 })
 
-        final = sorted(
-            picks,
-            key=lambda p: (-(p.get("ev_pct") or 0), -(p.get("no_vig_prob") or 0), -(p.get("best_over_price") or -999))
-        )[:25]
+        # ── Split into two independent lists ──
+        no_vig_picks = [p for p in picks if (p.get("no_vig_prob") or 0) >= 50]
+        no_vig_picks.sort(key=lambda p: -(p.get("no_vig_prob") or 0))
 
-        avg_ev = round(sum(p.get("ev_pct") or 0 for p in final) / len(final), 1) if final else 0
+        edge_picks = [
+            p for p in picks
+            if p.get("passes_threshold") is True
+            and p.get("ev_pct") is not None
+            and (p.get("ev_pct") or 0) > 0
+        ]
+        edge_picks.sort(key=lambda p: -(p.get("ev_pct") or 0))
+
+        avg_ev = round(sum(p.get("ev_pct") or 0 for p in edge_picks) / len(edge_picks), 1) if edge_picks else 0
 
         return jsonify({
-            "picks": final,
-            "count": len(final),
-            "sport": "NHL",
+            "no_vig_picks": no_vig_picks[:25],
+            "edge_picks":   edge_picks,
+            "picks":        no_vig_picks[:25],   # backward compat
+            "counts": {
+                "no_vig": len(no_vig_picks),
+                "edge":   len(edge_picks),
+            },
+            "count":  len(no_vig_picks),
+            "sport":  "NHL",
             "avg_ev": avg_ev,
             "tiers": {
-                "LOCK": len([p for p in final if p["confidence_tier"] == "LOCK"]),
-                "FIRE": len([p for p in final if p["confidence_tier"] == "FIRE"]),
-                "EDGE": len([p for p in final if p["confidence_tier"] == "EDGE"]),
-                "LOW":  len([p for p in final if p["confidence_tier"] == "LOW"]),
+                "LOCK": len([p for p in edge_picks if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in edge_picks if p.get("confidence_tier") == "FIRE"]),
+                "EDGE": len([p for p in edge_picks if p.get("confidence_tier") == "EDGE"]),
             },
         })
 
     except Exception as e:
         logger.error(f"[NHL] /api/nhl/odds error: {e}")
-        return jsonify({"picks": [], "count": 0, "sport": "NHL", "error": str(e)}), 500
+        return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NHL", "error": str(e)}), 500
 
 
 @app.route("/api/performance")

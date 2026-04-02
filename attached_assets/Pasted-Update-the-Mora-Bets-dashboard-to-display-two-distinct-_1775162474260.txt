@@ -1,0 +1,221 @@
+Update the Mora Bets dashboard to display two 
+distinct sections side by side or stacked.
+DO NOT remove or replace either calculation system.
+Both the no-vig output and the EV edge picks must 
+display simultaneously.
+
+DO NOT touch odds fetching, caching, scheduler,
+TikTok pixel, Meta pixel, or affiliate link system.
+
+=== THE TWO SECTIONS ===
+
+Section 1 — "Today's Lines"
+Source: no-vig probability output
+Filter: no_vig_prob >= 50 only
+Sort: highest no_vig_prob first
+Volume: show all qualifying picks (typically 15-30)
+Purpose: daily content, keeps board full, 
+         readable for casual users
+
+Section 2 — "Edge Picks"  
+Source: EV engine output (passes_threshold = true)
+Filter: ev_pct >= threshold already set per market
+Sort: highest ev_pct first
+Volume: show all that pass (typically 1-5 per day)
+Purpose: sharp signal, highlighted differently,
+         the picks serious users act on
+
+=== TASK 1: UPDATE BACKEND ROUTES ===
+
+In app.py update /api/mlb/odds to return 
+BOTH datasets in one response:
+
+@app.route("/api/mlb/odds")
+def mlb_odds():
+    # No auth gate — free tool
+    try:
+        # Get all picks (existing logic stays)
+        all_picks = build_mlb_picks()
+        
+        # Split into two lists
+        no_vig_picks = [
+            p for p in all_picks
+            if p.get("no_vig_prob", 0) >= 50
+        ]
+        
+        edge_picks = [
+            p for p in all_picks
+            if p.get("passes_threshold") == True
+            and p.get("ev_pct") is not None
+            and p.get("ev_pct") > 0
+        ]
+        
+        # Sort each independently
+        no_vig_picks.sort(
+            key=lambda p: -p.get("no_vig_prob", 0)
+        )
+        
+        edge_picks.sort(
+            key=lambda p: -p.get("ev_pct", 0)
+        )
+        
+        return jsonify({
+            "no_vig_picks":  no_vig_picks[:30],
+            "edge_picks":    edge_picks,
+            "counts": {
+                "no_vig":    len(no_vig_picks),
+                "edge":      len(edge_picks)
+            },
+            "sport": "MLB"
+        })
+        
+    except Exception as e:
+        logger.error(f"[MLB] /api/mlb/odds: {e}")
+        return jsonify({"error": str(e)}), 500
+
+Apply the same pattern to /api/nhl/odds —
+return no_vig_picks and edge_picks in 
+the same response shape.
+
+=== TASK 2: UPDATE FRONTEND FETCH LOGIC ===
+
+In dashboard.html find the JavaScript function 
+that fetches and renders picks for each sport tab.
+
+Update it to handle the new response shape:
+
+async function loadSportBoard(sport) {
+  try {
+    showLoadingSkeleton();
+    
+    const response = await fetch(
+      `/api/${sport}/odds?t=${Date.now()}`
+    );
+    const data = await response.json();
+    
+    // Handle both old and new response shapes
+    const noVigPicks = data.no_vig_picks || 
+                       data.picks || [];
+    const edgePicks  = data.edge_picks || [];
+    const counts     = data.counts || {};
+    
+    renderBoard(noVigPicks, edgePicks, counts, sport);
+    
+  } catch(err) {
+    console.error('Board load error:', err);
+    showErrorState(sport);
+  }
+}
+
+=== TASK 3: RENDER TWO SECTIONS IN THE BOARD ===
+
+Replace the existing single renderBoard() 
+function with this two-section version:
+
+function renderBoard(noVigPicks, edgePicks, 
+                     counts, sport) {
+  
+  const container = document.getElementById(
+    'picks-board'
+  );
+  container.innerHTML = '';
+  
+  // ── SECTION 1: EDGE PICKS ───────────────────
+  // Show first even though fewer — 
+  // they're the signal, put them top
+  if (edgePicks.length > 0) {
+    
+    const edgeSection = document.createElement('div');
+    edgeSection.className = 'mb-8';
+    edgeSection.innerHTML = `
+      <div class="flex items-center gap-3 mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚡</span>
+          <h2 class="text-base font-bold 
+                     text-gray-900">
+            Edge Picks
+          </h2>
+        </div>
+        <span class="text-xs bg-brand-navy 
+                     text-white px-2 py-0.5 
+                     rounded-full font-semibold">
+          ${edgePicks.length} today
+        </span>
+        <span class="text-xs text-gray-400 
+                     hidden md:inline">
+          Lines where the math shows real edge 
+          vs the market
+        </span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 
+                  lg:grid-cols-3 gap-4" 
+           id="edge-cards">
+      </div>
+    `;
+    container.appendChild(edgeSection);
+    
+    const edgeGrid = edgeSection.querySelector(
+      '#edge-cards'
+    );
+    edgePicks.forEach(pick => {
+      edgeGrid.appendChild(
+        renderEdgeCard(pick)
+      );
+    });
+  }
+  
+  // ── SECTION 2: NO-VIG PICKS ─────────────────
+  const noVigSection = document.createElement('div');
+  noVigSection.innerHTML = `
+    <div class="flex items-center gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">📊</span>
+        <h2 class="text-base font-bold 
+                   text-gray-900">
+          Today's Lines
+        </h2>
+      </div>
+      <span class="text-xs bg-gray-100 
+                   text-gray-600 px-2 py-0.5 
+                   rounded-full font-semibold">
+        ${noVigPicks.length} picks · 50%+ probability
+      </span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 
+                lg:grid-cols-3 gap-4" 
+         id="novig-cards">
+    </div>
+  `;
+  container.appendChild(noVigSection);
+  
+  const novigGrid = noVigSection.querySelector(
+    '#novig-cards'
+  );
+  
+  if (noVigPicks.length === 0) {
+    novigGrid.innerHTML = `
+      <div class="col-span-3 text-center py-12">
+        <div class="text-4xl mb-3">📋</div>
+        <p class="text-gray-500">
+          No lines above 50% today.<br>
+          <span class="text-sm">
+            Check back after 10 AM ET 
+            when lines refresh.
+          </span>
+        </p>
+      </div>
+    `;
+  } else {
+    noVigPicks.forEach(pick => {
+      novigGrid.appendChild(
+        renderNoVigCard(pick)
+      );
+    });
+  }
+  
+  updateSummaryLine(counts, edgePicks.length);
+}
+
+=== TASK 4: EDGE CARD COMPONENT ===
+
+Add this function for rendering edge pick

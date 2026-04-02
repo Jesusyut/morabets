@@ -519,10 +519,12 @@
                     <p class="mt-3">Loading today's best MLB lines...</p>
                 </div>`;
             try {
-                const res  = await fetch('/api/mlb/odds');
+                const res  = await fetch('/api/mlb/odds?t=' + Date.now());
                 const data = await res.json();
-                const picks = data.picks || [];
-                if (picks.length === 0) {
+                const noVigPicks = data.no_vig_picks || data.picks || [];
+                const edgePicks  = data.edge_picks  || [];
+                const counts     = data.counts || { no_vig: noVigPicks.length, edge: edgePicks.length };
+                if (noVigPicks.length === 0 && edgePicks.length === 0) {
                     document.getElementById('player-props-container').innerHTML = `
                         <div class="text-center py-16" style="padding:4rem 0;">
                             <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
@@ -532,11 +534,9 @@
                     document.getElementById('prop-count-display').textContent = '0 picks';
                     return;
                 }
-                allProps = picks;
-                allFilteredProps = picks;
-                matchupData = null;
-                document.getElementById('prop-count-display').textContent = `${picks.length} picks`;
-                displayProps();
+                document.getElementById('prop-count-display').textContent =
+                    `${noVigPicks.length} lines · ${edgePicks.length} edge`;
+                renderLinesBoard(noVigPicks, edgePicks, counts, 'MLB');
             } catch(e) {
                 console.error('[MLB] Error loading best lines:', e);
                 document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">MLB lines temporarily unavailable.</div>`;
@@ -550,10 +550,12 @@
                     <p class="mt-3">Loading today's best NHL lines...</p>
                 </div>`;
             try {
-                const res  = await fetch('/api/nhl/odds');
+                const res  = await fetch('/api/nhl/odds?t=' + Date.now());
                 const data = await res.json();
-                const picks = data.picks || [];
-                if (picks.length === 0) {
+                const noVigPicks = data.no_vig_picks || data.picks || [];
+                const edgePicks  = data.edge_picks  || [];
+                const counts     = data.counts || { no_vig: noVigPicks.length, edge: edgePicks.length };
+                if (noVigPicks.length === 0 && edgePicks.length === 0) {
                     document.getElementById('player-props-container').innerHTML = `
                         <div class="text-center py-16" style="padding:4rem 0;">
                             <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
@@ -563,15 +565,261 @@
                     document.getElementById('prop-count-display').textContent = '0 picks';
                     return;
                 }
-                allProps = picks;
-                allFilteredProps = picks;
-                matchupData = null;
-                document.getElementById('prop-count-display').textContent = `${picks.length} picks`;
-                displayProps();
+                document.getElementById('prop-count-display').textContent =
+                    `${noVigPicks.length} lines · ${edgePicks.length} edge`;
+                renderLinesBoard(noVigPicks, edgePicks, counts, 'NHL');
             } catch(e) {
                 console.error('[NHL] Error loading best lines:', e);
                 document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NHL lines temporarily unavailable.</div>`;
             }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        //  renderLinesBoard — two-section layout for Best Lines mode
+        // ─────────────────────────────────────────────────────────────
+        function renderLinesBoard(noVigPicks, edgePicks, counts, sport) {
+            const container = document.getElementById('player-props-container');
+            container.innerHTML = '';
+
+            // ── SECTION 1: EDGE PICKS (shown first — these are the signal) ──
+            if (edgePicks.length > 0) {
+                const edgeSection = document.createElement('div');
+                edgeSection.className = 'mb-4';
+                const avgEv = edgePicks.length
+                    ? (edgePicks.reduce((s,p)=>s+(p.ev_pct||0),0)/edgePicks.length).toFixed(1)
+                    : null;
+                edgeSection.innerHTML = `
+                    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                        <span style="font-size:1.2rem;">⚡</span>
+                        <h5 class="mb-0 fw-bold text-warning">Edge Picks</h5>
+                        <span class="badge text-bg-warning" style="font-size:0.75em;">${edgePicks.length} today</span>
+                        ${avgEv ? `<span class="badge text-bg-success" style="font-size:0.75em;">avg EV +${avgEv}%</span>` : ''}
+                        <span class="text-muted small d-none d-md-inline">Lines where the math shows real edge vs the market</span>
+                        <span title="These picks passed the EV threshold — the offered odds are better than the fair market price. Positive EV means value over the long run." style="cursor:help;font-size:0.9rem;">ℹ️</span>
+                    </div>
+                    <div class="row" id="edge-cards-row"></div>`;
+                container.appendChild(edgeSection);
+                const edgeRow = edgeSection.querySelector('#edge-cards-row');
+                edgePicks.forEach(pick => {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-6 col-lg-4 mb-3';
+                    col.innerHTML = renderEdgeCard(pick);
+                    edgeRow.appendChild(col);
+                });
+            }
+
+            // ── SECTION 2: NO-VIG LINES (full board, probability-sorted) ──
+            const noVigSection = document.createElement('div');
+            noVigSection.innerHTML = `
+                <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                    <span style="font-size:1.2rem;">📊</span>
+                    <h5 class="mb-0 fw-bold text-light">Today's Lines</h5>
+                    <span class="badge text-bg-secondary" style="font-size:0.75em;">${noVigPicks.length} picks · 50%+ probability</span>
+                    <span class="text-muted small d-none d-md-inline">All picks above 50% no-vig probability</span>
+                </div>
+                <div class="row" id="novig-cards-row"></div>`;
+            container.appendChild(noVigSection);
+
+            const noVigRow = noVigSection.querySelector('#novig-cards-row');
+            if (noVigPicks.length === 0) {
+                noVigRow.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <div style="font-size:2.5rem;">📋</div>
+                        <p class="text-muted mt-2">No lines above 50% today.<br><small>Check back after 10 AM ET when lines refresh.</small></p>
+                    </div>`;
+            } else {
+                noVigPicks.forEach(pick => {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-6 col-lg-4 mb-3';
+                    col.innerHTML = renderNoVigCard(pick);
+                    noVigRow.appendChild(col);
+                });
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        //  renderEdgeCard — highlighted card for EV+ picks
+        // ─────────────────────────────────────────────────────────────
+        function renderEdgeCard(pick) {
+            const fmtOdds = o => (o == null ? '—' : (o > 0 ? `+${o}` : `${o}`));
+            const ev      = parseFloat(pick.ev_pct) || 0;
+            const nvp     = parseFloat(pick.no_vig_prob) || 0;
+            const tier    = pick.confidence_tier || 'EDGE';
+            const tierColor = tier === 'LOCK' ? '#198754' : tier === 'FIRE' ? '#ffc107' : '#0dcaf0';
+            const tierLabel = tier === 'LOCK' ? '🔒 STRONG' : tier === 'FIRE' ? '🔥 FIRE' : '⚡ EDGE';
+
+            const mt = pick.market_type || '';
+            let marketBadge = '';
+            if (mt === 'moneyline') marketBadge = `<span class="badge me-1" style="background:#e5e7eb;color:#374151;font-size:0.68em;">💰 ML</span>`;
+            else if (mt === 'spread') marketBadge = `<span class="badge me-1" style="background:#dbeafe;color:#1d4ed8;font-size:0.68em;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
+            else if (mt === 'total')  marketBadge = `<span class="badge me-1" style="background:#ede9fe;color:#6d28d9;font-size:0.68em;">📊 O/U</span>`;
+
+            let gameTimeHtml = '';
+            if (pick.game_time) {
+                const gt = new Date(pick.game_time);
+                if (!isNaN(gt)) gameTimeHtml = `<small class="text-muted" style="font-size:0.68em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
+            }
+
+            const line = pick.line != null ? pick.line : null;
+            const lineHtml = line != null ? `<span class="badge bg-primary ms-1">${line}</span>` : '';
+
+            const bookCount = pick.book_count || (Array.isArray(pick.all_books) ? pick.all_books.length : 1);
+
+            // Line shop accordion
+            const allBooks = Array.isArray(pick.all_books) ? pick.all_books : [];
+            let lineShopHtml = '';
+            if (allBooks.length > 1) {
+                const cardId = `es-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}`;
+                const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
+                    const isBest = b.over_price === pick.best_over_price;
+                    const fmt = o => o > 0 ? `+${o}` : `${o}`;
+                    return `<div class="d-flex justify-content-between small py-1 border-bottom border-secondary ${isBest?'text-success fw-bold':'text-muted'}">
+                        <span>${b.book}</span><span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
+                    </div>`;
+                }).join('');
+                lineShopHtml = `
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary w-100 py-1" style="font-size:0.7em;" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}">
+                            <i class="fas fa-store me-1"></i>Compare ${allBooks.length} books
+                        </button>
+                        <div class="collapse mt-1" id="${cardId}"><div class="px-1">${bookRows}</div></div>
+                    </div>`;
+            }
+
+            return `
+                <div class="prop-card card border-0 h-100" style="background:linear-gradient(135deg,#1a1f2e 0%,#0f1420 100%);border-left:3px solid ${tierColor} !important;box-shadow:0 0 12px rgba(${tier==='LOCK'?'25,135,84':tier==='FIRE'?'255,193,7':'13,202,240'},0.25);">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div>
+                                <h6 class="mb-0 fw-bold text-light">${pick.player || 'Unknown'}</h6>
+                                <div class="text-muted mt-1" style="font-size:0.8em;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
+                                <div class="mt-1">${gameTimeHtml}</div>
+                            </div>
+                            <div class="d-flex flex-column align-items-end gap-1">
+                                <span class="badge fw-bold" style="background:${tierColor};color:${tier==='FIRE'?'#000':'#fff'};font-size:0.72em;">${tierLabel}</span>
+                                ${marketBadge}
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-2 px-1 py-1 rounded" style="background:rgba(255,255,255,0.05);">
+                            <div class="text-center">
+                                <div style="font-size:0.68em;color:#adb5bd;">EV</div>
+                                <div class="fw-bold" style="font-size:1em;color:${ev>=0?'#20c997':'#dc3545'};">${ev>=0?'+':''}${ev.toFixed(2)}%</div>
+                            </div>
+                            <div class="text-center">
+                                <div style="font-size:0.68em;color:#adb5bd;">Fair Odds</div>
+                                <div class="fw-bold" style="font-size:0.9em;">${fmtOdds(pick.fair_odds)}</div>
+                            </div>
+                            <div class="text-center">
+                                <div style="font-size:0.68em;color:#adb5bd;">True Prob</div>
+                                <div class="fw-bold" style="font-size:0.9em;">${nvp.toFixed(1)}%</div>
+                            </div>
+                            <div class="text-center">
+                                <div style="font-size:0.68em;color:#adb5bd;">BE%</div>
+                                <div class="fw-bold" style="font-size:0.9em;">${pick.break_even_prob!=null ? parseFloat(pick.break_even_prob).toFixed(1)+'%' : '—'}</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between" style="font-size:0.7em;"><span class="text-muted">True Probability</span><strong style="color:${tierColor};">${nvp.toFixed(1)}%</strong></div>
+                            <div class="progress" style="height:5px;border-radius:3px;"><div class="progress-bar" style="width:${Math.min(100,nvp)}%;background:${tierColor};"></div></div>
+                        </div>
+
+                        <div class="text-center">
+                            <small class="text-warning"><i class="fas fa-star me-1"></i>Best: <strong>${pick.best_book || '—'}</strong> ${fmtOdds(pick.best_over_price)}</small>
+                            ${bookCount > 1 ? `<small class="text-muted ms-2">${bookCount} books</small>` : ''}
+                        </div>
+                        ${lineShopHtml}
+                    </div>
+                </div>`;
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        //  renderNoVigCard — standard card for Today's Lines section
+        // ─────────────────────────────────────────────────────────────
+        function renderNoVigCard(pick) {
+            const fmtOdds = o => (o == null ? '—' : (o > 0 ? `+${o}` : `${o}`));
+            const nvp   = parseFloat(pick.no_vig_prob) || 0;
+            const ev    = pick.ev_pct != null ? parseFloat(pick.ev_pct) : null;
+            const tier  = pick.confidence_tier || (nvp >= 70 ? 'LOCK' : nvp >= 55 ? 'FIRE' : 'EDGE');
+            const barColor = tier === 'LOCK' ? '#198754' : tier === 'FIRE' ? '#ffc107' : '#0dcaf0';
+
+            const mt = pick.market_type || '';
+            let marketBadge = '';
+            if (mt === 'moneyline') marketBadge = `<span class="badge me-1" style="background:#e5e7eb;color:#374151;font-size:0.65em;">💰 ML</span>`;
+            else if (mt === 'spread') marketBadge = `<span class="badge me-1" style="background:#dbeafe;color:#1d4ed8;font-size:0.65em;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
+            else if (mt === 'total')  marketBadge = `<span class="badge me-1" style="background:#ede9fe;color:#6d28d9;font-size:0.65em;">📊 O/U</span>`;
+
+            let tierBadgeHtml = '';
+            if (tier === 'LOCK')      tierBadgeHtml = `<span class="badge bg-success" style="font-size:0.68em;"><i class="fas fa-lock me-1"></i>STRONG</span>`;
+            else if (tier === 'FIRE') tierBadgeHtml = `<span class="badge bg-warning text-dark" style="font-size:0.68em;"><i class="fas fa-fire me-1"></i>FIRE</span>`;
+            else                      tierBadgeHtml = `<span class="badge text-bg-info" style="font-size:0.68em;"><i class="fas fa-angle-double-up me-1"></i>EDGE</span>`;
+
+            let gameTimeHtml = '';
+            if (pick.game_time) {
+                const gt = new Date(pick.game_time);
+                if (!isNaN(gt)) gameTimeHtml = `<small class="text-muted d-block" style="font-size:0.65em;">${gt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</small>`;
+            }
+
+            const line = pick.line != null ? pick.line : null;
+            const lineHtml = line != null ? `<span class="badge bg-primary ms-1">${line}</span>` : '';
+
+            // Line shop accordion
+            const allBooks = Array.isArray(pick.all_books) ? pick.all_books : [];
+            let lineShopHtml = '';
+            if (allBooks.length > 1) {
+                const cardId = `nv-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}-${line||'ml'}`;
+                const savings = pick.line_shop_savings_pct || 0;
+                const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
+                    const isBest = b.over_price === pick.best_over_price;
+                    const fmt = o => o > 0 ? `+${o}` : `${o}`;
+                    return `<div class="d-flex justify-content-between small py-1 border-bottom border-secondary ${isBest?'text-success fw-bold':'text-muted'}">
+                        <span>${b.book}</span><span>${fmt(b.over_price)} / ${fmt(b.under_price)}</span>
+                    </div>`;
+                }).join('');
+                lineShopHtml = `
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary w-100 py-1" style="font-size:0.7em;" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}">
+                            <i class="fas fa-store me-1"></i>Line Shop (${allBooks.length} books${savings>0?` · save ~${savings}%`:''})
+                        </button>
+                        <div class="collapse mt-1" id="${cardId}"><div class="px-1">${bookRows}</div></div>
+                    </div>`;
+            }
+
+            const evBadge = ev != null
+                ? `<span class="badge ms-1" style="background:${ev>0?'rgba(32,201,151,0.15)':'rgba(220,53,69,0.1)'};color:${ev>0?'#20c997':'#dc3545'};font-size:0.65em;border:1px solid ${ev>0?'#20c997':'#dc3545'};">${ev>0?'+':''}${ev.toFixed(2)}% EV</span>`
+                : '';
+
+            return `
+                <div class="prop-card card bg-dark border-secondary h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div>
+                                <h6 class="mb-1 fw-bold">${pick.player || 'Unknown'}</h6>
+                                <div class="text-muted" style="font-size:0.8em;">${pick.stat_label || pick.stat || ''} ${lineHtml}</div>
+                                ${gameTimeHtml}
+                            </div>
+                            <div class="d-flex flex-column align-items-end gap-1">
+                                ${tierBadgeHtml}
+                                ${marketBadge}
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between" style="font-size:0.73em;">
+                                <span class="text-muted">True Probability (no-vig)</span>
+                                <strong style="color:${barColor};">${nvp.toFixed(1)}%</strong>
+                            </div>
+                            <div class="progress" style="height:5px;border-radius:3px;">
+                                <div class="progress-bar" style="width:${Math.min(100,nvp)}%;background:${barColor};"></div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <small class="text-warning"><i class="fas fa-star me-1"></i>Best: ${pick.best_book || '—'} <strong>${fmtOdds(pick.best_over_price)}</strong></small>
+                            ${evBadge}
+                        </div>
+                        ${lineShopHtml}
+                    </div>
+                </div>`;
         }
 
         // ---------- MLB + Moneyline fallback helper ----------
