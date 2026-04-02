@@ -107,6 +107,34 @@ def sort_props_by_tier(props):
         )
     )
 
+def implied_probability_single(over_price: int) -> float:
+    """
+    Calculate raw implied probability from one side only.
+    No vig removal possible. Returned as percentage (e.g. 58.4).
+    Clearly labeled as implied in the UI.
+    """
+    try:
+        if over_price > 0:
+            raw = 100 / (over_price + 100)
+        else:
+            raw = abs(over_price) / (abs(over_price) + 100)
+        return round(raw * 100, 1)
+    except Exception:
+        return 50.0
+
+def get_confidence_tier_implied(prob: float) -> str:
+    """
+    Tier assignment for implied-only props.
+    Uses slightly higher thresholds since implied probability includes vig.
+    Implied 60% ≈ no-vig ~55% after vig removal.
+    """
+    if prob >= 67:
+        return "LOCK"
+    elif prob >= 55:
+        return "FIRE"
+    else:
+        return "LOW"
+
 def calculate_parlay_edge(probabilities, book_odds):
     """Calculate parlay edge"""
     try:

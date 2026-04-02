@@ -189,15 +189,14 @@ def fetch_props_for_event(event):
                     elif side == "Under":
                         player_map[player_name]["under_price"] = price
 
-                # Only build props where both sides exist
-                # (no-vig calc requires both over and under)
+                # Build props — require at least an over price; under can be None
                 for player_name, sides in player_map.items():
                     over = sides.get("over_price")
                     under = sides.get("under_price")
                     line = sides.get("line")
 
-                    if over is None or under is None:
-                        continue
+                    if over is None:
+                        continue  # Need at least the over price
 
                     props.append({
                         "player":      player_name,

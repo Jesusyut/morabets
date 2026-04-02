@@ -610,7 +610,7 @@ def fetch_player_props():
                         for player, data_p in player_outcomes.items():
                             over_price = data_p.get("over_price")
                             under_price = data_p.get("under_price")
-                            if over_price is not None and under_price is not None:
+                            if over_price is not None:  # under_price may be None — handled downstream
                                 props.append({
                                     "player": player,
                                     "stat": stat,
@@ -642,99 +642,147 @@ def fetch_player_props():
 
 def group_props_by_player(props):
     """
-    Group props by player+stat+line. For each group, collect all books,
-    run full EV evaluation, and return one enriched prop dict per unique
-    player+stat+line. Only props passing the EV threshold are surfaced.
+    Group props by player+stat+line. Implements two-tier probability display:
+      Tier A — two-sided props: full no-vig EV evaluation (mathematically precise)
+      Tier B — one-sided props: implied probability from over price only (labeled clearly)
     """
     from ev_engine import evaluate_pick
+    from probability import implied_probability_single, get_confidence_tier_implied
 
     groups = {}
     for p in props:
         key = f"{p['player']}_{p['stat']}_{p['line']}"
         if key not in groups:
             groups[key] = {
-                "player": p["player"],
-                "stat": p["stat"],
-                "line": p["line"],
-                "all_books": []
+                "player":    p["player"],
+                "stat":      p["stat"],
+                "stat_label": p.get("stat_label", p.get("stat", "")),
+                "line":      p["line"],
+                "game_time": p.get("game_time"),
+                "home_team": p.get("home_team"),
+                "away_team": p.get("away_team"),
+                "matchup":   p.get("matchup"),
+                "sport":     p.get("sport"),
+                "market_type": p.get("market_type", p.get("stat", "")),
+                "two_sided": [],
+                "one_sided": []
             }
         if p.get("over_price") is not None and p.get("under_price") is not None:
-            groups[key]["all_books"].append({
-                "book": p["bookmaker"],
-                "over_price": p["over_price"],
+            groups[key]["two_sided"].append({
+                "book":        p["bookmaker"],
+                "over_price":  p["over_price"],
                 "under_price": p["under_price"]
+            })
+        elif p.get("over_price") is not None:
+            groups[key]["one_sided"].append({
+                "book":        p["bookmaker"],
+                "over_price":  p["over_price"],
+                "under_price": None
             })
 
     result = []
+
+    def _to_imp(o):
+        return 100 / (o + 100) if o > 0 else abs(o) / (abs(o) + 100)
+
     for key, group in groups.items():
-        books = group["all_books"]
-        if not books:
-            continue
+        two_sided = group.pop("two_sided")
+        one_sided = group.pop("one_sided")
+        base = {k: v for k, v in group.items()}
 
-        try:
-            evaluation = evaluate_pick(
-                player_or_team=group["player"],
-                market_type=group["stat"],
-                side="over",
-                line=group["line"],
-                book_prices=books,
-                game_time=group.get("game_time")
-            )
-
-            if not evaluation["passes_threshold"]:
-                logger.debug(
-                    f"[EV] Filtered: {group['player']} — "
-                    f"{evaluation.get('rejection_reason')}"
+        if two_sided:
+            # ── TIER A: Full no-vig EV calculation ──────────────────────────
+            try:
+                evaluation = evaluate_pick(
+                    player_or_team=group["player"],
+                    market_type=group["stat"],
+                    side="over",
+                    line=group["line"],
+                    book_prices=two_sided,
+                    game_time=group.get("game_time")
                 )
-                evaluation["surfaced"] = False
-            else:
-                evaluation["surfaced"] = True
 
-            # Line shop savings (backward compat)
-            if books:
-                best_price = max(b["over_price"] for b in books if b.get("over_price") is not None)
-                worst_price = min(b["over_price"] for b in books if b.get("over_price") is not None)
-                def to_imp(o):
-                    return 100 / (o + 100) if o > 0 else abs(o) / (abs(o) + 100)
-                savings_pct = round((to_imp(worst_price) - to_imp(best_price)) * 100, 1)
-            else:
-                savings_pct = 0
+                if not evaluation["passes_threshold"]:
+                    logger.debug(f"[EV] Filtered: {group['player']} — {evaluation.get('rejection_reason')}")
+                    evaluation["surfaced"] = False
+                else:
+                    evaluation["surfaced"] = True
 
-            fp = evaluation.get("fair_probability") or 0.5
+                best  = max(two_sided, key=lambda b: b["over_price"])
+                worst = min(two_sided, key=lambda b: b["over_price"])
+                savings_pct = round((_to_imp(worst["over_price"]) - _to_imp(best["over_price"])) * 100, 1)
+
+                fp = evaluation.get("fair_probability") or 0.5
+                result.append({
+                    **base,
+                    **evaluation,
+                    "all_books":             two_sided,
+                    "no_vig_prob":           round(fp * 100, 1),
+                    "prob_type":             "no_vig",
+                    "prob_label":            "True Prob",
+                    "confidence_tier":       evaluation["confidence_tier"],
+                    "best_book":             evaluation["best_book"],
+                    "best_over_price":       evaluation["best_offered_odds"],
+                    "worst_over_price":      worst["over_price"],
+                    "line_shop_savings_pct": savings_pct,
+                    "odds":                  evaluation["best_offered_odds"],
+                    "bookmaker":             evaluation["best_book"],
+                    "enriched":              True,
+                    "surfaced":              evaluation["surfaced"],
+                    "implied_only":          False
+                })
+
+            except Exception as e:
+                logger.warning(f"[EV] evaluate_pick failed for {group['player']}: {e} — using fallback")
+                from probability import no_vig_probability, get_confidence_tier
+                best = max(two_sided, key=lambda b: b["over_price"])
+                sharpest = min(two_sided, key=lambda b: _to_imp(b["over_price"]) + _to_imp(b["under_price"]))
+                no_vig_prob = no_vig_probability(sharpest["over_price"], sharpest["under_price"])
+                tier = get_confidence_tier(no_vig_prob)
+                result.append({
+                    **base,
+                    "all_books":         two_sided,
+                    "no_vig_prob":       no_vig_prob,
+                    "prob_type":         "no_vig",
+                    "prob_label":        "True Prob",
+                    "confidence_tier":   tier,
+                    "best_book":         best["book"],
+                    "best_over_price":   best["over_price"],
+                    "odds":              best["over_price"],
+                    "bookmaker":         best["book"],
+                    "surfaced":          True,
+                    "passes_threshold":  True,
+                    "enriched":          True,
+                    "implied_only":      False
+                })
+
+        elif one_sided:
+            # ── TIER B: Implied probability only ────────────────────────────
+            best = max(one_sided, key=lambda b: b["over_price"])
+            implied_prob = implied_probability_single(best["over_price"])
+            if implied_prob < 50:
+                continue  # Never show under-50% props
+            tier = get_confidence_tier_implied(implied_prob)
             result.append({
-                **group,
-                **evaluation,
-                "no_vig_prob":         round(fp * 100, 1),
-                "confidence_tier":     evaluation["confidence_tier"],
-                "best_book":           evaluation["best_book"],
-                "best_over_price":     evaluation["best_offered_odds"],
-                "line_shop_savings_pct": savings_pct,
-                "odds":                evaluation["best_offered_odds"],
-                "bookmaker":           evaluation["best_book"],
-                "enriched":            True
-            })
-
-        except Exception as e:
-            logger.warning(f"[EV] evaluate_pick failed for {group['player']}: {e} — using fallback")
-            from probability import no_vig_probability, get_confidence_tier
-            best = max(books, key=lambda b: b["over_price"])
-            sharpest = min(books, key=lambda b: (
-                (100/(b["over_price"]+100) if b["over_price"]>0 else abs(b["over_price"])/(abs(b["over_price"])+100)) +
-                (100/(b["under_price"]+100) if b["under_price"]>0 else abs(b["under_price"])/(abs(b["under_price"])+100))
-            ))
-            no_vig_prob = no_vig_probability(sharpest["over_price"], sharpest["under_price"])
-            tier = get_confidence_tier(no_vig_prob)
-            result.append({
-                **group,
-                "no_vig_prob":         no_vig_prob,
-                "confidence_tier":     tier,
-                "best_book":           best["book"],
-                "best_over_price":     best["over_price"],
-                "odds":                best["over_price"],
-                "bookmaker":           best["book"],
-                "surfaced":            True,
-                "passes_threshold":    True,
-                "enriched":            True
+                **base,
+                "all_books":         one_sided,
+                "no_vig_prob":       implied_prob,
+                "prob_type":         "implied",
+                "prob_label":        "Implied",
+                "confidence_tier":   tier,
+                "best_book":         best["book"],
+                "best_over_price":   best["over_price"],
+                "worst_over_price":  best["over_price"],
+                "line_shop_savings_pct": 0,
+                "ev_pct":            None,
+                "passes_threshold":  False,
+                "fair_odds":         None,
+                "break_even_prob":   None,
+                "odds":              best["over_price"],
+                "bookmaker":         best["book"],
+                "enriched":          True,
+                "surfaced":          True,
+                "implied_only":      True
             })
 
     print(f"[INFO] Grouped {len(props)} raw props into {len(result)} unique player props")

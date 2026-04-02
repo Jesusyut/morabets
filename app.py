@@ -971,8 +971,9 @@ def mlb_odds():
             "edge_picks":   edge_picks,
             "picks":        no_vig_picks[:30],   # backward compat
             "counts": {
-                "no_vig": len(no_vig_picks),
-                "edge":   len(edge_picks),
+                "no_vig":  len(no_vig_picks),
+                "edge":    len(edge_picks),
+                "implied": len([p for p in no_vig_picks if p.get("implied_only")]),
             },
             "count":   len(no_vig_picks),
             "sport":   "MLB",
@@ -1253,8 +1254,9 @@ def api_nhl_odds():
             "edge_picks":   edge_picks,
             "picks":        no_vig_picks[:25],   # backward compat
             "counts": {
-                "no_vig": len(no_vig_picks),
-                "edge":   len(edge_picks),
+                "no_vig":  len(no_vig_picks),
+                "edge":    len(edge_picks),
+                "implied": len([p for p in no_vig_picks if p.get("implied_only")]),
             },
             "count":  len(no_vig_picks),
             "sport":  "NHL",
