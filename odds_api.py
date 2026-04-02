@@ -514,170 +514,241 @@ def get_mlb_game_environment_map():
     return env_map
 
 def fetch_player_props():
-    """Fetch player props with preferred sportsbooks first, fallback to all if needed"""
+    """
+    Fetch MLB player props for all today's events.
+
+    Per Odds API docs:
+    - Step 1: GET /sports/baseball_mlb/events (FREE — no quota cost)
+    - Step 2: GET /sports/baseball_mlb/events/{id}/odds
+              one event at a time, markets batched
+
+    Player name is in outcome["description"]
+    Side (Over/Under) is in outcome["name"]
+
+    Returns list of props with BOTH over_price and under_price
+    paired per player per book. One-sided props (over only)
+    are included with under_price=None.
+    """
     now = datetime.utcnow()
-    future = now + timedelta(hours=48)
-    start_time = now.replace(microsecond=0).isoformat() + "Z"
-    end_time = future.replace(microsecond=0).isoformat() + "Z"
+    future = now + timedelta(hours=24)
+    start_time = now.strftime('%Y-%m-%dT%H:%M:%SZ')
+    end_time   = future.strftime('%Y-%m-%dT%H:%M:%SZ')
 
     if not ODDS_API_KEY:
         print("[ERROR] ODDS_API_KEY is not set")
         return []
 
+    # Step 1: Fetch events (FREE — no quota cost)
     try:
         event_resp = requests.get(
             f"{BASE_URL}/sports/baseball_mlb/events",
             params={
-                "apiKey": ODDS_API_KEY,
+                "apiKey":           ODDS_API_KEY,
                 "commenceTimeFrom": start_time,
-                "commenceTimeTo": end_time
+                "commenceTimeTo":   end_time,
+                "dateFormat":       "iso"
             },
             timeout=20
         )
         event_resp.raise_for_status()
         events = event_resp.json()
-        print(f"[INFO] Found {len(events)} events")
+        print(f"[PROPS] Found {len(events)} MLB events")
     except Exception as e:
         print(f"[ERROR] Failed to fetch MLB events: {e}")
         return []
 
-    props = []
-    print(f"[DEBUG] Starting prop collection for {len(events)} events")
-    
-    # Define available markets only (7 markets total) - confirmed working with API
-    markets_batch_1 = ["batter_hits", "batter_home_runs", "batter_total_bases"]
-    markets_batch_2 = ["pitcher_strikeouts", "pitcher_earned_runs", "pitcher_outs", "pitcher_hits_allowed"]
-    
-    print(f"[DEBUG] Using verified markets: {markets_batch_1 + markets_batch_2}")
-    
-    all_markets = [markets_batch_1, markets_batch_2]
+    if not events:
+        print("[PROPS] No MLB events today")
+        return []
+
+    # MLB prop markets — batched to respect quota
+    MARKET_BATCHES = [
+        ["batter_hits", "batter_total_bases", "batter_home_runs"],
+        ["pitcher_strikeouts", "pitcher_hits_allowed", "batter_rbis"]
+    ]
+
+    BOOKS = (
+        "draftkings,fanduel,betmgm,"
+        "caesars,pointsbetus,betrivers"
+    )
+
+    all_props = []
 
     for event in events:
-        eid = event.get("id")
+        eid       = event.get("id")
+        home_team = event.get("home_team", "")
+        away_team = event.get("away_team", "")
+        game_time = event.get("commence_time", "")
+        matchup   = f"{away_team} @ {home_team}"
+
         if not eid:
             continue
 
-        # Process each market batch to avoid rate limiting
-        for batch_idx, markets in enumerate(all_markets):
+        for batch_idx, markets in enumerate(MARKET_BATCHES):
+            if batch_idx > 0:
+                time.sleep(0.5)
+
             try:
-                # Add delay between batches to respect rate limits
-                if batch_idx > 0:
-                    time.sleep(1)
-                
-                odds_resp = requests.get(
+                resp = requests.get(
                     f"{BASE_URL}/sports/baseball_mlb/events/{eid}/odds",
                     params={
-                        "apiKey": ODDS_API_KEY,
-                        "regions": "us",
-                        "markets": ",".join(markets),
-                        "oddsFormat": "american",
-                        "bookmakers": ",".join(PREFERRED_SPORTSBOOKS)
+                        "apiKey":      ODDS_API_KEY,
+                        "regions":     "us",
+                        "markets":     ",".join(markets),
+                        "oddsFormat":  "american",
+                        "bookmakers":  BOOKS
                     },
                     timeout=20
                 )
-                odds_resp.raise_for_status()
-                update_quota_from_headers(odds_resp)
-                data = odds_resp.json()
-                
-                # Log successful market response
-                if data.get("bookmakers"):
-                    successful_markets = [m.get('key') for m in data.get('bookmakers', [])[0].get('markets', [])]
-                    print(f"[DEBUG] Event {eid} batch {batch_idx} fetched props for markets: {successful_markets}")
-                
+
+                if resp.status_code == 422:
+                    print(f"[PROPS] No props yet: {matchup}")
+                    continue
+
+                if resp.status_code == 429:
+                    print("[PROPS] Rate limited — pausing")
+                    time.sleep(3)
+                    continue
+
+                resp.raise_for_status()
+                update_quota_from_headers(resp)
+                data = resp.json()
+
+                remaining = resp.headers.get("x-requests-remaining", "?")
+                print(f"[PROPS] {matchup} batch {batch_idx}: quota={remaining}")
+
                 for book in data.get("bookmakers", []):
-                    book_title = book.get("title", "Unknown")
-                    
-                    # Filter to only valid sportsbooks
-                    if book_title not in VALID_BOOKS:
+                    book_title = book.get("title", "")
+                    if not book_title:
                         continue
-                    
+
                     for market in book.get("markets", []):
-                        stat = market.get("key")
-                        # Group over/under outcomes by player for no-vig math
-                        player_outcomes = {}
-                        for outcome in market.get("outcomes", []):
-                            player = outcome.get("description")
-                            side = outcome.get("name", "").strip()
+                        market_key = market.get("key", "")
+                        outcomes   = market.get("outcomes", [])
+
+                        # Per official docs:
+                        # outcome["description"] = player name
+                        # outcome["name"] = "Over" or "Under"
+                        player_map = {}
+
+                        for outcome in outcomes:
+                            player_name = outcome.get("description", "")
+                            side  = outcome.get("name", "")
                             price = outcome.get("price")
                             point = outcome.get("point")
-                            if player and price is not None:
-                                if player not in player_outcomes:
-                                    player_outcomes[player] = {"point": point}
-                                if side == "Over":
-                                    player_outcomes[player]["over_price"] = price
-                                elif side == "Under":
-                                    player_outcomes[player]["under_price"] = price
-                        for player, data_p in player_outcomes.items():
-                            over_price = data_p.get("over_price")
-                            under_price = data_p.get("under_price")
-                            if over_price is not None:  # under_price may be None — handled downstream
-                                props.append({
-                                    "player": player,
-                                    "stat": stat,
-                                    "line": data_p.get("point"),
-                                    "over_price": over_price,
-                                    "under_price": under_price,
-                                    "odds": over_price,  # backward compat
-                                    "bookmaker": book_title
-                                })
-                                
-            except Exception as e:
-                print(f"[ERROR] Failed to fetch props for event {eid} batch {batch_idx}: {e}")
-                continue
-        
-        print(f"[DEBUG] Event {eid}: Collected {len(props)} props so far")
 
-    print(f"[INFO] Final count of player props: {len(props)}")
-    print(f"[DEBUG] Final props fetched: {len(props)}")
-    print(f"🔍 DEBUG: Fetched {len(props)} raw props from API")
-    
-    # Debug: Show stat type breakdown
+                            if not player_name or price is None:
+                                continue
+
+                            if player_name not in player_map:
+                                player_map[player_name] = {
+                                    "over_price":  None,
+                                    "under_price": None,
+                                    "line":        point
+                                }
+
+                            if side == "Over":
+                                player_map[player_name]["over_price"] = price
+                                player_map[player_name]["line"]       = point
+                            elif side == "Under":
+                                player_map[player_name]["under_price"] = price
+
+                        for player_name, sides in player_map.items():
+                            over_p  = sides["over_price"]
+                            under_p = sides["under_price"]
+                            line    = sides["line"]
+
+                            if over_p is None:
+                                continue
+
+                            all_props.append({
+                                "player":      player_name,
+                                "stat":        market_key,
+                                "line":        line,
+                                "over_price":  over_p,
+                                "under_price": under_p,
+                                "odds":        over_p,
+                                "bookmaker":   book_title,
+                                "home_team":   home_team,
+                                "away_team":   away_team,
+                                "matchup":     matchup,
+                                "game_time":   game_time,
+                                "sport":       "MLB"
+                            })
+
+            except requests.exceptions.HTTPError as e:
+                print(f"[ERROR] HTTP {e.response.status_code} for {matchup} batch {batch_idx}")
+                continue
+            except Exception as e:
+                print(f"[ERROR] Props fetch failed for {matchup} batch {batch_idx}: {e}")
+                continue
+
+    print(f"[PROPS] Collected {len(all_props)} raw props from {len(events)} events")
+
     stat_counts = {}
-    for prop in props:
-        stat = prop.get('stat', 'unknown')
-        stat_counts[stat] = stat_counts.get(stat, 0) + 1
-    
-    print(f"[DEBUG] Props by stat type: {stat_counts}")
-    return props
+    for p in all_props:
+        k = p.get("stat", "unknown")
+        stat_counts[k] = stat_counts.get(k, 0) + 1
+    print(f"[PROPS] By market: {stat_counts}")
+
+    return all_props
 
 def group_props_by_player(props):
     """
-    Group props by player+stat+line. Implements two-tier probability display:
-      Tier A — two-sided props: full no-vig EV evaluation (mathematically precise)
-      Tier B — one-sided props: implied probability from over price only (labeled clearly)
+    Group raw props by player+stat+line.
+    Collect all books per group.
+    Calculate no-vig or implied probability.
+    Apply minimum probability filter.
+    Sort by tier then probability.
+
+    Tier A — two-sided props: no-vig probability (52% minimum)
+    Tier B — one-sided props:  implied probability (58% minimum)
     """
-    from ev_engine import evaluate_pick
-    from probability import implied_probability_single, get_confidence_tier_implied
+    from probability import (
+        no_vig_probability,
+        get_confidence_tier,
+        implied_probability_single,
+        get_confidence_tier_implied,
+        sort_props_by_tier
+    )
+    from prop_deduplication import get_stat_display_name
 
     groups = {}
+
     for p in props:
-        key = f"{p['player']}_{p['stat']}_{p['line']}"
+        player = p.get("player", "")
+        stat   = p.get("stat",   "")
+        line   = p.get("line")
+        book   = p.get("bookmaker", "").lower().strip()
+
+        if not player or not stat:
+            continue
+
+        key = f"{player}_{stat}_{line}"
+
         if key not in groups:
             groups[key] = {
-                "player":    p["player"],
-                "stat":      p["stat"],
-                "stat_label": p.get("stat_label", p.get("stat", "")),
-                "line":      p["line"],
-                "game_time": p.get("game_time"),
-                "home_team": p.get("home_team"),
-                "away_team": p.get("away_team"),
-                "matchup":   p.get("matchup"),
-                "sport":     p.get("sport"),
-                "market_type": p.get("market_type", p.get("stat", "")),
-                "two_sided": [],
-                "one_sided": []
+                "player":     player,
+                "stat":       stat,
+                "stat_label": get_stat_display_name(stat),
+                "line":       line,
+                "home_team":  p.get("home_team", ""),
+                "away_team":  p.get("away_team", ""),
+                "matchup":    p.get("matchup",   ""),
+                "game_time":  p.get("game_time", ""),
+                "sport":      p.get("sport", "MLB"),
+                "market_type": p.get("market_type", stat),
+                "all_books":  []
             }
-        if p.get("over_price") is not None and p.get("under_price") is not None:
-            groups[key]["two_sided"].append({
-                "book":        p["bookmaker"],
-                "over_price":  p["over_price"],
-                "under_price": p["under_price"]
-            })
-        elif p.get("over_price") is not None:
-            groups[key]["one_sided"].append({
-                "book":        p["bookmaker"],
-                "over_price":  p["over_price"],
-                "under_price": None
+
+        over_p  = p.get("over_price") or p.get("odds")
+        under_p = p.get("under_price")
+
+        if over_p is not None:
+            groups[key]["all_books"].append({
+                "book":        book,
+                "over_price":  over_p,
+                "under_price": under_p
             })
 
     result = []
@@ -686,107 +757,100 @@ def group_props_by_player(props):
         return 100 / (o + 100) if o > 0 else abs(o) / (abs(o) + 100)
 
     for key, group in groups.items():
-        two_sided = group.pop("two_sided")
-        one_sided = group.pop("one_sided")
-        base = {k: v for k, v in group.items()}
+        books = group["all_books"]
+        if not books:
+            continue
+
+        two_sided = [
+            b for b in books
+            if b.get("over_price") is not None
+            and b.get("under_price") is not None
+        ]
+        one_sided = [
+            b for b in books
+            if b.get("over_price") is not None
+            and b.get("under_price") is None
+        ]
 
         if two_sided:
-            # ── TIER A: Full no-vig EV calculation ──────────────────────────
-            try:
-                evaluation = evaluate_pick(
-                    player_or_team=group["player"],
-                    market_type=group["stat"],
-                    side="over",
-                    line=group["line"],
-                    book_prices=two_sided,
-                    game_time=group.get("game_time")
-                )
+            # ── TIER A: True no-vig probability ─────────────────────────────
+            def vig_total(b):
+                return _to_imp(b["over_price"]) + _to_imp(b["under_price"])
 
-                if not evaluation["passes_threshold"]:
-                    logger.debug(f"[EV] Filtered: {group['player']} — {evaluation.get('rejection_reason')}")
-                    evaluation["surfaced"] = False
-                else:
-                    evaluation["surfaced"] = True
+            sharpest = min(two_sided, key=vig_total)
+            best     = max(two_sided, key=lambda b: b["over_price"])
+            worst    = min(two_sided, key=lambda b: b["over_price"])
 
-                best  = max(two_sided, key=lambda b: b["over_price"])
-                worst = min(two_sided, key=lambda b: b["over_price"])
-                savings_pct = round((_to_imp(worst["over_price"]) - _to_imp(best["over_price"])) * 100, 1)
+            nv_prob = no_vig_probability(
+                sharpest["over_price"], sharpest["under_price"]
+            )
 
-                fp = evaluation.get("fair_probability") or 0.5
-                result.append({
-                    **base,
-                    **evaluation,
-                    "all_books":             two_sided,
-                    "no_vig_prob":           round(fp * 100, 1),
-                    "prob_type":             "no_vig",
-                    "prob_label":            "True Prob",
-                    "confidence_tier":       evaluation["confidence_tier"],
-                    "best_book":             evaluation["best_book"],
-                    "best_over_price":       evaluation["best_offered_odds"],
-                    "worst_over_price":      worst["over_price"],
-                    "line_shop_savings_pct": savings_pct,
-                    "odds":                  evaluation["best_offered_odds"],
-                    "bookmaker":             evaluation["best_book"],
-                    "enriched":              True,
-                    "surfaced":              evaluation["surfaced"],
-                    "implied_only":          False
-                })
+            # ── HARD FILTER: minimum 52% no-vig ─────────────────────────────
+            if nv_prob < 52.0:
+                continue
 
-            except Exception as e:
-                logger.warning(f"[EV] evaluate_pick failed for {group['player']}: {e} — using fallback")
-                from probability import no_vig_probability, get_confidence_tier
-                best = max(two_sided, key=lambda b: b["over_price"])
-                sharpest = min(two_sided, key=lambda b: _to_imp(b["over_price"]) + _to_imp(b["under_price"]))
-                no_vig_prob = no_vig_probability(sharpest["over_price"], sharpest["under_price"])
-                tier = get_confidence_tier(no_vig_prob)
-                result.append({
-                    **base,
-                    "all_books":         two_sided,
-                    "no_vig_prob":       no_vig_prob,
-                    "prob_type":         "no_vig",
-                    "prob_label":        "True Prob",
-                    "confidence_tier":   tier,
-                    "best_book":         best["book"],
-                    "best_over_price":   best["over_price"],
-                    "odds":              best["over_price"],
-                    "bookmaker":         best["book"],
-                    "surfaced":          True,
-                    "passes_threshold":  True,
-                    "enriched":          True,
-                    "implied_only":      False
-                })
+            savings_pct = round(
+                (_to_imp(worst["over_price"]) - _to_imp(best["over_price"])) * 100, 1
+            )
+
+            result.append({
+                **{k: v for k, v in group.items() if k != "all_books"},
+                "all_books":             two_sided,
+                "no_vig_prob":           nv_prob,
+                "prob_type":             "no_vig",
+                "prob_label":            "True Prob",
+                "confidence_tier":       get_confidence_tier(nv_prob),
+                "best_book":             best["book"],
+                "best_over_price":       best["over_price"],
+                "worst_over_price":      worst["over_price"],
+                "line_shop_savings_pct": savings_pct,
+                "ev_pct":                None,
+                "fair_odds":             None,
+                "break_even_prob":       None,
+                "passes_threshold":      False,
+                "implied_only":          False,
+                "surfaced":              True,
+                "enriched":              True
+            })
 
         elif one_sided:
             # ── TIER B: Implied probability only ────────────────────────────
-            best = max(one_sided, key=lambda b: b["over_price"])
-            implied_prob = implied_probability_single(best["over_price"])
-            if implied_prob < 50:
-                continue  # Never show under-50% props
-            tier = get_confidence_tier_implied(implied_prob)
+            best    = max(one_sided, key=lambda b: b["over_price"])
+            over_p  = best["over_price"]
+            implied_prob = implied_probability_single(over_p)
+
+            # ── HARD FILTER: minimum 58% implied ────────────────────────────
+            if implied_prob < 58.0:
+                continue
+
             result.append({
-                **base,
-                "all_books":         one_sided,
-                "no_vig_prob":       implied_prob,
-                "prob_type":         "implied",
-                "prob_label":        "Implied",
-                "confidence_tier":   tier,
-                "best_book":         best["book"],
-                "best_over_price":   best["over_price"],
-                "worst_over_price":  best["over_price"],
+                **{k: v for k, v in group.items() if k != "all_books"},
+                "all_books":             one_sided,
+                "no_vig_prob":           implied_prob,
+                "prob_type":             "implied",
+                "prob_label":            "Implied",
+                "confidence_tier":       get_confidence_tier_implied(implied_prob),
+                "best_book":             best["book"],
+                "best_over_price":       over_p,
+                "worst_over_price":      over_p,
                 "line_shop_savings_pct": 0,
-                "ev_pct":            None,
-                "passes_threshold":  False,
-                "fair_odds":         None,
-                "break_even_prob":   None,
-                "odds":              best["over_price"],
-                "bookmaker":         best["book"],
-                "enriched":          True,
-                "surfaced":          True,
-                "implied_only":      True
+                "ev_pct":                None,
+                "fair_odds":             None,
+                "break_even_prob":       None,
+                "passes_threshold":      False,
+                "implied_only":          True,
+                "surfaced":              True,
+                "enriched":              True
             })
 
-    print(f"[INFO] Grouped {len(props)} raw props into {len(result)} unique player props")
-    return result
+        else:
+            continue
+
+    print(
+        f"[PROPS] Grouped {len(props)} raw props → "
+        f"{len(result)} unique props after filtering"
+    )
+    return sort_props_by_tier(result)
 
 def enrich_prop(prop):
     """Enrich a single prop with contextual and fantasy hit rates - with robust error handling"""

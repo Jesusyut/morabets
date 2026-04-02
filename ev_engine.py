@@ -207,6 +207,28 @@ def evaluate_pick(
         )
         return result
 
+    # ── Step 1.5: Quick probability pre-check ───────────────────────────────
+    # Fast estimate before running the full weighted calculation.
+    # If the quick estimate is well below 50% skip entirely — saves CPU
+    # and prevents low-probability picks from ever reaching the board.
+    quick_probs = []
+    for b in valid_books:
+        op = b.get("over_price")
+        up = b.get("under_price")
+        if op is not None and up is not None:
+            raw_o = american_to_implied(op)
+            raw_u = american_to_implied(up)
+            total = raw_o + raw_u
+            if total > 0:
+                quick_probs.append(raw_o / total)
+    if quick_probs:
+        quick_avg = sum(quick_probs) / len(quick_probs)
+        if quick_avg < 0.50:
+            result["rejection_reason"] = (
+                f"Quick prob estimate {round(quick_avg * 100, 1)}% too low"
+            )
+            return result
+
     fair_prob, book_count, weight = calculate_weighted_fair_probability(valid_books, side)
 
     if fair_prob is None:
@@ -240,14 +262,29 @@ def evaluate_pick(
         )
         return result
 
-    result["passes_threshold"] = True
+    # ── Probability-gated tier assignment ───────────────────────────────────
+    # A LOCK requires BOTH high EV AND high probability.
+    # This prevents low-probability underdogs (+270 at 29%) from being LOCKs.
+    fair_prob_val = result.get("fair_probability") or 0
 
-    if ev >= 6.0:
-        result["confidence_tier"] = "LOCK"
-    elif ev >= 3.0:
-        result["confidence_tier"] = "FIRE"
+    if ev > 0 and fair_prob_val >= 0.65:
+        result["passes_threshold"] = True
+        if ev >= 5.0 and fair_prob_val >= 0.70:
+            result["confidence_tier"] = "LOCK"
+        elif ev >= 2.0:
+            result["confidence_tier"] = "FIRE"
+        else:
+            result["confidence_tier"] = "EDGE"
+    elif fair_prob_val >= 0.52:
+        result["passes_threshold"] = False
+        result["confidence_tier"]  = "LOW"
     else:
-        result["confidence_tier"] = "EDGE"
+        result["passes_threshold"] = False
+        result["confidence_tier"]  = "LOW"
+        result["rejection_reason"] = (
+            f"Probability {round(fair_prob_val * 100, 1)}% "
+            f"below 65% minimum for edge picks"
+        )
 
     logger.info(
         f"[EV] ✅ {player_or_team} {market_type} {side} | "

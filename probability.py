@@ -85,7 +85,7 @@ def get_confidence_tier(no_vig_prob):
     """Return LOCK, FIRE, or LOW based on no-vig probability."""
     if no_vig_prob >= 70:
         return "LOCK"
-    elif no_vig_prob >= 50:
+    elif no_vig_prob >= 55:
         return "FIRE"
     else:
         return "LOW"

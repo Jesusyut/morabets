@@ -833,7 +833,7 @@ def mlb_odds():
                                 total_over_prices.append( {"book": bk_name, "over_price": op,  "under_price": up})
                                 total_under_prices.append({"book": bk_name, "over_price": up,  "under_price": op})
 
-            # ── Evaluate h2h — collect ALL picks regardless of EV threshold ──
+            # ── Evaluate h2h — only show the favored side (≥52% no-vig) ──
             for team, prices in [(home, h2h_side1), (away, h2h_side2)]:
                 if not prices:
                     continue
@@ -841,12 +841,16 @@ def mlb_odds():
                     player_or_team=team, market_type="h2h", side="over",
                     line=None, book_prices=prices, game_time=game_time
                 )
+                nv = round((ev["fair_probability"] or 0) * 100, 1)
+                # Hard filter — only show favored side with ≥52% no-vig
+                if nv < 52.0:
+                    continue
                 picks.append({
                     "player":          team,
                     "stat":            "h2h",
                     "stat_label":      "Moneyline Win",
                     "line":            None,
-                    "no_vig_prob":     round((ev["fair_probability"] or 0.5) * 100, 1),
+                    "no_vig_prob":     nv,
                     "fair_odds":       ev["fair_odds"],
                     "ev_pct":          ev["ev_pct"],
                     "edge_pct":        ev["edge_pct"],
@@ -870,13 +874,16 @@ def mlb_odds():
                     player_or_team=team, market_type="spreads", side="over",
                     line=point, book_prices=prices, game_time=game_time
                 )
+                nv = round((ev["fair_probability"] or 0) * 100, 1)
+                if nv < 50.0:
+                    continue
                 label = f"Run Line {'+' if point > 0 else ''}{point}"
                 picks.append({
                     "player":          team,
                     "stat":            "spreads",
                     "stat_label":      label,
                     "line":            point,
-                    "no_vig_prob":     round((ev["fair_probability"] or 0.5) * 100, 1),
+                    "no_vig_prob":     nv,
                     "fair_odds":       ev["fair_odds"],
                     "ev_pct":          ev["ev_pct"],
                     "edge_pct":        ev["edge_pct"],
@@ -905,12 +912,15 @@ def mlb_odds():
                     player_or_team=matchup, market_type="totals", side=side,
                     line=total_point, book_prices=prices, game_time=game_time
                 )
+                nv = round((ev["fair_probability"] or 0) * 100, 1)
+                if nv < 50.0:
+                    continue
                 picks.append({
                     "player":          matchup,
                     "stat":            "totals",
                     "stat_label":      side_label,
                     "line":            total_point,
-                    "no_vig_prob":     round((ev["fair_probability"] or 0.5) * 100, 1),
+                    "no_vig_prob":     nv,
                     "fair_odds":       ev["fair_odds"],
                     "ev_pct":          ev["ev_pct"],
                     "edge_pct":        ev["edge_pct"],
@@ -929,16 +939,20 @@ def mlb_odds():
                 })
 
         # ── Split into two independent lists ──
-        no_vig_picks = [p for p in picks if (p.get("no_vig_prob") or 0) >= 50]
-        no_vig_picks.sort(key=lambda p: -(p.get("no_vig_prob") or 0))
-
+        # Edge: positive EV AND 65%+ true probability
         edge_picks = [
             p for p in picks
-            if p.get("passes_threshold") is True
-            and p.get("ev_pct") is not None
-            and (p.get("ev_pct") or 0) > 0
+            if (
+                p.get("ev_pct") is not None
+                and p.get("ev_pct") > 0
+                and p.get("no_vig_prob", 0) >= 65.0
+            )
         ]
         edge_picks.sort(key=lambda p: -(p.get("ev_pct") or 0))
+
+        # No-vig board: everything 52%+ (edge picks also appear here)
+        no_vig_picks = [p for p in picks if (p.get("no_vig_prob") or 0) >= 52.0]
+        no_vig_picks.sort(key=lambda p: -(p.get("no_vig_prob") or 0))
 
         # CLV logging — only for edge picks (confirmed +EV), fire-and-forget
         try:
@@ -1142,7 +1156,7 @@ def api_nhl_odds():
                                 total_over_prices.append( {"book": bk_name, "over_price": op, "under_price": up})
                                 total_under_prices.append({"book": bk_name, "over_price": up, "under_price": op})
 
-            # ── Evaluate h2h — collect ALL picks regardless of EV threshold ──
+            # ── Evaluate h2h — only show the favored side (≥52% no-vig) ──
             for team, prices in [(home, h2h_home), (away, h2h_away)]:
                 if not prices:
                     continue
@@ -1150,12 +1164,15 @@ def api_nhl_odds():
                     player_or_team=team, market_type="h2h", side="over",
                     line=None, book_prices=prices, game_time=game_time
                 )
+                nv = round((ev["fair_probability"] or 0) * 100, 1)
+                if nv < 52.0:
+                    continue
                 picks.append({
                     "player":          team,
                     "stat":            "h2h",
                     "stat_label":      "Moneyline Win",
                     "line":            None,
-                    "no_vig_prob":     round((ev["fair_probability"] or 0.5) * 100, 1),
+                    "no_vig_prob":     nv,
                     "fair_odds":       ev["fair_odds"],
                     "ev_pct":          ev["ev_pct"],
                     "edge_pct":        ev["edge_pct"],
@@ -1178,13 +1195,16 @@ def api_nhl_odds():
                     player_or_team=team, market_type="spreads", side="over",
                     line=point, book_prices=prices, game_time=game_time
                 )
+                nv = round((ev["fair_probability"] or 0) * 100, 1)
+                if nv < 50.0:
+                    continue
                 label = f"Puck Line {'+' if point > 0 else ''}{point}"
                 picks.append({
                     "player":          team,
                     "stat":            "spreads",
                     "stat_label":      label,
                     "line":            point,
-                    "no_vig_prob":     round((ev["fair_probability"] or 0.5) * 100, 1),
+                    "no_vig_prob":     nv,
                     "fair_odds":       ev["fair_odds"],
                     "ev_pct":          ev["ev_pct"],
                     "edge_pct":        ev["edge_pct"],
@@ -1212,12 +1232,15 @@ def api_nhl_odds():
                     player_or_team=matchup, market_type="totals", side=side,
                     line=total_point, book_prices=prices, game_time=game_time
                 )
+                nv = round((ev["fair_probability"] or 0) * 100, 1)
+                if nv < 50.0:
+                    continue
                 picks.append({
                     "player":          matchup,
                     "stat":            "totals",
                     "stat_label":      side_label,
                     "line":            total_point,
-                    "no_vig_prob":     round((ev["fair_probability"] or 0.5) * 100, 1),
+                    "no_vig_prob":     nv,
                     "fair_odds":       ev["fair_odds"],
                     "ev_pct":          ev["ev_pct"],
                     "edge_pct":        ev["edge_pct"],
@@ -1236,16 +1259,20 @@ def api_nhl_odds():
                 })
 
         # ── Split into two independent lists ──
-        no_vig_picks = [p for p in picks if (p.get("no_vig_prob") or 0) >= 50]
-        no_vig_picks.sort(key=lambda p: -(p.get("no_vig_prob") or 0))
-
+        # Edge: positive EV AND 65%+ true probability
         edge_picks = [
             p for p in picks
-            if p.get("passes_threshold") is True
-            and p.get("ev_pct") is not None
-            and (p.get("ev_pct") or 0) > 0
+            if (
+                p.get("ev_pct") is not None
+                and p.get("ev_pct") > 0
+                and p.get("no_vig_prob", 0) >= 65.0
+            )
         ]
         edge_picks.sort(key=lambda p: -(p.get("ev_pct") or 0))
+
+        # No-vig board: everything 52%+ (edge picks also appear here)
+        no_vig_picks = [p for p in picks if (p.get("no_vig_prob") or 0) >= 52.0]
+        no_vig_picks.sort(key=lambda p: -(p.get("no_vig_prob") or 0))
 
         avg_ev = round(sum(p.get("ev_pct") or 0 for p in edge_picks) / len(edge_picks), 1) if edge_picks else 0
 
@@ -1968,6 +1995,53 @@ def nfl_props_debug():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/debug/props-test")
+def debug_props_test():
+    """
+    One-shot diagnostic endpoint for MLB player props.
+    Costs 1 API credit per event batch.
+    Remove after confirming props pipeline is working.
+    """
+    try:
+        from odds_api import fetch_player_props, group_props_by_player
+
+        raw = fetch_player_props()
+
+        stat_counts = {}
+        book_counts = {}
+        player_samples = []
+        for p in raw:
+            stat_counts[p.get("stat", "?")] = stat_counts.get(p.get("stat", "?"), 0) + 1
+            book_counts[p.get("bookmaker", "?")] = book_counts.get(p.get("bookmaker", "?"), 0) + 1
+            if len(player_samples) < 3:
+                player_samples.append({
+                    k: p[k] for k in
+                    ["player", "stat", "line", "over_price", "under_price",
+                     "bookmaker", "matchup", "game_time"]
+                    if k in p
+                })
+
+        grouped = group_props_by_player(raw)
+
+        tier_counts = {}
+        for g in grouped:
+            t = g.get("confidence_tier", "?")
+            tier_counts[t] = tier_counts.get(t, 0) + 1
+
+        return jsonify({
+            "raw_count":   len(raw),
+            "grouped_count": len(grouped),
+            "stat_counts": stat_counts,
+            "book_counts": book_counts,
+            "tier_counts": tier_counts,
+            "player_samples": player_samples,
+            "grouped_samples": grouped[:3]
+        })
+    except Exception as e:
+        logger.exception("[DEBUG] /api/debug/props-test error")
+        return jsonify({"error": str(e)}), 500
+
 
 # Start background initialization in a separate thread
 from threading import Thread

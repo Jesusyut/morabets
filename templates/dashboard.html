@@ -373,7 +373,7 @@
             <option value="">All Tiers</option>
             <option value="high">🔒 LOCK (≥70% true prob)</option>
             <option value="medium">🔥 FIRE (50–69%)</option>
-            <option value="low">— EDGE (&lt;50%)</option>
+            <option value="low">— LOW (52-54%)</option>
         </select>
     </div>
 
@@ -869,8 +869,8 @@
         noVigSection.innerHTML = `
             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
                 <span class="section-header-title">📊 Today's Lines</span>
-                <span class="pill-badge" style="background:#E8F5E1;color:#3A9012;border:1px solid rgba(76,187,23,0.3);">${noVigPicks.length} picks · 50%+</span>
-                <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;">All picks above 50% no-vig probability</span>
+                <span class="pill-badge" style="background:#E8F5E1;color:#3A9012;border:1px solid rgba(76,187,23,0.3);">${noVigPicks.length} picks · 52%+</span>
+                <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;">True no-vig probability ≥52% — vig stripped</span>
             </div>
             <div class="picks-grid" id="novig-cards-row"></div>`;
         container.appendChild(noVigSection);
@@ -880,7 +880,7 @@
             noVigRow.innerHTML = `
                 <div style="grid-column:1/-1;text-align:center;padding:3rem 0;">
                     <div style="font-size:2.5rem;margin-bottom:0.75rem;">📋</div>
-                    <p style="font-family:'Inter',sans-serif;font-size:0.85rem;color:#6B9E5A;">No lines above 50% today.<br><small>Check back after 10 AM ET when lines refresh.</small></p>
+                    <p style="font-family:'Inter',sans-serif;font-size:0.85rem;color:#6B9E5A;">No lines above 52% today.<br><small>Check back after 10 AM ET when lines refresh.</small></p>
                 </div>`;
         } else {
             noVigPicks.forEach(pick => {
@@ -901,8 +901,8 @@
         const tier = pick.confidence_tier || 'EDGE';
 
         let tierBg, tierColor, tierBorder, tierLabel;
-        if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔒 LOCK'; }
-        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔥 FIRE'; }
+        if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔒 LOCK — EV + High Prob'; }
+        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔥 FIRE — EV + 65%+'; }
         else                      { tierBg = '#E8F5E1'; tierColor = '#2D6E0F'; tierBorder = '1px solid #4CBB17'; tierLabel = '⚡ EDGE'; }
 
         const barColor = tier === 'LOCK' ? '#4CBB17' : tier === 'FIRE' ? '#f97316' : '#3A9012';
@@ -955,7 +955,11 @@
                     ${marketBadge}
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.25rem;background:#F5FAF2;border:1px solid rgba(76,187,23,0.15);border-radius:0.5rem;padding:0.5rem;margin-bottom:0.6rem;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.25rem;background:#F5FAF2;border:1px solid rgba(76,187,23,0.15);border-radius:0.5rem;padding:0.5rem;margin-bottom:0.6rem;">
+                <div style="text-align:center;">
+                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#6B9E5A;">True Prob</div>
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.05em;color:${barColor};">${nvp.toFixed(1)}%</div>
+                </div>
                 <div style="text-align:center;">
                     <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#6B9E5A;">EV</div>
                     <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.95em;color:${ev>=0?'#3A9012':'#b91c1c'};">${ev>=0?'+':''}${ev.toFixed(2)}%</div>
@@ -963,14 +967,6 @@
                 <div style="text-align:center;">
                     <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#6B9E5A;">Fair Odds</div>
                     <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#1A3D0A;">${fmtOdds(pick.fair_odds)}</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#6B9E5A;">True Prob</div>
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#1A3D0A;">${nvp.toFixed(1)}%</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#6B9E5A;">BE%</div>
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#1A3D0A;">${pick.break_even_prob!=null ? parseFloat(pick.break_even_prob).toFixed(1)+'%' : '—'}</div>
                 </div>
             </div>
             <div style="margin-bottom:0.5rem;">
@@ -997,14 +993,14 @@
         const fmtOdds = o => (o == null ? '—' : (o > 0 ? `+${o}` : `${o}`));
         const nvp  = parseFloat(pick.no_vig_prob) || 0;
         const ev   = pick.ev_pct != null ? parseFloat(pick.ev_pct) : null;
-        const tier = pick.confidence_tier || (nvp >= 70 ? 'LOCK' : nvp >= 55 ? 'FIRE' : 'EDGE');
-        const barColor = tier === 'LOCK' ? '#4CBB17' : tier === 'FIRE' ? '#f97316' : '#2D6E0F';
+        const tier = nvp >= 70 ? 'LOCK' : nvp >= 55 ? 'FIRE' : 'LOW';
+        const barColor = tier === 'LOCK' ? '#4CBB17' : tier === 'FIRE' ? '#f97316' : '#6B9E5A';
         const isImplied = !!pick.implied_only;
 
         let tierBg, tierColor, tierBorder, tierLabel;
-        if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔒 LOCK'; }
-        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔥 FIRE'; }
-        else                      { tierBg = '#E8F5E1'; tierColor = '#2D6E0F'; tierBorder = '1px solid #4CBB17'; tierLabel = '⚡ EDGE'; }
+        if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔒 LOCK — 70%+'; }
+        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔥 FIRE — 55%+'; }
+        else                      { tierBg = '#E8F5E1'; tierColor = '#6B9E5A'; tierBorder = '1px solid #c3e6ab'; tierLabel = '⚪ 52-54%'; }
 
         const mt = pick.market_type || '';
         let marketBadge = '';
