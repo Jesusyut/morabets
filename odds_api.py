@@ -850,7 +850,17 @@ def group_props_by_player(props):
         f"[PROPS] Grouped {len(props)} raw props → "
         f"{len(result)} unique props after filtering"
     )
-    return sort_props_by_tier(result)
+    # Sort by tier (LOCK first) then descending probability.
+    # Do NOT use sort_props_by_tier() — that function filters
+    # by passes_threshold=True which is False for all no-vig props.
+    tier_order = {"LOCK": 0, "FIRE": 1, "LOW": 2}
+    return sorted(
+        result,
+        key=lambda p: (
+            tier_order.get(p.get("confidence_tier", "LOW"), 2),
+            -(p.get("no_vig_prob") or 0)
+        )
+    )
 
 def enrich_prop(prop):
     """Enrich a single prop with contextual and fantasy hit rates - with robust error handling"""

@@ -550,33 +550,51 @@ def group_props_by_matchup(props_data):
             return {"All Games": props_data if isinstance(props_data, list) else []}
 
 @app.route("/api/mlb/props")
-def get_mlb_props():
-    """MLB player props — cache first, live fetch fallback."""
+def mlb_props():
     try:
         from enrichment import load_props_from_file
-        cached = load_props_from_file("mlb_props_cache.json")
-        if cached:
-            return jsonify({
-                "props":  cached,
-                "count":  len(cached),
-                "sport":  "MLB",
-                "cached": True,
-                "tiers": {
-                    "LOCK": len([p for p in cached if p.get("confidence_tier") == "LOCK"]),
-                    "FIRE": len([p for p in cached if p.get("confidence_tier") == "FIRE"]),
-                    "LOW":  len([p for p in cached if p.get("confidence_tier") == "LOW"])
-                }
-            })
+
+        cache_file = "mlb_props_cache.json"
+        cache_fresh = False
+
+        if os.path.exists(cache_file):
+            age_seconds = time.time() - os.path.getmtime(cache_file)
+            cache_fresh = age_seconds < 82800  # 23 hours
+
+        if cache_fresh:
+            props = load_props_from_file(cache_file)
+            if props:
+                logger.info(f"[MLB PROPS] Serving {len(props)} from cache")
+                return jsonify({
+                    "props":  props,
+                    "count":  len(props),
+                    "sport":  "MLB",
+                    "cached": True,
+                    "tiers": {
+                        "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                        "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                        "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
+                    }
+                })
+
+        logger.info("[MLB PROPS] Cache miss — fetching")
         props = _fetch_and_process_mlb_props()
+
         return jsonify({
             "props":  props,
             "count":  len(props),
             "sport":  "MLB",
-            "cached": False
+            "cached": False,
+            "tiers": {
+                "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
+            }
         })
+
     except Exception as e:
         logger.error(f"[MLB PROPS] Route error: {e}")
-        return jsonify({"props": [], "count": 0, "sport": "MLB", "error": str(e)}), 500
+        return jsonify({"error": str(e), "props": [], "count": 0}), 500
 
 @app.route("/player_props")
 def get_props():
@@ -1695,30 +1713,83 @@ def update_odds():
         logger.error(f"Failed to update odds: {e}")
 
 def _fetch_and_process_mlb_props():
-    """Fetch, group, and cache MLB player props. No EV filtering — no-vig probability only."""
-    from enrichment import cache_props_to_file
-    raw = fetch_player_props()
-    if not raw:
-        logger.warning("[MLB PROPS] No raw props returned")
+    """
+    Fetch, group, and cache MLB props.
+    Returns the processed props list.
+    """
+    try:
+        from odds_api import (
+            fetch_player_props as _fetch_player_props,
+            group_props_by_player as _group_props_by_player,
+        )
+        from enrichment import cache_props_to_file
+
+        logger.info("[MLB PROPS] Starting fetch...")
+
+        raw = _fetch_player_props()
+
+        if not raw:
+            logger.warning("[MLB PROPS] No raw props returned")
+            return []
+
+        logger.info(f"[MLB PROPS] {len(raw)} raw props — grouping now")
+
+        props = _group_props_by_player(raw)
+
+        logger.info(f"[MLB PROPS] {len(props)} props after grouping")
+
+        if not props:
+            logger.warning("[MLB PROPS] 0 props after grouping")
+            return []
+
+        cache_props_to_file(props, "mlb_props_cache.json")
+        logger.info(f"[MLB PROPS] Cached {len(props)} props ✅")
+
+        return props
+
+    except Exception as e:
+        logger.error(f"[MLB PROPS] _fetch_and_process failed: {e}", exc_info=True)
         return []
-    props = group_props_by_player(raw)
-    cache_props_to_file(props, "mlb_props_cache.json")
-    logger.info(f"[MLB PROPS] Cached {len(props)} props")
-    return props
 
 
 def _fetch_and_process_nhl_props():
-    """Fetch, group, and cache NHL player props. No EV filtering — no-vig probability only."""
-    from nhl_odds_api import fetch_nhl_props
-    from enrichment import cache_props_to_file
-    raw = fetch_nhl_props()
-    if not raw:
-        logger.warning("[NHL PROPS] No raw props returned")
+    """
+    Fetch, group, and cache NHL props.
+    Falls back to stale cache when all events return 422.
+    """
+    try:
+        from nhl_odds_api import fetch_nhl_props
+        from odds_api import group_props_by_player as _group_props_by_player
+        from enrichment import cache_props_to_file, load_props_from_file
+
+        logger.info("[NHL PROPS] Starting fetch...")
+
+        raw = fetch_nhl_props()
+
+        if not raw:
+            logger.warning("[NHL PROPS] No raw props — checking yesterday's cache")
+            stale = load_props_from_file("nhl_props_cache.json")
+            if stale:
+                logger.info(
+                    f"[NHL PROPS] Serving {len(stale)} stale props "
+                    f"(no fresh data available)"
+                )
+            return stale or []
+
+        props = _group_props_by_player(raw)
+
+        if not props:
+            logger.warning("[NHL PROPS] 0 after grouping")
+            return []
+
+        cache_props_to_file(props, "nhl_props_cache.json")
+        logger.info(f"[NHL PROPS] Cached {len(props)} ✅")
+
+        return props
+
+    except Exception as e:
+        logger.error(f"[NHL PROPS] failed: {e}", exc_info=True)
         return []
-    props = group_props_by_player(raw)
-    cache_props_to_file(props, "nhl_props_cache.json")
-    logger.info(f"[NHL PROPS] Cached {len(props)} props")
-    return props
 
 
 # Keep old names as aliases for backward compat with existing scheduler jobs
@@ -1931,6 +2002,35 @@ def refresh_props():
     except Exception as e:
         logger.error(f"[REFRESH] Error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/cache-check")
+def cache_check():
+    """Quick check of what's in prop cache files."""
+    from enrichment import load_props_from_file
+
+    def file_info(filename):
+        if not os.path.exists(filename):
+            return {"exists": False, "count": 0, "age_minutes": None, "sample": None}
+        age = (time.time() - os.path.getmtime(filename)) / 60
+        props = load_props_from_file(filename)
+        return {
+            "exists":      True,
+            "count":       len(props),
+            "age_minutes": round(age, 1),
+            "sample":      props[0] if props else None,
+            "tiers": {
+                "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
+            }
+        }
+
+    return jsonify({
+        "mlb":       file_info("mlb_props_cache.json"),
+        "nhl":       file_info("nhl_props_cache.json"),
+        "timestamp": datetime.utcnow().isoformat()
+    })
 
 
 @app.route("/api/debug/props-test")

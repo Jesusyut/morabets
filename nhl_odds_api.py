@@ -142,10 +142,28 @@ def fetch_props_for_event(event):
             _cache_set(cache_key, [])
             return []
 
-        # 429 = rate limited
+        # 429 = rate limited — back off and retry once
         if response.status_code == 429:
-            logger.warning("[NHL] Rate limited — slow down")
-            return []
+            logger.warning("[NHL] Rate limited — sleeping 10s")
+            time.sleep(10)
+            try:
+                response = requests.get(
+                    f"{BASE_URL}/sports/{SPORT_KEY}"
+                    f"/events/{event_id}/odds",
+                    params={
+                        "apiKey": ODDS_API_KEY,
+                        "regions": "us",
+                        "markets": ",".join(NHL_PROP_MARKETS),
+                        "oddsFormat": "american",
+                        "bookmakers": "draftkings,fanduel,betmgm,caesars,pointsbetus,betrivers,bovada,betonlineag,fanatics"
+                    },
+                    timeout=15
+                )
+                if response.status_code == 429:
+                    logger.warning("[NHL] Still rate limited — skipping event")
+                    return []
+            except Exception:
+                return []
 
         response.raise_for_status()
         _log_quota(response)
@@ -262,11 +280,16 @@ def fetch_nhl_props():
         f"[NHL] Fetching props for {len(events)} events"
     )
 
-    # max_workers=3 to avoid 429 rate limiting
+    # Sequential fetch (max_workers=1) to eliminate 429 rate limiting.
+    # NHL has 4-8 games/day so sequential is fast enough.
+    def fetch_props_for_event_with_delay(event):
+        time.sleep(1.5)
+        return fetch_props_for_event(event)
+
     all_props = []
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=1) as executor:
         results = list(
-            executor.map(fetch_props_for_event, events)
+            executor.map(fetch_props_for_event_with_delay, events)
         )
 
     for result in results:

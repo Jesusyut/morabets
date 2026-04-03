@@ -1167,6 +1167,7 @@
             const data = await propsRes.json();
             const envData = await envRes.json().catch(() => ({}));
             const rawProps = Array.isArray(data) ? data : (data.props || []);
+            console.log(`[BOARD] NHL props received:`, rawProps.length);
             allProps = rawProps; environmentData = envData.environments || {}; matchupData = {};
             if (allProps.length < 5) {
                 try {
