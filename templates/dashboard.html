@@ -346,9 +346,10 @@
             <button class="sport-tab" data-sport="nfl" type="button">🏈 NFL</button>
             <button class="sport-tab" data-sport="nhl" type="button">🏒 NHL</button>
         </div>
-        <div style="display:flex;gap:0.4rem;" id="view-mode-toggle">
+        <div style="display:flex;gap:0.4rem;align-items:center;" id="view-mode-toggle">
             <button id="mode-lines-btn" onclick="switchMode('lines')" class="view-btn active-view">🎯 Best Lines</button>
             <button id="mode-props-btn" onclick="switchMode('props')" class="view-btn">📊 Player Props</button>
+            <button id="refresh-btn" title="Refresh props (once per 30 min)" style="background:#E8F5E1;border:1px solid rgba(76,187,23,0.3);color:#2D6E0F;border-radius:0.5rem;padding:0.3rem 0.6rem;font-size:0.8rem;cursor:pointer;line-height:1;">🔄</button>
         </div>
     </div>
 
@@ -686,6 +687,38 @@
                 switchSport(this.getAttribute('data-sport'));
             });
         });
+
+        const refreshBtn = document.getElementById('refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async function() {
+                refreshBtn.disabled = true;
+                refreshBtn.textContent = '⏳';
+                refreshBtn.title = 'Refreshing…';
+                try {
+                    const res = await fetch('/api/refresh-props', { method: 'POST' });
+                    const data = await res.json();
+                    if (res.status === 429) {
+                        refreshBtn.title = data.message || 'Rate limited — try again later';
+                        refreshBtn.textContent = '🔄';
+                        refreshBtn.style.opacity = '0.5';
+                        setTimeout(() => { refreshBtn.style.opacity = '1'; }, 3000);
+                    } else {
+                        refreshBtn.textContent = '✅';
+                        refreshBtn.title = data.message || 'Refreshing in background…';
+                        setTimeout(() => {
+                            refreshBtn.textContent = '🔄';
+                            refreshBtn.title = 'Refresh props (once per 30 min)';
+                        }, 3000);
+                    }
+                } catch (err) {
+                    refreshBtn.textContent = '❌';
+                    refreshBtn.title = 'Refresh failed';
+                    setTimeout(() => { refreshBtn.textContent = '🔄'; }, 3000);
+                } finally {
+                    refreshBtn.disabled = false;
+                }
+            });
+        }
     });
 
     async function updatePlatformStatus() {

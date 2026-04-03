@@ -1,0 +1,855 @@
+Fix player props loading across all sports.
+Props are currently not loading because the 
+EV engine requirements broke the props pipeline.
+
+Props strategy: NO-VIG ONLY. No EV filtering.
+No EV thresholds. No passes_threshold requirement.
+Just: fetch props, pair Over/Under, calculate
+no-vig when both sides available, implied when 
+one side only, filter below 52%, sort by prob,
+cache and serve.
+
+DO NOT touch game lines (h2h/spreads/totals),
+EV engine, color scheme, affiliate links,
+TikTok pixel, Meta pixel, or scheduler timing.
+Only fix the props pipeline end to end.
+
+=== ROOT CAUSE CONFIRMED ===
+
+Two bugs broke props after recent updates:
+
+Bug 1 — VALID_BOOKS case mismatch (odds_api.py)
+  VALID_BOOKS = {"DraftKings", "FanDuel", "BetMGM"}
+  But API returns "draftkings", "fanduel", "betmgm"
+  lowercase from the bookmakers key field.
+  The title field returns "DraftKings" etc but the
+  filter was checking the wrong field inconsistently.
+  Result: all books silently filtered out = 0 props.
+
+Bug 2 — EV engine requirement on props
+  After the EV upgrade, group_props_by_player
+  calls evaluate_pick() from ev_engine.py which
+  requires a minimum number of books with BOTH
+  over AND under prices. Props often have 1-2 books
+  with only the over posted. EV engine rejects them.
+  Result: valid props filtered before display.
+
+=== TASK 1: REWRITE fetch_player_props() 
+IN odds_api.py ===
+
+Replace the entire fetch_player_props() function.
+Base this on the reference file that was working —
+same event loop structure, same market batches,
+but fix the book filter and add proper pairing.
+
+def fetch_player_props():
+    """
+    Fetch MLB player props for today's events.
+    
+    Official Odds API structure for player props:
+    GET /v4/sports/baseball_mlb/events (FREE)
+    then per event:
+    GET /v4/sports/baseball_mlb/events/{eventId}/odds
+        ?markets=batter_hits,batter_total_bases,...
+        &regions=us
+        &oddsFormat=american
+        &bookmakers=draftkings,fanduel,betmgm,...
+    
+    Outcome structure per official docs:
+    {
+      "name": "Over",            <- side
+      "description": "Judge",    <- player name
+      "price": -148,             <- American odds
+      "point": 1.5               <- the line
+    }
+    
+    Player name MUST come from outcome["description"]
+    Side MUST come from outcome["name"]
+    """
+    now    = datetime.utcnow()
+    future = now + timedelta(hours=24)
+    start  = now.strftime('%Y-%m-%dT%H:%M:%SZ')
+    end    = future.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    if not ODDS_API_KEY:
+        print("[PROPS] ERROR: ODDS_API_KEY not set")
+        return []
+
+    # Step 1: Get event list — FREE, no quota cost
+    try:
+        ev_resp = requests.get(
+            f"{BASE_URL}/sports/baseball_mlb/events",
+            params={
+                "apiKey":           ODDS_API_KEY,
+                "commenceTimeFrom": start,
+                "commenceTimeTo":   end,
+                "dateFormat":       "iso"
+            },
+            timeout=20
+        )
+        ev_resp.raise_for_status()
+        events = ev_resp.json()
+        print(f"[PROPS] {len(events)} MLB events today")
+    except Exception as e:
+        print(f"[PROPS] Events fetch failed: {e}")
+        return []
+
+    if not events:
+        print("[PROPS] No MLB events today")
+        return []
+
+    # MLB prop markets — confirmed working with API
+    # Batched to stay within quota cost limits
+    # Cost per batch per event = len(markets) x 1 region
+    BATCH_1 = [
+        "batter_hits",
+        "batter_total_bases",
+        "batter_home_runs"
+    ]
+    BATCH_2 = [
+        "pitcher_strikeouts",
+        "pitcher_hits_allowed",
+        "batter_rbis"
+    ]
+
+    # Books — use key names (lowercase) as required
+    # by the bookmakers parameter
+    # Per Odds API docs bookmakers param uses keys
+    # not titles e.g. "draftkings" not "DraftKings"
+    BOOKS = "draftkings,fanduel,betmgm,caesars,betrivers"
+
+    all_props = []
+
+    for event in events:
+        eid       = event.get("id")
+        home      = event.get("home_team", "")
+        away      = event.get("away_team", "")
+        game_time = event.get("commence_time", "")
+        matchup   = f"{away} @ {home}"
+
+        if not eid:
+            continue
+
+        for batch_idx, markets in enumerate(
+            [BATCH_1, BATCH_2]
+        ):
+            # Respect rate limits between batches
+            if batch_idx > 0:
+                time.sleep(0.5)
+
+            try:
+                resp = requests.get(
+                    f"{BASE_URL}/sports/baseball_mlb"
+                    f"/events/{eid}/odds",
+                    params={
+                        "apiKey":      ODDS_API_KEY,
+                        "regions":     "us",
+                        "markets":     ",".join(markets),
+                        "oddsFormat":  "american",
+                        "bookmakers":  BOOKS
+                    },
+                    timeout=20
+                )
+
+                # 422 = props not posted yet
+                # Normal early in the day
+                if resp.status_code == 422:
+                    print(
+                        f"[PROPS] Not posted: {matchup}"
+                    )
+                    continue
+
+                # 429 = rate limited
+                if resp.status_code == 429:
+                    print("[PROPS] Rate limited — wait")
+                    time.sleep(3)
+                    continue
+
+                resp.raise_for_status()
+                data = resp.json()
+
+                quota = resp.headers.get(
+                    "x-requests-remaining", "?"
+                )
+                print(
+                    f"[PROPS] {matchup} "
+                    f"batch {batch_idx} "
+                    f"quota={quota}"
+                )
+
+                for book in data.get("bookmakers", []):
+                    # Use title for display name
+                    book_title = book.get("title", "")
+                    if not book_title:
+                        continue
+
+                    for market in book.get(
+                        "markets", []
+                    ):
+                        market_key = market.get(
+                            "key", ""
+                        )
+                        outcomes = market.get(
+                            "outcomes", []
+                        )
+
+                        # Group outcomes by player
+                        # Per official docs:
+                        # description = player name
+                        # name = Over or Under
+                        player_map = {}
+
+                        for outcome in outcomes:
+                            player_name = (
+                                outcome.get(
+                                    "description", ""
+                                )
+                            )
+                            side  = outcome.get(
+                                "name", ""
+                            )
+                            price = outcome.get("price")
+                            point = outcome.get("point")
+
+                            if not player_name:
+                                continue
+                            if price is None:
+                                continue
+
+                            if player_name not in (
+                                player_map
+                            ):
+                                player_map[
+                                    player_name
+                                ] = {
+                                    "over_price":  None,
+                                    "under_price": None,
+                                    "line":        point
+                                }
+
+                            if side == "Over":
+                                player_map[
+                                    player_name
+                                ]["over_price"] = price
+                                player_map[
+                                    player_name
+                                ]["line"] = point
+                            elif side == "Under":
+                                player_map[
+                                    player_name
+                                ]["under_price"] = price
+
+                        # Build one row per player
+                        # Include under_price even if None
+                        # Downstream handles one-sided
+                        for pname, sides in (
+                            player_map.items()
+                        ):
+                            if sides[
+                                "over_price"
+                            ] is None:
+                                continue
+
+                            all_props.append({
+                                "player":      pname,
+                                "stat":        market_key,
+                                "line":        sides["line"],
+                                "over_price":  sides[
+                                    "over_price"
+                                ],
+                                "under_price": sides[
+                                    "under_price"
+                                ],
+                                # backward compat
+                                "odds":        sides[
+                                    "over_price"
+                                ],
+                                "bookmaker":   book_title,
+                                "home_team":   home,
+                                "away_team":   away,
+                                "matchup":     matchup,
+                                "game_time":   game_time,
+                                "sport":       "MLB"
+                            })
+
+            except Exception as e:
+                print(
+                    f"[PROPS] Error {matchup} "
+                    f"batch {batch_idx}: {e}"
+                )
+                continue
+
+    # Stat breakdown log
+    stat_counts = {}
+    for p in all_props:
+        k = p.get("stat", "?")
+        stat_counts[k] = stat_counts.get(k, 0) + 1
+
+    print(
+        f"[PROPS] {len(all_props)} raw props "
+        f"from {len(events)} events: {stat_counts}"
+    )
+    return all_props
+
+
+=== TASK 2: REWRITE group_props_by_player() 
+IN odds_api.py — NO EV, NO-VIG ONLY ===
+
+This is the critical fix. Remove ALL references
+to ev_engine, evaluate_pick, passes_threshold.
+Props use no-vig math only.
+
+Replace group_props_by_player() with:
+
+def group_props_by_player(props):
+    """
+    Group raw props by player+stat+line.
+    Calculate no-vig when both sides available.
+    Calculate implied when over only available.
+    Filter: min 52% no-vig, min 58% implied.
+    Sort: highest probability first.
+    NO EV ENGINE INVOLVEMENT.
+    """
+    from probability import (
+        no_vig_probability,
+        get_confidence_tier,
+        implied_probability_single,
+        get_confidence_tier_implied
+    )
+
+    # Try to import stat display helper
+    try:
+        from prop_deduplication import (
+            get_stat_display_name
+        )
+    except Exception:
+        def get_stat_display_name(stat):
+            return stat.replace("_", " ").title()
+
+    # Group all rows by player+stat+line
+    groups = {}
+
+    for p in props:
+        player = p.get("player", "")
+        stat   = p.get("stat", "")
+        line   = p.get("line")
+
+        if not player or not stat:
+            continue
+
+        key = f"{player}|{stat}|{line}"
+
+        if key not in groups:
+            groups[key] = {
+                "player":    player,
+                "stat":      stat,
+                "stat_label": get_stat_display_name(
+                    stat
+                ),
+                "line":      line,
+                "home_team": p.get("home_team", ""),
+                "away_team": p.get("away_team", ""),
+                "matchup":   p.get("matchup", ""),
+                "game_time": p.get("game_time", ""),
+                "sport":     p.get("sport", "MLB"),
+                "all_books": []
+            }
+
+        # Accept both paired and legacy shapes
+        over_p  = (
+            p.get("over_price") or p.get("odds")
+        )
+        under_p = p.get("under_price")
+
+        if over_p is not None:
+            groups[key]["all_books"].append({
+                "book":        p.get("bookmaker",""),
+                "over_price":  over_p,
+                "under_price": under_p
+            })
+
+    result = []
+
+    for key, group in groups.items():
+        books = group["all_books"]
+        if not books:
+            continue
+
+        # Separate two-sided from one-sided
+        two_sided = [
+            b for b in books
+            if b.get("over_price") is not None
+            and b.get("under_price") is not None
+        ]
+        one_sided = [
+            b for b in books
+            if b.get("over_price") is not None
+            and b.get("under_price") is None
+        ]
+
+        if two_sided:
+            # Full no-vig — use sharpest book
+            # (lowest combined implied = least vig)
+            def vig_sum(b):
+                def imp(o):
+                    return (
+                        100/(o+100) if o > 0
+                        else abs(o)/(abs(o)+100)
+                    )
+                return (
+                    imp(b["over_price"]) +
+                    imp(b["under_price"])
+                )
+
+            sharpest = min(two_sided, key=vig_sum)
+            best     = max(
+                two_sided,
+                key=lambda b: b["over_price"]
+            )
+
+            nv = no_vig_probability(
+                sharpest["over_price"],
+                sharpest["under_price"]
+            )
+
+            # Hard minimum: 52% no-vig
+            if nv < 52.0:
+                continue
+
+            tier = get_confidence_tier(nv)
+
+            result.append({
+                **group,
+                "all_books":       two_sided,
+                "no_vig_prob":     nv,
+                "prob_label":      "True Prob",
+                "prob_type":       "no_vig",
+                "confidence_tier": tier,
+                "best_book":       best["book"],
+                "best_over_price": best["over_price"],
+                "implied_only":    False,
+                "passes_threshold": False,
+                "ev_pct":          None,
+                "surfaced":        True,
+                "enriched":        True
+            })
+
+        elif one_sided:
+            # Implied only — single side
+            best    = max(
+                one_sided,
+                key=lambda b: b["over_price"]
+            )
+            over_p  = best["over_price"]
+            implied = implied_probability_single(
+                over_p
+            )
+
+            # Hard minimum: 58% implied
+            # (accounts for vig in single price)
+            if implied < 58.0:
+                continue
+
+            tier = get_confidence_tier_implied(implied)
+
+            result.append({
+                **group,
+                "all_books":       one_sided,
+                "no_vig_prob":     implied,
+                "prob_label":      "Implied",
+                "prob_type":       "implied",
+                "confidence_tier": tier,
+                "best_book":       best["book"],
+                "best_over_price": over_p,
+                "implied_only":    True,
+                "passes_threshold": False,
+                "ev_pct":          None,
+                "surfaced":        True,
+                "enriched":        True
+            })
+
+        else:
+            continue
+
+    # Sort: highest probability first
+    result.sort(
+        key=lambda p: -p.get("no_vig_prob", 0)
+    )
+
+    print(
+        f"[PROPS] {len(props)} raw → "
+        f"{len(result)} after grouping/filtering"
+    )
+    return result
+
+
+=== TASK 3: REWRITE NHL fetch_props_for_event()
+IN nhl_odds_api.py ===
+
+Apply the identical fix to NHL.
+The SAME pairing pattern — description for
+player name, name for Over/Under side.
+
+Verify the current file uses this exact pattern.
+If it does not match, replace the outcome loop:
+
+# CORRECT pattern — verify this exists exactly:
+player_map = {}
+
+for outcome in outcomes:
+    player_name = outcome.get("description", "")
+    side  = outcome.get("name", "")
+    price = outcome.get("price")
+    point = outcome.get("point")
+
+    if not player_name or price is None:
+        continue
+
+    if player_name not in player_map:
+        player_map[player_name] = {
+            "over_price":  None,
+            "under_price": None,
+            "line":        point
+        }
+
+    if side == "Over":
+        player_map[player_name]["over_price"] = price
+        player_map[player_name]["line"] = point
+    elif side == "Under":
+        player_map[player_name]["under_price"] = price
+
+for pname, sides in player_map.items():
+    if sides["over_price"] is None:
+        continue
+    props.append({
+        "player":      pname,
+        "stat":        market_key,
+        "stat_label":  NHL_STAT_LABELS.get(
+                           market_key,
+                           market_key.replace(
+                               "_"," "
+                           ).title()
+                       ),
+        "line":        sides["line"],
+        "over_price":  sides["over_price"],
+        "under_price": sides["under_price"],
+        "odds":        sides["over_price"],
+        "bookmaker":   book_title,
+        "home_team":   home_team,
+        "away_team":   away_team,
+        "matchup":     matchup,
+        "game_time":   game_time,
+        "sport":       "NHL"
+    })
+
+Also remove the VALID_BOOKS filter from NHL
+if it exists. Check with case-insensitive match
+instead:
+
+# Remove this kind of check entirely:
+# if book_title not in VALID_BOOKS:
+#     continue
+
+# Replace with — accept any book that returns data:
+if not book_title:
+    continue
+# That's it. All books accepted.
+
+
+=== TASK 4: FIX /api/mlb/props AND 
+/api/nhl/props ROUTES IN app.py ===
+
+The props routes call update_player_props() or
+fetch props and then call group_props_by_player().
+
+Currently they may also call evaluate_pick()
+from ev_engine or check passes_threshold.
+
+Find both routes and simplify to:
+
+@app.route("/api/mlb/props")
+def mlb_props():
+    try:
+        # Try cache first
+        from enrichment import load_props_from_file
+        
+        cached = load_props_from_file(
+            "mlb_props_cache.json"
+        )
+        if cached:
+            return jsonify({
+                "props":  cached,
+                "count":  len(cached),
+                "sport":  "MLB",
+                "cached": True,
+                "tiers": {
+                    "LOCK": len([
+                        p for p in cached
+                        if p.get(
+                            "confidence_tier"
+                        ) == "LOCK"
+                    ]),
+                    "FIRE": len([
+                        p for p in cached
+                        if p.get(
+                            "confidence_tier"
+                        ) == "FIRE"
+                    ]),
+                    "LOW": len([
+                        p for p in cached
+                        if p.get(
+                            "confidence_tier"
+                        ) == "LOW"
+                    ])
+                }
+            })
+
+        # No cache — fetch live
+        props = _fetch_and_process_mlb_props()
+        return jsonify({
+            "props":  props,
+            "count":  len(props),
+            "sport":  "MLB",
+            "cached": False
+        })
+
+    except Exception as e:
+        logger.error(f"[MLB PROPS] Route error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+Apply same pattern to /api/nhl/props using
+nhl_props_cache.json.
+
+Add a helper function for fresh prop fetch:
+
+def _fetch_and_process_mlb_props():
+    """Fetch, group, and cache MLB props."""
+    from odds_api import (
+        fetch_player_props,
+        group_props_by_player
+    )
+    from enrichment import cache_props_to_file
+
+    raw   = fetch_player_props()
+    if not raw:
+        return []
+
+    props = group_props_by_player(raw)
+    cache_props_to_file(props, "mlb_props_cache.json")
+    logger.info(
+        f"[MLB PROPS] Cached {len(props)} props"
+    )
+    return props
+
+
+def _fetch_and_process_nhl_props():
+    """Fetch, group, and cache NHL props."""
+    from nhl_odds_api import fetch_nhl_props
+    from odds_api import group_props_by_player
+    from enrichment import cache_props_to_file
+
+    raw   = fetch_nhl_props()
+    if not raw:
+        return []
+
+    props = group_props_by_player(raw)
+    cache_props_to_file(props, "nhl_props_cache.json")
+    logger.info(
+        f"[NHL PROPS] Cached {len(props)} props"
+    )
+    return props
+
+
+=== TASK 5: SCHEDULER — ONCE DAILY + 
+ON DEMAND REFRESH ===
+
+Props schedule: once per day at 10 AM ET
+(confirmed optimal timing from earlier research —
+sharp lines settled, props posted for day games)
+
+In the scheduler section of app.py:
+
+REMOVE any existing prop scheduler jobs:
+- update_player_props_morning
+- update_player_props_noon
+- update_player_props_afternoon
+- update_player_props_evening
+- update_nhl_props_morning etc
+
+REPLACE with these clean daily jobs:
+
+# MLB props — 10 AM ET daily
+scheduler.add_job(
+    func=lambda: _fetch_and_process_mlb_props(),
+    trigger="cron",
+    hour=10,
+    minute=0,
+    timezone="America/New_York",
+    id="mlb_props_daily",
+    name="MLB Props Daily 10AM ET",
+    replace_existing=True
+)
+
+# NHL props — 10:15 AM ET daily
+# 15 min offset to stagger API calls
+scheduler.add_job(
+    func=lambda: _fetch_and_process_nhl_props(),
+    trigger="cron",
+    hour=10,
+    minute=15,
+    timezone="America/New_York",
+    id="nhl_props_daily",
+    name="NHL Props Daily 10:15AM ET",
+    replace_existing=True
+)
+
+# Game lines (h2h/spreads/totals) refresh 
+# twice daily — lighter weight calls
+scheduler.add_job(
+    func=update_odds,
+    trigger="cron",
+    hour="10,18",
+    minute=30,
+    timezone="America/New_York",
+    id="game_lines_twice_daily",
+    name="Game Lines 10:30AM + 6:30PM ET",
+    replace_existing=True
+)
+
+Also add a manual refresh endpoint so users
+can trigger a fresh fetch from the dashboard
+without waiting for the scheduler:
+
+@app.route("/api/refresh-props", methods=["POST"])
+def refresh_props():
+    """
+    Manual props refresh endpoint.
+    Called by the dashboard refresh button.
+    Fetches fresh props from Odds API right now.
+    Burns API quota — protect with rate limiting.
+    """
+    # Simple rate limit: max once per 30 minutes
+    last_refresh = _cache_get(
+        "last_manual_refresh", ttl_seconds=1800
+    )
+    if last_refresh:
+        return jsonify({
+            "status":  "rate_limited",
+            "message": "Props refreshed less than "
+                       "30 minutes ago. "
+                       "Using cached data."
+        }), 429
+
+    try:
+        from threading import Thread
+        
+        def refresh_all():
+            _fetch_and_process_mlb_props()
+            _fetch_and_process_nhl_props()
+
+        t = Thread(target=refresh_all, daemon=True)
+        t.start()
+
+        _cache_set("last_manual_refresh", True)
+
+        return jsonify({
+            "status":  "refreshing",
+            "message": "Props updating in background. "
+                       "Reload in 30 seconds."
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+=== TASK 6: WIRE REFRESH BUTTON 
+IN dashboard.html ===
+
+The existing refresh button (🔄 icon in the 
+nav area) should call /api/refresh-props.
+
+Find the refresh button click handler and update:
+
+document.getElementById('refresh-btn')
+  ?.addEventListener('click', async function() {
+    const btn = this;
+    btn.textContent = '⏳';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch(
+        '/api/refresh-props',
+        { method: 'POST' }
+      );
+      const data = await res.json();
+
+      if (res.status === 429) {
+        btn.textContent = '✓ Fresh';
+        setTimeout(() => {
+          btn.textContent = '🔄';
+          btn.disabled = false;
+        }, 3000);
+      } else {
+        btn.textContent = '✓ Updating';
+        // Reload board after 30 seconds
+        setTimeout(async () => {
+          await loadSportBoard(
+            document.querySelector(
+              '.sport-tab.active-tab'
+            )?.dataset?.sport || 'mlb'
+          );
+          btn.textContent = '🔄';
+          btn.disabled = false;
+        }, 30000);
+      }
+    } catch(e) {
+      btn.textContent = '🔄';
+      btn.disabled = false;
+    }
+  });
+
+
+=== TASK 7: STARTUP CACHE PRIMING ===
+
+In background_initializer() make sure both
+MLB and NHL props are fetched on app startup
+so the board is never empty on first load:
+
+async def background_initializer():
+    import time
+    time.sleep(5)  # Wait for server to boot
+
+    try:
+        if not scheduler.running:
+            scheduler.start()
+            logger.info("Scheduler started")
+
+        # Prime game lines
+        try:
+            update_odds()
+            logger.info("✅ Game lines primed")
+        except Exception as e:
+            logger.warning(f"Game lines priming: {e}")
+
+        # Prime MLB props
+        try:
+            _fetch_and_process_mlb_props()
+            logger.info("✅ MLB props primed")
+        except Exception as e:
+            logger.warning(f"MLB props priming: {e}")
+
+        # Prime NHL props
+        try:
+            _fetch_and_process_nhl_props()
+            logger.info("✅ NHL props primed")
+        except Exception as e:
+            logger.warning(f"NHL props priming: {e}")
+
+        logger.info("🎉 Initialization complete")
+
+    except Exception as e:
+        logger.error(f"Init failed: {e}")
+
+
+=== TASK 8: R
