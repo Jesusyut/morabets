@@ -5,21 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4CBB17">
 
-    <title>Today's Picks – Mora Bets</title>
-    <meta name="description" content="Daily MLB player prop picks, EV-positive edge picks, and real probability data. Mora Bets — free daily picks powered by real math.">
-    <meta property="og:title" content="Mora Bets – Today's Best Picks">
-    <meta property="og:description" content="Edge picks + no-vig lines updated daily. Real math, no guessing.">
-    <meta property="og:url" content="https://morabets.com/">
+    <title>Mora Bets — Free No-Vig Sports Betting Picks | MLB &amp; NHL True Probability Tool</title>
+    <meta name="description" content="Free daily MLB and NHL betting picks with no-vig true probability calculations. Strip the sportsbook margin, find the best odds across FanDuel, DraftKings, and BetMGM. Real math, no subscription.">
+    <meta name="keywords" content="no vig betting, sports betting probability, MLB picks today, NHL picks today, remove vig odds, true probability calculator, sports betting math, line shopping tool, free betting picks, no vig odds calculator">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="Mora Bets">
+
     <meta property="og:type" content="website">
-    <meta property="og:image" content="https://morabets.com/assets/og-image.png">
+    <meta property="og:site_name" content="Mora Bets">
+    <meta property="og:title" content="Mora Bets — Free No-Vig Sports Betting Picks">
+    <meta property="og:description" content="Daily MLB and NHL picks with true no-vig probability. Strip the house margin and find the best line across all major books. Free forever.">
+    <meta property="og:url" content="https://morabets.com/dashboard">
+    <meta property="og:image" content="https://morabets.com/static/og-image.png">
+
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="canonical" href="https://morabets.com/">
+    <meta name="twitter:title" content="Mora Bets — Free No-Vig Sports Betting Tool">
+    <meta name="twitter:description" content="Daily MLB and NHL picks with true probability math. Free. No signup.">
+    <meta name="twitter:image" content="https://morabets.com/static/og-image.png">
+
+    <link rel="canonical" href="https://morabets.com/dashboard">
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
 
-    <!-- Google Fonts -->
+    <!-- Preconnect to external resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://api.the-odds-api.com">
+
+    <!-- Preload critical font -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Space+Grotesk:wght@400;600&display=swap" as="style">
+
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Structured data: WebApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Mora Bets",
+      "url": "https://morabets.com",
+      "description": "Free daily sports betting analytics tool that calculates no-vig true probability for MLB and NHL lines, surfaces the best available odds across FanDuel, DraftKings, and BetMGM, and identifies positive expected value picks.",
+      "applicationCategory": "SportsApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free — no subscription required"
+      },
+      "featureList": [
+        "No-vig probability calculation",
+        "Daily MLB betting picks",
+        "Daily NHL betting picks",
+        "Line shopping across FanDuel, DraftKings, BetMGM",
+        "Expected value calculation",
+        "True probability display"
+      ],
+      "provider": {
+        "@type": "Organization",
+        "name": "Mora Bets",
+        "url": "https://morabets.com"
+      }
+    }
+    </script>
 
     <!-- Affiliate config (single source of truth for all book links) -->
     <script src="/static/affiliate_config.js"></script>
@@ -75,6 +123,18 @@
     <!-- End Meta Pixel Code -->
 
     <style>
+        /* ── Accessibility / SEO ── */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
         /* ── Base ── */
         *, *::before, *::after { box-sizing: border-box; }
         body {
@@ -321,6 +381,9 @@
         </div>
     </div>
 </div>
+
+<!-- Visually hidden H1 for SEO — tells Google exactly what this page is about -->
+<h1 class="sr-only">Mora Bets — Free Daily No-Vig MLB and NHL Betting Picks with True Probability</h1>
 
 <!-- ── Main Tab Buttons ── -->
 <div style="max-width:1280px;margin:0 auto;padding:1rem 1rem 0;">
@@ -1587,5 +1650,42 @@
 <script>
   fbq('track', 'ViewContent', { content_name: 'Mora Bets Dashboard', content_type: 'product' });
 </script>
+
+<!-- SEO content section — static HTML readable by Google's crawler -->
+<section style="max-width:896px;margin:0 auto;padding:3rem 1rem;border-top:1px solid rgba(76,187,23,0.1);">
+  <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:700;color:#0F2406;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.04em;">How Mora Bets Works</h2>
+  <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;line-height:1.7;margin-bottom:1rem;">
+    Mora Bets pulls daily MLB and NHL betting lines from FanDuel, DraftKings, and BetMGM,
+    then removes the sportsbook's built-in margin — called the vig — to calculate the true
+    probability each line represents. This is called no-vig probability, and it tells you what
+    the sharp market actually believes about each game before the house edge distorts the number.
+  </p>
+  <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;line-height:1.7;margin-bottom:1rem;">
+    Every pick on today's board is sorted by true probability — highest confidence first.
+    The best available odds line across all major books is shown on each card so you can always
+    bet at the best price. This is called line shopping and over a full MLB season it compounds
+    into hundreds of dollars in additional profit from the same picks.
+  </p>
+  <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:1.125rem;font-weight:700;color:#0F2406;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.04em;margin-top:1.5rem;">Today's MLB Betting Picks</h3>
+  <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;line-height:1.7;margin-bottom:1rem;">
+    Today's MLB picks include moneylines, run lines, totals, and player props — all filtered to
+    lines where no-vig probability is 52% or higher. Only picks where the market genuinely favors
+    one side are shown. The board updates every morning at 10 AM ET when sharp lines open.
+  </p>
+  <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:1.125rem;font-weight:700;color:#0F2406;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.04em;margin-top:1.5rem;">What Is No-Vig Probability?</h3>
+  <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;line-height:1.7;margin-bottom:1rem;">
+    Standard -110 odds imply a 52.4% chance of winning — but that includes the sportsbook's
+    4.5% margin. Strip the vig and both sides of a 50/50 bet show 50% each, which is the true
+    market probability. When one side shows 60% true probability, the market is genuinely pricing
+    that outcome as a clear favorite — not just because of the vig.
+  </p>
+  <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:1.125rem;font-weight:700;color:#0F2406;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.04em;margin-top:1.5rem;">Free Sports Betting Tool — No Signup Required</h3>
+  <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;line-height:1.7;">
+    Mora Bets is completely free. No account, no subscription, no picks service. The daily board
+    is open to everyone. Open accounts at multiple books to always take the best available line —
+    that's the only free edge every bettor has access to.
+  </p>
+</section>
+
 </body>
 </html>

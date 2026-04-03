@@ -1,0 +1,693 @@
+You are helping implement SEO (Search Engine 
+Optimization) for morabets.com to rank on Google 
+for sports betting related searches.
+
+This is a Flask web application hosted on Render,
+connected to a custom domain morabets.com.
+
+Read every task fully before writing any code.
+Do not touch odds fetching, EV engine, caching,
+scheduler, affiliate links, TikTok pixel, or 
+Meta pixel unless explicitly listed below.
+
+=== WHY THIS MATTERS ===
+
+Google ranks pages based on three pillars:
+
+1. TECHNICAL SEO — Can Google crawl and index 
+   the site correctly? Fast load, mobile friendly,
+   proper HTML structure, meta tags.
+
+2. ON-PAGE SEO — Does the page content match
+   what people are searching for? Keywords in
+   the right places, structured data, headings.
+
+3. AUTHORITY — Do other sites link to this one?
+   We build this over time. The code tasks below
+   handle pillars 1 and 2 immediately.
+
+=== TARGET KEYWORDS ===
+
+Primary (high intent, sports betting):
+- "no vig betting tool"
+- "sports betting probability calculator"
+- "remove vig from sports odds"
+- "true odds calculator sports betting"
+- "best MLB betting picks today"
+- "MLB player props today"
+- "NHL betting picks today"
+- "free sports betting tool"
+- "no vig odds calculator"
+- "sports betting expected value calculator"
+
+Secondary (informational, builds traffic):
+- "what is the vig in sports betting"
+- "how to remove vig from odds"
+- "how to line shop sports betting"
+- "what is no vig probability"
+- "sports betting math explained"
+
+Local (Arizona launch):
+- "sports betting Arizona"
+- "Arizona MLB betting picks"
+- "FanDuel DraftKings Arizona odds"
+
+=== TASK 1: META TAGS ON EVERY PAGE ===
+
+In every Flask template add these meta tags
+inside the <head> section.
+
+Create a base template if one doesn't exist:
+templates/base.html
+
+If base.html already exists, update it.
+If pages don't extend a base, add to each.
+
+Add to <head> of dashboard.html:
+
+<meta charset="UTF-8">
+<meta name="viewport" 
+      content="width=device-width, 
+               initial-scale=1.0">
+
+<!-- Primary SEO meta tags -->
+<title>
+  Mora Bets — Free No-Vig Sports Betting 
+  Picks | MLB & NHL True Probability Tool
+</title>
+
+<meta name="description" 
+      content="Free daily MLB and NHL betting 
+      picks with no-vig true probability 
+      calculations. Strip the sportsbook margin, 
+      find the best odds across FanDuel, 
+      DraftKings, and BetMGM. Real math, 
+      no subscription.">
+
+<meta name="keywords" 
+      content="no vig betting, sports betting 
+      probability, MLB picks today, NHL picks 
+      today, remove vig odds, true probability 
+      calculator, sports betting math, 
+      line shopping tool, free betting picks, 
+      no vig odds calculator">
+
+<meta name="robots" content="index, follow">
+<meta name="author" content="Mora Bets">
+<link rel="canonical" 
+      href="https://morabets.com/dashboard">
+
+<!-- Open Graph — for social sharing -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Mora Bets">
+<meta property="og:title" 
+      content="Mora Bets — Free No-Vig Sports 
+      Betting Picks">
+<meta property="og:description" 
+      content="Daily MLB and NHL picks with 
+      true no-vig probability. Strip the house 
+      margin and find the best line across all 
+      major books. Free forever.">
+<meta property="og:url" 
+      content="https://morabets.com/dashboard">
+<meta property="og:image" 
+      content="https://morabets.com/static/
+      og-image.png">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" 
+      content="summary_large_image">
+<meta name="twitter:title" 
+      content="Mora Bets — Free No-Vig 
+      Sports Betting Tool">
+<meta name="twitter:description" 
+      content="Daily MLB and NHL picks with 
+      true probability math. Free. No signup.">
+<meta name="twitter:image" 
+      content="https://morabets.com/static/
+      og-image.png">
+
+Add to <head> of how_it_works.html:
+
+<title>
+  How No-Vig Betting Works — Mora Bets 
+  Sports Betting Math Explained
+</title>
+
+<meta name="description"
+      content="Learn how to remove the vig 
+      from sports betting odds to find the 
+      true probability of any bet. Mora Bets 
+      calculates this automatically for every 
+      MLB and NHL line, free.">
+
+<link rel="canonical" 
+      href="https://morabets.com/how-it-works">
+
+
+=== TASK 2: STRUCTURED DATA (SCHEMA.ORG) ===
+
+Structured data tells Google exactly what 
+your site is and helps it appear in rich 
+results — things like star ratings, FAQs,
+and knowledge panels in search results.
+
+Add this JSON-LD to the <head> of 
+dashboard.html:
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Mora Bets",
+  "url": "https://morabets.com",
+  "description": "Free daily sports betting 
+    analytics tool that calculates no-vig true 
+    probability for MLB and NHL lines, surfaces 
+    the best available odds across FanDuel, 
+    DraftKings, and BetMGM, and identifies 
+    positive expected value picks.",
+  "applicationCategory": "SportsApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "description": "Free — no subscription required"
+  },
+  "featureList": [
+    "No-vig probability calculation",
+    "Daily MLB betting picks",
+    "Daily NHL betting picks",
+    "Line shopping across FanDuel, DraftKings, BetMGM",
+    "Expected value calculation",
+    "True probability display"
+  ],
+  "provider": {
+    "@type": "Organization",
+    "name": "Mora Bets",
+    "url": "https://morabets.com"
+  }
+}
+</script>
+
+Add FAQ structured data to how_it_works.html:
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is the vig in sports betting?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The vig (vigorish) is the 
+          commission a sportsbook builds into 
+          every betting line. At standard -110 
+          odds on both sides, the sportsbook 
+          takes 4.5 cents of every dollar 
+          wagered. Mora Bets removes this margin 
+          to show you the true probability the 
+          market assigns to each outcome."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is no-vig probability?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No-vig probability is the true 
+          implied probability of a bet after 
+          removing the sportsbook's built-in 
+          margin. It tells you what the market 
+          actually believes about the outcome, 
+          without the house edge distorting 
+          the number."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does Mora Bets calculate 
+               true probability?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Mora Bets converts American odds 
+          to implied probability for both sides 
+          of a bet, sums them to find the total 
+          vig, then normalizes each side to 100% 
+          to reveal the true market consensus 
+          probability."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is Mora Bets free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Mora Bets is completely 
+          free. No subscription, no signup, 
+          no picks service. Just the math, 
+          updated daily before first pitch."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What sports does Mora Bets cover?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Mora Bets currently covers MLB 
+          (baseball) and NHL (hockey) with daily 
+          picks updated every morning. NFL 
+          coverage is available during the 
+          football season."
+      }
+    }
+  ]
+}
+</script>
+
+
+=== TASK 3: CREATE sitemap.xml ===
+
+A sitemap tells Google every URL on your site
+so it gets indexed faster and more completely.
+
+Add this route to app.py:
+
+@app.route("/sitemap.xml")
+def sitemap():
+    from flask import Response
+    from datetime import datetime
+    
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    
+    sitemap_xml = f"""<?xml version="1.0" 
+      encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/
+sitemap/0.9">
+
+  <url>
+    <loc>https://morabets.com/dashboard</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://morabets.com/how-it-works</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://morabets.com/</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+</urlset>"""
+    
+    return Response(
+        sitemap_xml,
+        mimetype="application/xml"
+    )
+
+
+=== TASK 4: CREATE robots.txt ===
+
+robots.txt tells Google which pages to 
+crawl and points to your sitemap.
+
+Add this route to app.py:
+
+@app.route("/robots.txt")
+def robots():
+    from flask import Response
+    
+    content = """User-agent: *
+Allow: /
+Allow: /dashboard
+Allow: /how-it-works
+
+Disallow: /api/
+Disallow: /api/debug/
+Disallow: /admin/
+
+Sitemap: https://morabets.com/sitemap.xml"""
+    
+    return Response(content, mimetype="text/plain")
+
+
+=== TASK 5: ADD SEO CONTENT TO 
+DASHBOARD PAGE ===
+
+Google cannot rank a page with no text content.
+The dashboard is currently all JavaScript-rendered
+cards which Google's crawler sees as empty.
+
+Add a static HTML section below the board
+that Google can read and index. This section
+is visible to search engines but designed
+to feel natural to users.
+
+Add this section at the BOTTOM of 
+dashboard.html, below all pick cards,
+above the footer:
+
+<section class="max-w-4xl mx-auto px-4 
+                py-12 border-t border-kelly/10">
+  
+  <h2 class="font-display font-bold text-2xl 
+              text-kelly-bg mb-4 uppercase 
+              tracking-wide">
+    How Mora Bets Works
+  </h2>
+  
+  <p class="text-text-secondary font-ui 
+             text-sm leading-relaxed mb-4">
+    Mora Bets pulls daily MLB and NHL betting 
+    lines from FanDuel, DraftKings, and BetMGM, 
+    then removes the sportsbook's built-in 
+    margin — called the vig — to calculate 
+    the true probability each line represents. 
+    This is called no-vig probability, and it 
+    tells you what the sharp market actually 
+    believes about each game before the house 
+    edge distorts the number.
+  </p>
+  
+  <p class="text-text-secondary font-ui 
+             text-sm leading-relaxed mb-4">
+    Every pick on today's board is sorted by 
+    true probability — highest confidence first. 
+    The best available odds line across all 
+    major books is shown on each card so you 
+    can always bet at the best price. This is 
+    called line shopping and over a full MLB 
+    season it compounds into hundreds of dollars 
+    in additional profit from the same picks.
+  </p>
+
+  <h3 class="font-display font-bold text-lg 
+              text-kelly-bg mb-3 uppercase 
+              tracking-wide mt-6">
+    Today's MLB Betting Picks
+  </h3>
+  
+  <p class="text-text-secondary font-ui 
+             text-sm leading-relaxed mb-4">
+    Today's MLB picks include moneylines, 
+    run lines, totals, and player props — 
+    all filtered to lines where no-vig 
+    probability is 52% or higher. Only picks 
+    where the market genuinely favors one 
+    side are shown. The board updates every 
+    morning at 10 AM ET when sharp lines open.
+  </p>
+
+  <h3 class="font-display font-bold text-lg 
+              text-kelly-bg mb-3 uppercase 
+              tracking-wide mt-6">
+    What Is No-Vig Probability?
+  </h3>
+  
+  <p class="text-text-secondary font-ui 
+             text-sm leading-relaxed mb-4">
+    Standard -110 odds imply a 52.4% chance 
+    of winning — but that includes the 
+    sportsbook's 4.5% margin. Strip the vig 
+    and both sides of a 50/50 bet show 50% 
+    each, which is the true market probability. 
+    When one side shows 60% true probability, 
+    the market is genuinely pricing that 
+    outcome as a clear favorite — not just 
+    because of the vig.
+  </p>
+
+  <h3 class="font-display font-bold text-lg 
+              text-kelly-bg mb-3 uppercase 
+              tracking-wide mt-6">
+    Free Sports Betting Tool — No Signup Required
+  </h3>
+  
+  <p class="text-text-secondary font-ui 
+             text-sm leading-relaxed">
+    Mora Bets is completely free. No account, 
+    no subscription, no picks service. 
+    The daily board is open to everyone. 
+    Open accounts at multiple books to always 
+    take the best available line — 
+    that's the only free edge every 
+    bettor has access to.
+  </p>
+
+</section>
+
+
+=== TASK 6: ADD H1 TAG TO DASHBOARD ===
+
+Google uses H1 as a primary signal for 
+what a page is about. The dashboard 
+currently has no H1 tag.
+
+Add this above the sport tab switcher
+in dashboard.html:
+
+<h1 class="sr-only">
+  Mora Bets — Free Daily No-Vig MLB and 
+  NHL Betting Picks with True Probability
+</h1>
+
+The sr-only class makes it visible to 
+Google but not visually intrusive on screen.
+
+Add sr-only CSS if not already present:
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+
+=== TASK 7: CREATE OG IMAGE ===
+
+The og:image is what appears when someone
+shares morabets.com on Twitter, iMessage,
+Discord etc. Currently pointing to a file
+that doesn't exist.
+
+Create a simple static image at:
+static/og-image.png
+
+Size: 1200x630 pixels
+
+If image generation isn't possible in Replit,
+create an HTML file that renders the OG image
+visually so it can be screenshotted:
+
+Create static/og-image.html:
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {
+    margin: 0;
+    width: 1200px;
+    height: 630px;
+    background: #ffffff;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid #4CBB17;
+  }
+  .container {
+    text-align: center;
+    padding: 60px;
+  }
+  .logo {
+    font-size: 72px;
+    font-weight: 900;
+    color: #0F2406;
+    letter-spacing: 4px;
+    margin-bottom: 8px;
+  }
+  .logo span {
+    color: #4CBB17;
+  }
+  .tagline {
+    font-size: 28px;
+    color: #6B9E5A;
+    margin-bottom: 40px;
+  }
+  .feature {
+    font-size: 22px;
+    color: #1A3D0A;
+    margin: 12px 0;
+  }
+  .badge {
+    display: inline-block;
+    background: #4CBB17;
+    color: white;
+    padding: 12px 32px;
+    border-radius: 50px;
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 32px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">MORA <span>BETS</span></div>
+  <div class="tagline">
+    Free daily picks · Real math
+  </div>
+  <div class="feature">
+    ✓ No-vig true probability
+  </div>
+  <div class="feature">
+    ✓ MLB & NHL picks updated daily
+  </div>
+  <div class="feature">
+    ✓ Best line across FanDuel, DraftKings, BetMGM
+  </div>
+  <div class="badge">morabets.com — Free Forever</div>
+</div>
+</body>
+</html>
+
+Screenshot this at 1200x630 and save as
+static/og-image.png
+
+
+=== TASK 8: PAGE SPEED OPTIMIZATIONS ===
+
+Google uses page speed as a ranking factor.
+Core Web Vitals score affects ranking directly.
+
+Add these to <head> of all templates:
+
+<!-- Preconnect to external resources -->
+<link rel="preconnect" 
+      href="https://fonts.googleapis.com">
+<link rel="preconnect" 
+      href="https://fonts.gstatic.com" 
+      crossorigin>
+<link rel="preconnect" 
+      href="https://api.the-odds-api.com">
+
+<!-- Preload critical font -->
+<link rel="preload" 
+      href="https://fonts.googleapis.com/css2?
+family=Barlow+Condensed:wght@700;800&
+family=Space+Grotesk:wght@400;600&display=swap"
+      as="style">
+
+Add to Flask app.py — compression and 
+cache headers:
+
+from flask import make_response
+
+@app.after_request
+def add_cache_headers(response):
+    """Add caching headers for static assets."""
+    if request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = (
+            'public, max-age=31536000'
+        )
+    elif request.path in [
+        '/sitemap.xml', '/robots.txt'
+    ]:
+        response.headers['Cache-Control'] = (
+            'public, max-age=86400'
+        )
+    elif request.path == '/dashboard':
+        response.headers['Cache-Control'] = (
+            'public, max-age=300'
+        )
+    return response
+
+
+=== TASK 9: ADD / ROOT REDIRECT ===
+
+Currently morabets.com/ may show nothing
+or a 404. Google should see content at
+the root domain.
+
+In app.py ensure this route exists:
+
+@app.route("/")
+def index():
+    return redirect(
+        url_for('dashboard'), 
+        code=301  # Permanent redirect
+    )
+
+301 is important — tells Google the 
+dashboard IS the homepage permanently.
+302 (temporary) does not pass SEO value.
+
+
+=== TASK 10: SUBMIT TO GOOGLE ===
+
+After all above is deployed, add a comment
+block in app.py with these manual steps
+the developer needs to complete:
+
+# SEO MANUAL STEPS AFTER DEPLOY:
+#
+# 1. Google Search Console
+#    Go to: search.google.com/search-console
+#    Add property: morabets.com
+#    Verify via HTML file OR DNS TXT record
+#    Submit sitemap: https://morabets.com/sitemap.xml
+#
+# 2. Google will crawl the site within 
+#    1-4 weeks of sitemap submission
+#
+# 3. Bing Webmaster Tools (second largest engine)
+#    Go to: bing.com/webmasters
+#    Import from Google Search Console
+#    One click import, catches Bing + DuckDuckGo
+#
+# 4. Monitor rankings after 4-6 weeks at:
+#    search.google.com/search-console
+#    Look for: Impressions, Clicks, 
+#    Average Position by query
+#
+# 5. First keywords likely to rank:
+#    "mora bets" (brand — fast)
+#    "no vig betting tool" (medium — 4-8 weeks)
+#    "MLB picks today free" (competitive — 3-6 months)
+
+
+=== CONSTRAINTS ===
+- Do not touch odds fetching, EV engine,
+  caching, scheduler, or affiliate links
+- Do not touch TikTok or Meta pixel
+- Do not modify any API routes
+- All meta tags must go in <head> not <body>
+- JSON-LD structured data goes in <head>
+- The SEO text section in Task 5 must be 
+  real HTML — not JavaScript rendered —
+  so Google's crawler can read it
+- 301 redirect not 302 for root route
+- robots.txt must disallow /api/ paths
+  so Google doesn't waste crawl budget
+  on API endpoints
+- sr-only H1 is valid SEO practice —
+  Google reads it, users don't see it

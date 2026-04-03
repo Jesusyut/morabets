@@ -231,8 +231,8 @@ def cache_exists(key, timeout=3):
 
 @app.route("/")
 def home():
-    """Redirect to dashboard"""
-    return redirect(url_for("dashboard"))
+    """Permanent redirect to dashboard — 301 passes SEO value to /dashboard."""
+    return redirect(url_for("dashboard"), code=301)
 
 
 
@@ -256,6 +256,67 @@ def admin_health():
         'email_subscribers': len(subs),
         'timestamp': datetime.utcnow().isoformat()
     })
+
+
+@app.route("/how-it-works")
+def how_it_works():
+    return render_template("how_it_works.html")
+
+
+@app.route("/sitemap.xml")
+def sitemap():
+    from flask import Response as _Response
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    sitemap_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://morabets.com/dashboard</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/how-it-works</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+</urlset>"""
+    return _Response(sitemap_xml, mimetype="application/xml")
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    from flask import Response as _Response
+    content = """User-agent: *
+Allow: /
+Allow: /dashboard
+Allow: /how-it-works
+
+Disallow: /api/
+Disallow: /api/debug/
+Disallow: /admin/
+
+Sitemap: https://morabets.com/sitemap.xml"""
+    return _Response(content, mimetype="text/plain")
+
+
+@app.after_request
+def add_cache_headers(response):
+    """Cache-Control headers for SEO and performance."""
+    if request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000"
+    elif request.path in ["/sitemap.xml", "/robots.txt"]:
+        response.headers["Cache-Control"] = "public, max-age=86400"
+    elif request.path == "/dashboard":
+        response.headers["Cache-Control"] = "public, max-age=300"
+    return response
 
 
 @app.route("/dashboard")
@@ -2086,5 +2147,31 @@ init_thread = Thread(target=background_initializer, daemon=True)
 init_thread.start()
 
 # Flask app startup
+# SEO MANUAL STEPS AFTER DEPLOY:
+#
+# 1. Google Search Console
+#    Go to: search.google.com/search-console
+#    Add property: morabets.com
+#    Verify via HTML file OR DNS TXT record
+#    Submit sitemap: https://morabets.com/sitemap.xml
+#
+# 2. Google will crawl the site within
+#    1-4 weeks of sitemap submission
+#
+# 3. Bing Webmaster Tools (second largest engine)
+#    Go to: bing.com/webmasters
+#    Import from Google Search Console
+#    One click import, catches Bing + DuckDuckGo
+#
+# 4. Monitor rankings after 4-6 weeks at:
+#    search.google.com/search-console
+#    Look for: Impressions, Clicks,
+#    Average Position by query
+#
+# 5. First keywords likely to rank:
+#    "mora bets" (brand — fast)
+#    "no vig betting tool" (medium — 4-8 weeks)
+#    "MLB picks today free" (competitive — 3-6 months)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

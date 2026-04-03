@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4CBB17">
+
+    <title>How No-Vig Betting Works — Mora Bets Sports Betting Math Explained</title>
+    <meta name="description" content="Learn how to remove the vig from sports betting odds to find the true probability of any bet. Mora Bets calculates this automatically for every MLB and NHL line, free.">
+    <meta name="keywords" content="no vig betting, remove vig from odds, sports betting math, true probability calculator, what is vig sports betting, implied probability, no vig odds calculator">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="Mora Bets">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Mora Bets">
+    <meta property="og:title" content="How No-Vig Betting Works — Mora Bets">
+    <meta property="og:description" content="Learn how to remove the vig from sports betting odds to find the true probability of any bet.">
+    <meta property="og:url" content="https://morabets.com/how-it-works">
+    <meta property="og:image" content="https://morabets.com/static/og-image.png">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="How No-Vig Betting Works — Mora Bets">
+    <meta name="twitter:description" content="Learn how to remove the vig from sports betting odds to find the true probability of any bet.">
+    <meta name="twitter:image" content="https://morabets.com/static/og-image.png">
+
+    <link rel="canonical" href="https://morabets.com/how-it-works">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- FAQ Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the vig in sports betting?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The vig (vigorish) is the commission a sportsbook builds into every betting line. At standard -110 odds on both sides, the sportsbook takes 4.5 cents of every dollar wagered. Mora Bets removes this margin to show you the true probability the market assigns to each outcome."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is no-vig probability?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No-vig probability is the true implied probability of a bet after removing the sportsbook's built-in margin. It tells you what the market actually believes about the outcome, without the house edge distorting the number."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does Mora Bets calculate true probability?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Mora Bets converts American odds to implied probability for both sides of a bet, sums them to find the total vig, then normalizes each side to 100% to reveal the true market consensus probability."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Mora Bets free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Mora Bets is completely free. No subscription, no signup, no picks service. Just the math, updated daily before first pitch."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What sports does Mora Bets cover?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Mora Bets currently covers MLB (baseball) and NHL (hockey) with daily picks updated every morning. NFL coverage is available during the football season."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #FFFFFF;
+            color: #0F2406;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0 0 4rem;
+        }
+        .page-header {
+            background: #0F2406;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: 0.06em;
+            text-decoration: none;
+        }
+        .logo span { color: #4CBB17; }
+        .back-link {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            color: #6B9E5A;
+            text-decoration: none;
+        }
+        .back-link:hover { color: #4CBB17; }
+        .content {
+            max-width: 768px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+        }
+        h1 {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #0F2406;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            font-size: 1rem;
+            color: #6B9E5A;
+            margin-bottom: 2.5rem;
+        }
+        h2 {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0F2406;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        p {
+            font-size: 0.9375rem;
+            color: #4A6741;
+            line-height: 1.75;
+            margin-bottom: 1rem;
+        }
+        .faq-item {
+            border: 1px solid rgba(76,187,23,0.15);
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1rem;
+            background: #F5FAF2;
+        }
+        .faq-q {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #0F2406;
+            margin-bottom: 0.5rem;
+        }
+        .faq-a {
+            font-size: 0.875rem;
+            color: #6B9E5A;
+            line-height: 1.7;
+            margin: 0;
+        }
+        .cta {
+            display: inline-block;
+            margin-top: 2rem;
+            background: #4CBB17;
+            color: #FFFFFF;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+        }
+        .cta:hover { background: #3da012; }
+    </style>
+</head>
+<body>
+
+<header class="page-header">
+    <a href="/dashboard" class="logo">MORA <span>BETS</span></a>
+    <a href="/dashboard" class="back-link">← Back to Today's Picks</a>
+</header>
+
+<main class="content">
+    <h1>How No-Vig Betting Works</h1>
+    <p class="subtitle">Sports betting math explained — no jargon, no fluff.</p>
+
+    <p>
+        Every sportsbook builds a margin — called the <strong>vig</strong> or vigorish — into every
+        betting line. At standard -110 odds on both sides, the book takes roughly 4.5 cents of every
+        dollar wagered regardless of outcome. Mora Bets strips this margin to show you the
+        <strong>true probability</strong> the market assigns to each outcome.
+    </p>
+
+    <h2>What Is the Vig?</h2>
+    <p>
+        If a coin flip were offered at -110 on both heads and tails, betting $110 on heads wins $100.
+        Betting $110 on tails wins $100. But if 50% of bettors take each side, the book collects
+        $220 in bets and pays out $210 — keeping $10. That $10 is the vig. Mora Bets removes it
+        to reveal the true 50/50 probability underneath.
+    </p>
+
+    <h2>How No-Vig Probability Is Calculated</h2>
+    <p>
+        Convert each side's American odds to implied probability. Sum the two probabilities —
+        the excess above 100% is the vig. Normalize each side by dividing by the total.
+        The result is the no-vig probability: what the sharp market actually believes,
+        without the house edge distorting the number.
+    </p>
+
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq-item">
+        <p class="faq-q">What is the vig in sports betting?</p>
+        <p class="faq-a">The vig is the commission a sportsbook builds into every betting line. At standard -110 odds on both sides, the sportsbook takes 4.5 cents of every dollar wagered. Mora Bets removes this margin to show you the true probability the market assigns to each outcome.</p>
+    </div>
+
+    <div class="faq-item">
+        <p class="faq-q">What is no-vig probability?</p>
+        <p class="faq-a">No-vig probability is the true implied probability of a bet after removing the sportsbook's built-in margin. It tells you what the market actually believes about the outcome, without the house edge distorting the number.</p>
+    </div>
+
+    <div class="faq-item">
+        <p class="faq-q">How does Mora Bets calculate true probability?</p>
+        <p class="faq-a">Mora Bets converts American odds to implied probability for both sides of a bet, sums them to find the total vig, then normalizes each side to 100% to reveal the true market consensus probability.</p>
+    </div>
+
+    <div class="faq-item">
+        <p class="faq-q">Is Mora Bets free?</p>
+        <p class="faq-a">Yes. Mora Bets is completely free. No subscription, no signup, no picks service. Just the math, updated daily before first pitch.</p>
+    </div>
+
+    <div class="faq-item">
+        <p class="faq-q">What sports does Mora Bets cover?</p>
+        <p class="faq-a">Mora Bets currently covers MLB (baseball) and NHL (hockey) with daily picks updated every morning. NFL coverage is available during the football season.</p>
+    </div>
+
+    <a href="/dashboard" class="cta">See Today's Picks →</a>
+</main>
+
+</body>
+</html>
