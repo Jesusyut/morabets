@@ -1110,29 +1110,49 @@ def api_quota():
 
 @app.route("/api/nhl/props")
 def api_nhl_props():
-    """NHL player props — cache first, live fetch fallback."""
+    """
+    NHL player props — serves from file cache only.
+    Never does a blocking live fetch (that takes 15-30s with sequential calls).
+    The background scheduler populates the cache at 10:15 AM ET daily.
+    """
     try:
         from enrichment import load_props_from_file
-        cached = load_props_from_file("nhl_props_cache.json")
-        if cached:
-            return jsonify({
-                "props":  cached,
-                "count":  len(cached),
-                "sport":  "NHL",
-                "cached": True,
-                "tiers": {
-                    "LOCK": len([p for p in cached if p.get("confidence_tier") == "LOCK"]),
-                    "FIRE": len([p for p in cached if p.get("confidence_tier") == "FIRE"]),
-                    "LOW":  len([p for p in cached if p.get("confidence_tier") == "LOW"])
-                }
-            })
-        props = _fetch_and_process_nhl_props()
+
+        cache_file = "nhl_props_cache.json"
+        cache_fresh = False
+
+        if os.path.exists(cache_file):
+            age_seconds = time.time() - os.path.getmtime(cache_file)
+            cache_fresh = age_seconds < 82800  # 23 hours
+
+        if cache_fresh:
+            props = load_props_from_file(cache_file)
+            if props:
+                logger.info(f"[NHL PROPS] Serving {len(props)} from cache")
+                return jsonify({
+                    "props":  props,
+                    "count":  len(props),
+                    "sport":  "NHL",
+                    "cached": True,
+                    "tiers": {
+                        "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                        "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                        "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
+                    }
+                })
+
+        # Cache is empty/stale — props haven't been posted yet for today.
+        # Return empty with a clear status so the dashboard can show a helpful message.
+        logger.info("[NHL PROPS] Cache empty — props not yet available for today")
         return jsonify({
-            "props":  props,
-            "count":  len(props),
+            "props":  [],
+            "count":  0,
             "sport":  "NHL",
-            "cached": False
+            "cached": False,
+            "status": "not_available",
+            "message": "NHL props update at 10 AM ET · Check back before first puck drop"
         })
+
     except Exception as e:
         logger.error(f"[NHL] /api/nhl/props error: {e}")
         return jsonify({"props": [], "count": 0, "sport": "NHL", "error": str(e)}), 500

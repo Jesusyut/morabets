@@ -49,13 +49,17 @@ def _log_quota(response):
 
 def fetch_nhl_events():
     """
-    Step 1 — Get list of today's NHL events.
+    Step 1 — Get list of NHL events within the next 24 hours.
 
     Endpoint: GET /v4/sports/icehockey_nhl/events
     Cost: FREE — does not count against quota.
-    Returns: list of dicts with id, home_team,
-             away_team, commence_time.
+
+    We filter to the next 24 hours after fetching to:
+    - Avoid fetching props for games 2-3 days out (they're never posted yet)
+    - Reduce sequential API calls (saves quota and time)
     """
+    from datetime import datetime, timezone, timedelta
+
     if not ODDS_API_KEY:
         logger.error("[NHL] ODDS_API_KEY not set")
         return []
@@ -75,8 +79,28 @@ def fetch_nhl_events():
             timeout=15
         )
         response.raise_for_status()
-        events = response.json()
-        logger.info(f"[NHL] Fetched {len(events)} events (free)")
+        all_events = response.json()
+
+        # Filter to only games starting within the next 24 hours.
+        # Games beyond 24h never have props posted yet — fetching them
+        # wastes API quota and adds unnecessary delay.
+        now = datetime.now(timezone.utc)
+        cutoff = now + timedelta(hours=24)
+        events = []
+        for e in all_events:
+            try:
+                ct = datetime.fromisoformat(
+                    e["commence_time"].replace("Z", "+00:00")
+                )
+                if ct <= cutoff:
+                    events.append(e)
+            except Exception:
+                events.append(e)
+
+        logger.info(
+            f"[NHL] {len(events)} events within 24h "
+            f"(of {len(all_events)} total)"
+        )
         _cache_set("nhl_events", events)
         return events
 
@@ -281,9 +305,9 @@ def fetch_nhl_props():
     )
 
     # Sequential fetch (max_workers=1) to eliminate 429 rate limiting.
-    # NHL has 4-8 games/day so sequential is fast enough.
+    # 0.8s delay is enough to stay under rate limits with one worker.
     def fetch_props_for_event_with_delay(event):
-        time.sleep(1.5)
+        time.sleep(0.8)
         return fetch_props_for_event(event)
 
     all_props = []
