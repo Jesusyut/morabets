@@ -1,0 +1,672 @@
+Add an email gate to Mora Bets dashboard.
+Every first-time visitor must enter their 
+email to access the board. Simple, light,
+and stores emails for export.
+
+DO NOT touch odds fetching, EV engine,
+caching, scheduler, affiliate links,
+TikTok pixel, Meta pixel, or any 
+existing routes beyond what is listed.
+
+=== TASK 1: CREATE EMAIL GATE POPUP ===
+
+In templates/dashboard.html add this popup
+that appears BEFORE the user sees any picks.
+
+The popup covers the screen on first visit.
+It goes away only after email is submitted.
+It never shows again to the same browser
+after submission (use localStorage flag).
+
+Add this HTML just after <body> opens:
+
+<!-- Email Gate -->
+<div id="email-gate" 
+     class="fixed inset-0 z-[9999] 
+            flex items-center justify-center
+            bg-white">
+  
+  <div class="w-full max-w-md mx-4 
+              text-center px-8 py-10">
+    
+    <!-- Logo -->
+    <div class="flex items-center 
+                justify-center gap-2 mb-6">
+      <div class="w-10 h-10 bg-kelly 
+                  rounded-lg flex items-center 
+                  justify-center">
+        <svg width="22" height="22" 
+             viewBox="0 0 20 20" fill="none">
+          <path d="M3 14 L8 7 L12 10 L17 3" 
+                stroke="white" stroke-width="2.5" 
+                stroke-linecap="round"
+                stroke-linejoin="round"/>
+          <circle cx="17" cy="3" r="2" 
+                  fill="white"/>
+        </svg>
+      </div>
+      <div class="text-left leading-none">
+        <div class="font-display font-black 
+                    text-kelly-bg text-xl 
+                    tracking-widest uppercase">
+          MORA
+        </div>
+        <div class="font-display font-black 
+                    text-kelly text-xl 
+                    tracking-widest uppercase 
+                    -mt-1">
+          BETS
+        </div>
+      </div>
+    </div>
+
+    <!-- Headline -->
+    <h1 class="font-display font-black 
+                text-3xl uppercase 
+                tracking-wide text-kelly-bg 
+                leading-tight mb-2">
+      Free Daily Picks.<br>
+      <span class="text-kelly">Real Math.</span>
+    </h1>
+
+    <!-- Subheadline -->
+    <p class="font-ui text-sm 
+               text-text-secondary 
+               leading-relaxed mb-2">
+      No-vig true probability for every 
+      MLB and NHL line. Updated every 
+      morning before first pitch.
+    </p>
+
+    <!-- Urgency -->
+    <div class="bg-kelly-surface border 
+                border-kelly/20 rounded-xl 
+                px-4 py-3 mb-6">
+      <p class="font-display font-bold 
+                 text-kelly-bg text-sm 
+                 uppercase tracking-wide">
+        Free access ends September 1st
+      </p>
+      <div class="flex items-center 
+                  justify-center gap-2 mt-1">
+        <span class="text-2xl font-black 
+                     font-data text-kelly"
+              id="user-counter">
+          —
+        </span>
+        <span class="text-xs font-ui 
+                     text-text-secondary">
+          of 10,000 free spots claimed
+        </span>
+      </div>
+      <div class="w-full bg-kelly/10 
+                  rounded-full h-1.5 mt-2">
+        <div class="bg-kelly h-1.5 
+                    rounded-full transition-all"
+             id="counter-bar"
+             style="width: 0%">
+        </div>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <form id="gate-form" class="space-y-3">
+      
+      <input type="text"
+             id="gate-name"
+             placeholder="First name"
+             autocomplete="given-name"
+             class="w-full bg-off-white 
+                    border border-kelly/20 
+                    rounded-xl px-4 py-3 
+                    font-ui text-sm 
+                    text-kelly-bg 
+                    placeholder-green-muted
+                    focus:outline-none 
+                    focus:border-kelly
+                    transition-colors">
+
+      <input type="email"
+             id="gate-email"
+             placeholder="Your email address"
+             autocomplete="email"
+             required
+             class="w-full bg-off-white 
+                    border border-kelly/20 
+                    rounded-xl px-4 py-3 
+                    font-ui text-sm 
+                    text-kelly-bg 
+                    placeholder-green-muted
+                    focus:outline-none 
+                    focus:border-kelly
+                    transition-colors">
+
+      <div id="gate-error"
+           class="hidden text-red-500 
+                  text-xs font-ui">
+      </div>
+
+      <button type="submit"
+              id="gate-submit"
+              class="w-full bg-kelly 
+                     text-white font-display 
+                     font-bold text-base 
+                     uppercase tracking-wide 
+                     py-4 rounded-xl 
+                     hover:bg-kelly-dark 
+                     transition-colors">
+        Get Free Access →
+      </button>
+
+    </form>
+
+    <!-- Fine print -->
+    <p class="text-xs font-ui 
+               text-green-muted mt-4 
+               leading-relaxed">
+      Free forever for the first 10,000 users.
+      No credit card. No spam.
+      Picks update daily before first pitch.
+    </p>
+
+    <!-- Instagram CTA -->
+    <div class="mt-4 pt-4 
+                border-t border-kelly/10">
+      <p class="text-xs font-ui 
+                 text-text-secondary">
+        Get picks in your story daily →
+        <a href="https://instagram.com/MoraBets"
+           target="_blank"
+           class="text-kelly font-semibold 
+                  hover:underline">
+          Follow @MoraBets
+        </a>
+      </p>
+    </div>
+
+  </div>
+
+</div>
+
+
+=== TASK 2: EMAIL GATE JAVASCRIPT ===
+
+Add this script at the bottom of 
+dashboard.html before </body>:
+
+<script>
+(function() {
+
+  // Check if already submitted this browser
+  const hasAccess = localStorage.getItem(
+    'mora_access'
+  );
+  
+  const gate = document.getElementById(
+    'email-gate'
+  );
+
+  if (hasAccess) {
+    // Already signed up — hide gate immediately
+    if (gate) gate.style.display = 'none';
+    return;
+  }
+
+  // Load and display subscriber count
+  async function loadCounter() {
+    try {
+      const res = await fetch('/api/subscriber-count');
+      const data = await res.json();
+      const count = data.count || 0;
+      const pct = Math.min(
+        (count / 10000) * 100, 100
+      ).toFixed(1);
+
+      const counterEl = document.getElementById(
+        'user-counter'
+      );
+      const barEl = document.getElementById(
+        'counter-bar'
+      );
+
+      if (counterEl) {
+        // Animate count up
+        let start = 0;
+        const end = count;
+        const duration = 1000;
+        const step = end / (duration / 16);
+        
+        const timer = setInterval(() => {
+          start += step;
+          if (start >= end) {
+            start = end;
+            clearInterval(timer);
+          }
+          counterEl.textContent = (
+            Math.floor(start).toLocaleString()
+          );
+        }, 16);
+      }
+
+      if (barEl) {
+        setTimeout(() => {
+          barEl.style.width = pct + '%';
+        }, 100);
+      }
+
+    } catch(e) {
+      const counterEl = document.getElementById(
+        'user-counter'
+      );
+      if (counterEl) counterEl.textContent = '0';
+    }
+  }
+
+  loadCounter();
+
+  // Handle form submission
+  const form = document.getElementById(
+    'gate-form'
+  );
+  const errorEl = document.getElementById(
+    'gate-error'
+  );
+  const submitBtn = document.getElementById(
+    'gate-submit'
+  );
+
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById(
+        'gate-email'
+      )?.value?.trim();
+      const name = document.getElementById(
+        'gate-name'
+      )?.value?.trim();
+
+      // Basic validation
+      if (!email || !email.includes('@')) {
+        errorEl.textContent = (
+          'Please enter a valid email address.'
+        );
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      errorEl.classList.add('hidden');
+      submitBtn.textContent = 'Getting your access...';
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/gate-signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, name })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          // Grant access
+          localStorage.setItem('mora_access', '1');
+          localStorage.setItem('mora_email', email);
+
+          // Animate gate out
+          gate.style.transition = (
+            'opacity 0.4s ease'
+          );
+          gate.style.opacity = '0';
+          setTimeout(() => {
+            gate.style.display = 'none';
+          }, 400);
+
+        } else {
+          // Still grant access even if 
+          // server had an issue
+          localStorage.setItem('mora_access', '1');
+          gate.style.display = 'none';
+        }
+
+      } catch(err) {
+        // Network error — still grant access
+        // Never block user for server issues
+        localStorage.setItem('mora_access', '1');
+        gate.style.display = 'none';
+      }
+    });
+  }
+
+})();
+</script>
+
+
+=== TASK 3: BACKEND ROUTES IN app.py ===
+
+Add these two routes:
+
+import csv
+from datetime import datetime
+
+EMAIL_LIST_FILE = 'email_subscribers.csv'
+
+@app.route('/api/gate-signup', methods=['POST'])
+def gate_signup():
+    """
+    Save email from gate form.
+    Always returns success so gate 
+    never blocks a user.
+    """
+    try:
+        data = request.json or {}
+        email = data.get('email', '').strip().lower()
+        name  = data.get('name', '').strip()
+
+        if not email or '@' not in email:
+            return jsonify({
+                "success": False,
+                "error": "Invalid email"
+            }), 400
+
+        # Check if already exists
+        existing = _load_emails()
+        if email in existing:
+            logger.info(
+                f"[GATE] Returning user: {email}"
+            )
+            return jsonify({
+                "success": True,
+                "existing": True
+            })
+
+        # Save to CSV
+        _save_email(email, name)
+
+        count = len(_load_emails())
+        logger.info(
+            f"[GATE] New signup: {email} "
+            f"(total: {count})"
+        )
+
+        return jsonify({
+            "success": True,
+            "count":   count
+        })
+
+    except Exception as e:
+        logger.error(f"[GATE] Signup error: {e}")
+        # Always return success to never 
+        # block a user from the dashboard
+        return jsonify({"success": True})
+
+
+@app.route('/api/subscriber-count')
+def subscriber_count():
+    """Return current subscriber count."""
+    try:
+        count = len(_load_emails())
+        return jsonify({
+            "count": count,
+            "spots_remaining": max(
+                0, 10000 - count
+            )
+        })
+    except Exception:
+        return jsonify({"count": 0})
+
+
+@app.route('/api/subscribers/export')
+def export_subscribers():
+    """
+    Export full email list as CSV.
+    Add a secret key check before using 
+    in production.
+    """
+    try:
+        from flask import send_file
+        if not os.path.exists(EMAIL_LIST_FILE):
+            return jsonify({"error": "No list yet"})
+        return send_file(
+            EMAIL_LIST_FILE,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='mora_bets_emails.csv'
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def _load_emails():
+    """Load all emails from CSV file."""
+    emails = set()
+    try:
+        if os.path.exists(EMAIL_LIST_FILE):
+            with open(
+                EMAIL_LIST_FILE, 'r'
+            ) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get('email'):
+                        emails.add(
+                            row['email'].lower()
+                        )
+    except Exception as e:
+        logger.error(
+            f"[GATE] Load emails error: {e}"
+        )
+    return emails
+
+
+def _save_email(email: str, name: str = ''):
+    """Append new email to CSV file."""
+    try:
+        file_exists = os.path.exists(
+            EMAIL_LIST_FILE
+        )
+        with open(
+            EMAIL_LIST_FILE, 'a', newline=''
+        ) as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    'email', 'name', 
+                    'signed_up_at'
+                ]
+            )
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow({
+                'email':         email,
+                'name':          name,
+                'signed_up_at':  datetime.utcnow(
+                ).isoformat()
+            })
+    except Exception as e:
+        logger.error(
+            f"[GATE] Save email error: {e}"
+        )
+
+
+=== TASK 4: INSTAGRAM BANNER 
+INSIDE DASHBOARD ===
+
+After the email gate is passed and the 
+user is inside the dashboard, show one 
+small banner at the top of the picks board.
+
+Add this just above the picks board 
+section in dashboard.html:
+
+<div id="ig-banner"
+     class="max-w-7xl mx-auto px-4 
+            mb-4 mt-2">
+  <div class="bg-kelly-surface border 
+              border-kelly/20 rounded-xl 
+              px-4 py-3 flex items-center 
+              justify-between gap-3">
+    <p class="font-ui text-sm 
+               text-text-secondary">
+      📲 Get today's best picks in 
+      your Instagram stories —
+      <a href="https://instagram.com/MoraBets"
+         target="_blank"
+         class="text-kelly font-semibold 
+                hover:underline">
+        Follow @MoraBets
+      </a>
+      and DM
+      <span class="font-bold text-kelly-bg">
+        'new user'
+      </span>
+      for your lifetime free promo code
+    </p>
+    <button onclick="
+      document.getElementById(
+        'ig-banner'
+      ).style.display='none';
+      localStorage.setItem(
+        'ig_banner_dismissed','1'
+      );"
+            class="text-green-muted 
+                   hover:text-kelly-bg 
+                   text-lg flex-shrink-0">
+      ×
+    </button>
+  </div>
+</div>
+
+<script>
+// Hide if already dismissed
+if (localStorage.getItem('ig_banner_dismissed')) {
+  const b = document.getElementById('ig-banner');
+  if (b) b.style.display = 'none';
+}
+</script>
+
+
+=== TASK 5: ADMIN EMAIL VIEW ===
+
+Add a simple admin page to see signups:
+
+@app.route('/admin/emails')
+def admin_emails():
+    """Quick view of email signups."""
+    try:
+        rows = []
+        if os.path.exists(EMAIL_LIST_FILE):
+            with open(EMAIL_LIST_FILE, 'r') as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
+        
+        total = len(rows)
+        recent = rows[-10:][::-1]
+        
+        html = f"""
+        <html>
+        <head>
+          <title>Mora Bets Emails</title>
+          <style>
+            body {{
+              font-family: Inter, sans-serif;
+              max-width: 800px;
+              margin: 40px auto;
+              padding: 0 20px;
+              background: #f5faf2;
+            }}
+            h1 {{ color: #0f2406; }}
+            .count {{
+              font-size: 48px;
+              font-weight: 900;
+              color: #4cbb17;
+            }}
+            table {{
+              width: 100%;
+              border-collapse: collapse;
+              background: white;
+              border-radius: 12px;
+              overflow: hidden;
+              margin-top: 20px;
+            }}
+            th {{
+              background: #0f2406;
+              color: white;
+              padding: 12px;
+              text-align: left;
+              font-size: 12px;
+              text-transform: uppercase;
+            }}
+            td {{
+              padding: 10px 12px;
+              border-bottom: 1px solid #e8f5e1;
+              font-size: 13px;
+            }}
+            .export {{
+              display: inline-block;
+              background: #4cbb17;
+              color: white;
+              padding: 10px 20px;
+              border-radius: 8px;
+              text-decoration: none;
+              font-weight: bold;
+              margin-top: 16px;
+            }}
+          </style>
+        </head>
+        <body>
+          <h1>Mora Bets Email List</h1>
+          <div class="count">{total}</div>
+          <p>total signups · 
+             {10000 - total} spots remaining</p>
+          <a href="/api/subscribers/export" 
+             class="export">
+            Export CSV
+          </a>
+          <table>
+            <tr>
+              <th>Email</th>
+              <th>Name</th>
+              <th>Signed Up</th>
+            </tr>
+            {''.join(f"""
+            <tr>
+              <td>{r.get('email','')}</td>
+              <td>{r.get('name','—')}</td>
+              <td>{r.get('signed_up_at','')[:10]}</td>
+            </tr>
+            """ for r in recent)}
+          </table>
+          <p style="color:#6b9e5a;font-size:12px;
+                    margin-top:16px;">
+            Showing 10 most recent signups
+          </p>
+        </body>
+        </html>
+        """
+        return html
+
+    except Exception as e:
+        return f"Error: {e}", 500
+
+
+=== CONSTRAINTS ===
+- Gate NEVER blocks access if server errors
+  Always grant localStorage access on any failure
+- Gate only shows once per browser ever
+- Returning users (localStorage set) 
+  skip gate instantly — no flicker
+- Email is the only required field
+  Name is optional
+- Counter animates up from 0 to real number
+  on every gate load
+- Instagram banner dismisses permanently
+  per browser
+- CSV export at /api/subscribers/export
+  Admin view at /admin/emails
+- Do not touch any existing routes
+- Do not touch EV engine or odds fetching
+- Do not touch color scheme
+- Do not touch affiliate links
+- Do not touch TikTok or Meta pixel

@@ -335,6 +335,79 @@
 </head>
 <body>
 
+<!-- ── Email Gate ── -->
+<div id="email-gate"
+     style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#ffffff;">
+  <div style="width:100%;max-width:448px;margin:0 1rem;text-align:center;padding:2.5rem 2rem;">
+
+    <!-- Logo -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:1.5rem;">
+      <div style="width:2.5rem;height:2.5rem;background:#4CBB17;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;">
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
+          <path d="M3 14 L8 7 L12 10 L17 3" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="17" cy="3" r="2" fill="white"/>
+        </svg>
+      </div>
+      <div style="text-align:left;line-height:1;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;color:#0F2406;font-size:1.25rem;letter-spacing:0.12em;text-transform:uppercase;">MORA</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;color:#4CBB17;font-size:1.25rem;letter-spacing:0.12em;text-transform:uppercase;margin-top:-2px;">BETS</div>
+      </div>
+    </div>
+
+    <!-- Headline -->
+    <h1 style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.875rem;text-transform:uppercase;letter-spacing:0.04em;color:#0F2406;line-height:1.2;margin-bottom:0.5rem;">
+      Free Daily Picks.<br>
+      <span style="color:#4CBB17;">Real Math.</span>
+    </h1>
+
+    <!-- Subheadline -->
+    <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;line-height:1.6;margin-bottom:0.5rem;">
+      No-vig true probability for every MLB and NHL line.<br>Updated every morning before first pitch.
+    </p>
+
+    <!-- Urgency bar -->
+    <div style="background:#F5FAF2;border:1px solid rgba(76,187,23,0.2);border-radius:0.75rem;padding:0.75rem 1rem;margin-bottom:1.5rem;">
+      <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#0F2406;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.04em;margin:0 0 0.25rem;">
+        Free access ends September 1st
+      </p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:0.5rem;">
+        <span id="user-counter" style="font-size:1.5rem;font-weight:900;font-family:'Barlow Condensed',sans-serif;color:#4CBB17;">—</span>
+        <span style="font-size:0.75rem;font-family:'Inter',sans-serif;color:#6B9E5A;">of 10,000 free spots claimed</span>
+      </div>
+      <div style="width:100%;background:rgba(76,187,23,0.1);border-radius:9999px;height:6px;">
+        <div id="counter-bar" style="background:#4CBB17;height:6px;border-radius:9999px;width:0%;transition:width 0.8s ease;"></div>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <form id="gate-form" style="display:flex;flex-direction:column;gap:0.75rem;">
+      <input type="text" id="gate-name" placeholder="First name (optional)" autocomplete="given-name"
+             style="width:100%;box-sizing:border-box;background:#F5FAF2;border:1px solid rgba(76,187,23,0.2);border-radius:0.75rem;padding:0.75rem 1rem;font-family:'Inter',sans-serif;font-size:0.875rem;color:#0F2406;outline:none;">
+      <input type="email" id="gate-email" placeholder="Your email address" autocomplete="email" required
+             style="width:100%;box-sizing:border-box;background:#F5FAF2;border:1px solid rgba(76,187,23,0.2);border-radius:0.75rem;padding:0.75rem 1rem;font-family:'Inter',sans-serif;font-size:0.875rem;color:#0F2406;outline:none;">
+      <div id="gate-error" style="display:none;color:#ef4444;font-size:0.75rem;font-family:'Inter',sans-serif;"></div>
+      <button type="submit" id="gate-submit"
+              style="width:100%;background:#4CBB17;color:#ffffff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:0.06em;padding:1rem;border:none;border-radius:0.75rem;cursor:pointer;">
+        Get Free Access →
+      </button>
+    </form>
+
+    <!-- Fine print -->
+    <p style="font-size:0.75rem;font-family:'Inter',sans-serif;color:#A0BF96;margin-top:1rem;line-height:1.6;">
+      Free forever for the first 10,000 users. No credit card. No spam.<br>Picks update daily before first pitch.
+    </p>
+
+    <!-- Instagram CTA -->
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(76,187,23,0.1);">
+      <p style="font-size:0.75rem;font-family:'Inter',sans-serif;color:#6B9E5A;margin:0;">
+        Get picks in your story daily →
+        <a href="https://instagram.com/MoraBets" target="_blank" style="color:#4CBB17;font-weight:600;text-decoration:none;">Follow @MoraBets</a>
+      </p>
+    </div>
+
+  </div>
+</div>
+
 <!-- ── Sticky Back Header (shown when inside a matchup) ── -->
 <div id="sticky-back-header">
     <button class="back-btn" onclick="resetToSportHome()">
@@ -416,6 +489,25 @@
             <button id="refresh-btn" title="Refresh props (once per 30 min)" style="background:#E8F5E1;border:1px solid rgba(76,187,23,0.3);color:#2D6E0F;border-radius:0.5rem;padding:0.3rem 0.6rem;font-size:0.8rem;cursor:pointer;line-height:1;">🔄</button>
         </div>
     </div>
+
+    <!-- Instagram Banner -->
+    <div id="ig-banner" style="margin-bottom:1rem;">
+      <div style="background:#F5FAF2;border:1px solid rgba(76,187,23,0.2);border-radius:0.75rem;padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">
+        <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;margin:0;">
+          📲 Get today's best picks in your Instagram stories —
+          <a href="https://instagram.com/MoraBets" target="_blank" style="color:#4CBB17;font-weight:600;text-decoration:none;">Follow @MoraBets</a>
+          and DM <strong style="color:#0F2406;">'new user'</strong> for your lifetime free promo code
+        </p>
+        <button onclick="document.getElementById('ig-banner').style.display='none';localStorage.setItem('ig_banner_dismissed','1');"
+                style="background:none;border:none;color:#A0BF96;font-size:1.25rem;cursor:pointer;flex-shrink:0;line-height:1;padding:0;">×</button>
+      </div>
+    </div>
+    <script>
+    if (localStorage.getItem('ig_banner_dismissed')) {
+      var b = document.getElementById('ig-banner');
+      if (b) b.style.display = 'none';
+    }
+    </script>
 
     <!-- Games Header + Count -->
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;">
@@ -1694,6 +1786,102 @@
     that's the only free edge every bettor has access to.
   </p>
 </section>
+
+<script>
+(function() {
+  var hasAccess = localStorage.getItem('mora_access');
+  var gate = document.getElementById('email-gate');
+
+  if (hasAccess) {
+    if (gate) gate.style.display = 'none';
+    return;
+  }
+
+  // Load and animate subscriber count
+  async function loadCounter() {
+    try {
+      var res = await fetch('/api/subscriber-count');
+      var data = await res.json();
+      var count = data.count || 0;
+      var pct = Math.min((count / 10000) * 100, 100).toFixed(1);
+
+      var counterEl = document.getElementById('user-counter');
+      var barEl = document.getElementById('counter-bar');
+
+      if (counterEl) {
+        var start = 0;
+        var step = count / (1000 / 16);
+        var timer = setInterval(function() {
+          start += step;
+          if (start >= count) { start = count; clearInterval(timer); }
+          counterEl.textContent = Math.floor(start).toLocaleString();
+        }, 16);
+      }
+
+      if (barEl) {
+        setTimeout(function() { barEl.style.width = pct + '%'; }, 100);
+      }
+    } catch(e) {
+      var counterEl = document.getElementById('user-counter');
+      if (counterEl) counterEl.textContent = '0';
+    }
+  }
+
+  loadCounter();
+
+  // Focus email input after brief delay
+  setTimeout(function() {
+    var emailInput = document.getElementById('gate-email');
+    if (emailInput) emailInput.focus();
+  }, 300);
+
+  var form = document.getElementById('gate-form');
+  var errorEl = document.getElementById('gate-error');
+  var submitBtn = document.getElementById('gate-submit');
+
+  if (form) {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      var email = (document.getElementById('gate-email') || {}).value || '';
+      var name  = (document.getElementById('gate-name')  || {}).value || '';
+      email = email.trim();
+      name  = name.trim();
+
+      if (!email || !email.includes('@')) {
+        errorEl.textContent = 'Please enter a valid email address.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      errorEl.style.display = 'none';
+      submitBtn.textContent = 'Getting your access...';
+      submitBtn.disabled = true;
+
+      function grantAccess() {
+        localStorage.setItem('mora_access', '1');
+        localStorage.setItem('mora_email', email);
+        gate.style.transition = 'opacity 0.4s ease';
+        gate.style.opacity = '0';
+        setTimeout(function() { gate.style.display = 'none'; }, 400);
+      }
+
+      try {
+        var res = await fetch('/api/gate-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, name: name })
+        });
+        var data = await res.json();
+        grantAccess();
+      } catch(err) {
+        // Network error — still grant access, never block the user
+        grantAccess();
+      }
+    });
+  }
+})();
+</script>
 
 </body>
 </html>

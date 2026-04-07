@@ -5,6 +5,7 @@ import time
 import random
 import requests
 import sys
+import csv
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
                     stream=sys.stdout)
@@ -2165,6 +2166,150 @@ def debug_props_test():
 from threading import Thread
 init_thread = Thread(target=background_initializer, daemon=True)
 init_thread.start()
+
+# ── Email Gate ──────────────────────────────────────────────────────────────
+
+EMAIL_LIST_FILE = 'email_subscribers.csv'
+
+
+def _load_emails():
+    """Load all emails from CSV file. Returns a set of lowercase emails."""
+    emails = set()
+    try:
+        if os.path.exists(EMAIL_LIST_FILE):
+            with open(EMAIL_LIST_FILE, 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get('email'):
+                        emails.add(row['email'].lower())
+    except Exception as e:
+        logger.error(f"[GATE] Load emails error: {e}")
+    return emails
+
+
+def _save_email(email: str, name: str = ''):
+    """Append a new email row to the CSV file."""
+    try:
+        file_exists = os.path.exists(EMAIL_LIST_FILE)
+        with open(EMAIL_LIST_FILE, 'a', newline='') as f:
+            writer = csv.DictWriter(
+                f, fieldnames=['email', 'name', 'signed_up_at']
+            )
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow({
+                'email':        email,
+                'name':         name,
+                'signed_up_at': datetime.utcnow().isoformat()
+            })
+    except Exception as e:
+        logger.error(f"[GATE] Save email error: {e}")
+
+
+@app.route('/api/gate-signup', methods=['POST'])
+def gate_signup():
+    """
+    Save email from gate form.
+    Always returns success so the gate never blocks a user.
+    """
+    try:
+        data  = request.json or {}
+        email = data.get('email', '').strip().lower()
+        name  = data.get('name',  '').strip()
+
+        if not email or '@' not in email:
+            return jsonify({"success": False, "error": "Invalid email"}), 400
+
+        existing = _load_emails()
+        if email in existing:
+            logger.info(f"[GATE] Returning user: {email}")
+            return jsonify({"success": True, "existing": True})
+
+        _save_email(email, name)
+        count = len(_load_emails())
+        logger.info(f"[GATE] New signup: {email} (total: {count})")
+        return jsonify({"success": True, "count": count})
+
+    except Exception as e:
+        logger.error(f"[GATE] Signup error: {e}")
+        return jsonify({"success": True})
+
+
+@app.route('/api/subscriber-count')
+def subscriber_count():
+    """Return current subscriber count."""
+    try:
+        count = len(_load_emails())
+        return jsonify({"count": count, "spots_remaining": max(0, 10000 - count)})
+    except Exception:
+        return jsonify({"count": 0})
+
+
+@app.route('/api/subscribers/export')
+def export_subscribers():
+    """Export the full email list as a CSV download."""
+    try:
+        from flask import send_file
+        if not os.path.exists(EMAIL_LIST_FILE):
+            return jsonify({"error": "No list yet"})
+        return send_file(
+            EMAIL_LIST_FILE,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='mora_bets_emails.csv'
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/admin/emails')
+def admin_emails():
+    """Quick admin view of email signups."""
+    try:
+        rows = []
+        if os.path.exists(EMAIL_LIST_FILE):
+            with open(EMAIL_LIST_FILE, 'r') as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
+
+        total  = len(rows)
+        recent = rows[-10:][::-1]
+
+        row_html = ''
+        for r in recent:
+            row_html += (
+                '<tr>'
+                '<td>' + r.get('email', '') + '</td>'
+                '<td>' + r.get('name', '—') + '</td>'
+                '<td>' + r.get('signed_up_at', '')[:10] + '</td>'
+                '</tr>'
+            )
+
+        html = (
+            '<html><head><title>Mora Bets Emails</title><style>'
+            'body{font-family:Inter,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;background:#f5faf2;}'
+            'h1{color:#0f2406;}'
+            '.count{font-size:48px;font-weight:900;color:#4cbb17;}'
+            'table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;margin-top:20px;}'
+            'th{background:#0f2406;color:white;padding:12px;text-align:left;font-size:12px;text-transform:uppercase;}'
+            'td{padding:10px 12px;border-bottom:1px solid #e8f5e1;font-size:13px;}'
+            '.export{display:inline-block;background:#4cbb17;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px;}'
+            '</style></head><body>'
+            '<h1>Mora Bets Email List</h1>'
+            '<div class="count">' + str(total) + '</div>'
+            '<p>total signups &middot; ' + str(10000 - total) + ' spots remaining</p>'
+            '<a href="/api/subscribers/export" class="export">Export CSV</a>'
+            '<table><tr><th>Email</th><th>Name</th><th>Signed Up</th></tr>'
+            + row_html +
+            '</table>'
+            '<p style="color:#6b9e5a;font-size:12px;margin-top:16px;">Showing 10 most recent signups</p>'
+            '</body></html>'
+        )
+        return html
+
+    except Exception as e:
+        return f"Error: {e}", 500
+
 
 # Flask app startup
 # SEO MANUAL STEPS AFTER DEPLOY:
