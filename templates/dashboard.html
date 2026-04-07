@@ -1354,7 +1354,7 @@
                 matchupData[key].push(p);
             });
             allProps = nflProps.map(p => ({ player: p.player || p.player_name, player_name: p.player_name || p.player, stat: p.market || p.stat_type || p.stat, stat_type: p.market || p.stat_type || p.stat, line: p.point || p.line, point: p.point || p.line, bookmaker: p.bookmaker || p.sportsbook, sportsbook: p.sportsbook || p.bookmaker, team: p.team || '', team_status: p.team_status, team_abbr: p.team_abbr || '', contextual_hit_rate: p.hit_probability }));
-            document.getElementById('confidence-filter').value = 'high';
+            document.getElementById('confidence-filter').value = '';
             displayTodaysGames();
         } catch(err) {
             console.error('Error loading NFL props:', err);
@@ -1403,7 +1403,7 @@
                 document.getElementById('player-props-container').innerHTML = `<div class="alert alert-info text-center"><h5><i class="fas fa-info-circle me-2"></i>No Props Available</h5><p class="mb-0">No player props currently available. Check back later.</p></div>`;
                 return;
             }
-            document.getElementById('confidence-filter').value = 'high';
+            document.getElementById('confidence-filter').value = '';
             displayTodaysGames();
         } catch(error) {
             console.error('Error loading props:', error);
@@ -1663,7 +1663,7 @@
             market_type: p.market_type
         }));
 
-        document.getElementById('confidence-filter').value = 'high';
+        document.getElementById('confidence-filter').value = '';
         applyFilters();
         currentPropsDisplayed = 50;
         displayProps();

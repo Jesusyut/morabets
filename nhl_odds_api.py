@@ -271,9 +271,121 @@ def fetch_nhl_game_odds():
         return []
 
 
+def _classify_nhl_environment(total: float, over_odds: int, under_odds: int) -> str:
+    """
+    Classify NHL game environment based on total goals line.
+    NHL totals typically range 5.0–7.5, unlike MLB (7–12).
+    Thresholds:
+      < 5.5 goals                       → Low Scoring
+      5.5 – 6.5 goals                   → Neutral
+      > 6.5 goals (or over strongly -115+) → High Scoring
+    """
+    if total > 6.5 or (total >= 6.5 and over_odds <= -115):
+        return "High Scoring"
+    elif total < 5.5 or (total <= 5.5 and under_odds <= -115):
+        return "Low Scoring"
+    else:
+        return "Neutral"
+
+
 def get_nhl_game_environment_map():
     """
-    Returns an empty environment map for NHL.
-    NHL has no ballpark factors — routes won't 500.
+    Build environment classification and favored team for each NHL game.
+    Mirrors get_mlb_game_environment_map() in odds_api.py exactly.
+
+    Returns dict keyed by "{away_team} @ {home_team}" (full names,
+    matching the NHL prop matchup keys) with:
+      { environment, total, over_odds, under_odds,
+        favored_team, home_team, away_team }
     """
-    return {}
+    cached = _cache_get("nhl_env_map", ttl_seconds=3600)
+    if cached is not None:
+        logger.info(f"[NHL ENV] {len(cached)} environments from cache")
+        return cached
+
+    games = fetch_nhl_game_odds()
+    if not games:
+        logger.warning("[NHL ENV] No game odds available")
+        return {}
+
+    env_map = {}
+
+    for game in games:
+        try:
+            home_team = game.get("home_team", "")
+            away_team = game.get("away_team", "")
+            if not home_team or not away_team:
+                continue
+
+            matchup_key = f"{away_team} @ {home_team}"
+
+            home_odds  = None
+            away_odds  = None
+            total_point = None
+            over_odds   = None
+            under_odds  = None
+
+            for book in game.get("bookmakers", []):
+                for market in book.get("markets", []):
+                    mkey     = market.get("key", "")
+                    outcomes = market.get("outcomes", [])
+
+                    if mkey == "h2h" and home_odds is None:
+                        for o in outcomes:
+                            if o.get("name") == home_team:
+                                home_odds = o.get("price")
+                            elif o.get("name") == away_team:
+                                away_odds = o.get("price")
+
+                    elif mkey == "totals" and total_point is None:
+                        for o in outcomes:
+                            if o.get("name") == "Over":
+                                total_point = o.get("point")
+                                over_odds   = o.get("price")
+                            elif o.get("name") == "Under":
+                                under_odds  = o.get("price")
+
+                # Stop once we have both markets
+                if home_odds is not None and total_point is not None:
+                    break
+
+            if total_point is None:
+                continue
+
+            # Determine favored team (lower = more negative = favorite)
+            favored_team = None
+            if home_odds is not None and away_odds is not None:
+                favored_team = home_team if home_odds < away_odds else away_team
+
+            label = _classify_nhl_environment(
+                total_point,
+                over_odds  or 0,
+                under_odds or 0,
+            )
+
+            env_map[matchup_key] = {
+                "environment": label,
+                "total":       total_point,
+                "over_odds":   over_odds,
+                "under_odds":  under_odds,
+                "favored_team": favored_team,
+                "home_team":   home_team,
+                "away_team":   away_team,
+            }
+
+            fav_str = f" (Fav: {favored_team})" if favored_team else ""
+            logger.info(
+                f"[NHL ENV] {matchup_key}: {label} "
+                f"(Total: {total_point}){fav_str}"
+            )
+
+        except Exception as e:
+            logger.error(f"[NHL ENV] Error processing game: {e}")
+            continue
+
+    logger.info(f"[NHL ENV] Built {len(env_map)} game environments")
+
+    if env_map:
+        _cache_set("nhl_env_map", env_map)
+
+    return env_map
