@@ -1,327 +1,243 @@
+"""
+NHL player props and game odds fetcher.
+Mirrors odds_api.py (MLB) pipeline exactly:
+  - fetch_player_props() returns raw prop list
+  - group_props_by_player() (in odds_api.py) handles grouping + EV
+  - Two market batches per event to stay within quota limits
+"""
+
 import requests
+from datetime import datetime, timedelta
 import os
-import time
 import logging
-from concurrent.futures import ThreadPoolExecutor
+import time
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://api.the-odds-api.com/v4"
+BASE_URL     = "https://api.the-odds-api.com/v4"
 ODDS_API_KEY = os.getenv("ODDS_API_KEY")
-SPORT_KEY = "icehockey_nhl"
+SPORT_KEY    = "icehockey_nhl"
 
-NHL_PROP_MARKETS = [
-    "player_goal_scorer",
-    "player_anytime_goalscorer",
-    "player_points",
-    "player_shots_on_goal",
-    "player_power_play_points"
-]
+# Mirror exact cache pattern from odds_api.py
+_cache_store = {}
 
-NHL_STAT_LABELS = {
-    "player_goal_scorer":        "First Goal Scorer",
-    "player_anytime_goalscorer": "Anytime Goal Scorer",
-    "player_points":             "Points (Over/Under)",
-    "player_shots_on_goal":      "Shots on Goal",
-    "player_power_play_points":  "Power Play Points"
-}
 
-_cache = {}
-
-def _cache_get(key, ttl=300):
-    e = _cache.get(key)
-    if e and (time.time() - e["ts"]) < ttl:
-        return e["data"]
+def _cache_get(key, ttl_seconds=300):
+    entry = _cache_store.get(key)
+    if entry and (time.time() - entry["ts"]) < ttl_seconds:
+        return entry["data"]
     return None
 
-def _cache_set(key, data):
-    _cache[key] = {"data": data, "ts": time.time()}
 
-def _log_quota(response):
-    remaining = response.headers.get("x-requests-remaining")
-    used = response.headers.get("x-requests-used")
-    cost = response.headers.get("x-requests-last")
-    logger.info(
-        f"[NHL][QUOTA] remaining={remaining} "
-        f"used={used} last_cost={cost}"
-    )
+def _cache_set(key, data):
+    _cache_store[key] = {"data": data, "ts": time.time()}
+
+
+NHL_STAT_LABELS = {
+    "player_shots_on_goal":      "Shots on Goal",
+    "player_points":             "Points",
+    "player_goal_scorer":        "First Goal Scorer",
+    "player_anytime_goalscorer": "Anytime Goalscorer",
+}
 
 
 def fetch_nhl_events():
     """
-    Step 1 — Get list of NHL events within the next 24 hours.
-
-    Endpoint: GET /v4/sports/icehockey_nhl/events
-    Cost: FREE — does not count against quota.
-
-    We filter to the next 24 hours after fetching to:
-    - Avoid fetching props for games 2-3 days out (they're never posted yet)
-    - Reduce sequential API calls (saves quota and time)
+    Step 1: Get NHL event list for the next 24 hours.
+    FREE endpoint — zero quota cost.
+    GET /v4/sports/icehockey_nhl/events
     """
-    from datetime import datetime, timezone, timedelta
-
-    if not ODDS_API_KEY:
-        logger.error("[NHL] ODDS_API_KEY not set")
-        return []
-
     cached = _cache_get("nhl_events")
     if cached is not None:
         logger.info(f"[NHL] {len(cached)} events from cache")
         return cached
 
+    if not ODDS_API_KEY:
+        logger.error("[NHL] No ODDS_API_KEY")
+        return []
+
+    now    = datetime.utcnow()
+    future = now + timedelta(hours=24)
+
     try:
-        response = requests.get(
+        resp = requests.get(
             f"{BASE_URL}/sports/{SPORT_KEY}/events",
             params={
-                "apiKey": ODDS_API_KEY,
-                "dateFormat": "iso"
+                "apiKey":             ODDS_API_KEY,
+                "commenceTimeFrom":   now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "commenceTimeTo":     future.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "dateFormat":         "iso",
             },
-            timeout=15
+            timeout=20,
         )
-        response.raise_for_status()
-        all_events = response.json()
-
-        # Filter to only games starting within the next 24 hours.
-        # Games beyond 24h never have props posted yet — fetching them
-        # wastes API quota and adds unnecessary delay.
-        now = datetime.now(timezone.utc)
-        cutoff = now + timedelta(hours=24)
-        events = []
-        for e in all_events:
-            try:
-                ct = datetime.fromisoformat(
-                    e["commence_time"].replace("Z", "+00:00")
-                )
-                if ct <= cutoff:
-                    events.append(e)
-            except Exception:
-                events.append(e)
-
-        logger.info(
-            f"[NHL] {len(events)} events within 24h "
-            f"(of {len(all_events)} total)"
-        )
+        resp.raise_for_status()
+        events = resp.json()
+        logger.info(f"[NHL] Fetched {len(events)} events (free)")
         _cache_set("nhl_events", events)
         return events
-
     except Exception as e:
         logger.error(f"[NHL] fetch_nhl_events error: {e}")
         return []
 
 
-def fetch_props_for_event(event):
+def fetch_player_props():
     """
-    Step 2 — Fetch player props for one NHL event.
+    Step 2: Fetch NHL player props for all today's events.
+    Mirrors fetch_player_props() in odds_api.py exactly.
 
-    Endpoint:
-    GET /v4/sports/icehockey_nhl/events/{eventId}/odds
+    Per official Odds API NHL docs:
+      - sport key:   icehockey_nhl
+      - player name: outcome["description"]
+      - side:        outcome["name"]  →  "Over" or "Under"
+      - endpoint:    GET /events/{eventId}/odds
 
-    Cost: 1 credit per market per region.
-    5 markets x 1 region = 5 credits per event.
-
-    CRITICAL — official docs confirm prop outcome shape:
-    {
-      "name": "Over",               <- Over or Under ONLY
-      "description": "Player Name", <- actual player name
-      "price": -148,
-      "point": 1.5
-    }
-    Player name MUST be read from outcome["description"].
-    """
-    event_id = event.get("id")
-    home_team = event.get("home_team", "")
-    away_team = event.get("away_team", "")
-    game_time = event.get("commence_time", "")
-    matchup = f"{away_team} @ {home_team}"
-
-    if not event_id:
-        return []
-
-    cache_key = f"nhl_props_{event_id}"
-    cached = _cache_get(cache_key)
-    if cached is not None:
-        return cached
-
-    props = []
-
-    try:
-        response = requests.get(
-            f"{BASE_URL}/sports/{SPORT_KEY}"
-            f"/events/{event_id}/odds",
-            params={
-                "apiKey": ODDS_API_KEY,
-                "regions": "us",
-                "markets": ",".join(NHL_PROP_MARKETS),
-                "oddsFormat": "american",
-                "bookmakers": "draftkings,fanduel,betmgm,caesars,pointsbetus,betrivers,bovada,betonlineag,fanatics"
-            },
-            timeout=15
-        )
-
-        # 422 = props not posted yet — normal, not an error
-        if response.status_code == 422:
-            logger.info(
-                f"[NHL] Props not posted yet: {matchup}"
-            )
-            _cache_set(cache_key, [])
-            return []
-
-        # 429 = rate limited — back off and retry once
-        if response.status_code == 429:
-            logger.warning("[NHL] Rate limited — sleeping 10s")
-            time.sleep(10)
-            try:
-                response = requests.get(
-                    f"{BASE_URL}/sports/{SPORT_KEY}"
-                    f"/events/{event_id}/odds",
-                    params={
-                        "apiKey": ODDS_API_KEY,
-                        "regions": "us",
-                        "markets": ",".join(NHL_PROP_MARKETS),
-                        "oddsFormat": "american",
-                        "bookmakers": "draftkings,fanduel,betmgm,caesars,pointsbetus,betrivers,bovada,betonlineag,fanatics"
-                    },
-                    timeout=15
-                )
-                if response.status_code == 429:
-                    logger.warning("[NHL] Still rate limited — skipping event")
-                    return []
-            except Exception:
-                return []
-
-        response.raise_for_status()
-        _log_quota(response)
-        data = response.json()
-
-        bookmakers = data.get("bookmakers", [])
-
-        for bookmaker in bookmakers:
-            book_title = bookmaker.get("title", "")
-            markets_list = bookmaker.get("markets", [])
-
-            for market in markets_list:
-                market_key = market.get("key", "")
-                outcomes = market.get("outcomes", [])
-
-                # Group outcomes by player name
-                # Player name = outcome["description"] per docs
-                # Side (Over/Under) = outcome["name"] per docs
-                player_map = {}
-
-                for outcome in outcomes:
-                    # CORRECT field for player name
-                    player_name = outcome.get("description", "")
-                    side = outcome.get("name", "")
-                    price = outcome.get("price")
-                    point = outcome.get("point")
-
-                    if not player_name or price is None:
-                        continue
-
-                    if player_name not in player_map:
-                        player_map[player_name] = {
-                            "over_price": None,
-                            "under_price": None,
-                            "line": point
-                        }
-
-                    if side == "Over":
-                        player_map[player_name]["over_price"] = price
-                        player_map[player_name]["line"] = point
-                    elif side == "Under":
-                        player_map[player_name]["under_price"] = price
-
-                # Build props — require at least an over price; under can be None
-                for player_name, sides in player_map.items():
-                    over = sides.get("over_price")
-                    under = sides.get("under_price")
-                    line = sides.get("line")
-
-                    if over is None:
-                        continue  # Need at least the over price
-
-                    props.append({
-                        "player":      player_name,
-                        "stat":        market_key,
-                        "stat_label":  NHL_STAT_LABELS.get(
-                                           market_key,
-                                           market_key
-                                           .replace("_", " ")
-                                           .title()
-                                       ),
-                        "line":        line,
-                        "over_price":  over,
-                        "under_price": under,
-                        "odds":        over,
-                        "bookmaker":   book_title,
-                        "home_team":   home_team,
-                        "away_team":   away_team,
-                        "matchup":     matchup,
-                        "game_time":   game_time,
-                        "sport":       "NHL"
-                    })
-
-        logger.info(
-            f"[NHL] {matchup}: {len(props)} props parsed"
-        )
-        _cache_set(cache_key, props)
-        return props
-
-    except requests.exceptions.HTTPError as e:
-        logger.error(
-            f"[NHL] HTTP {e.response.status_code} "
-            f"for {matchup}: {e.response.text[:200]}"
-        )
-        return []
-    except Exception as e:
-        logger.error(
-            f"[NHL] fetch_props_for_event error "
-            f"for {matchup}: {e}"
-        )
-        return []
-
-
-def fetch_nhl_props():
-    """
-    Main entry point — fetches all NHL props for today.
-
-    Step 1: /events (free) -> get event IDs
-    Step 2: /events/{id}/odds (5 credits per event) -> props
-
-    Returns raw props list for group_props_by_player()
-    and sort_props_by_tier() to process downstream.
+    Two market batches per event to control quota cost and
+    avoid hitting per-request market limits:
+      Batch 0: player_shots_on_goal, player_points
+      Batch 1: player_goal_scorer, player_anytime_goalscorer
     """
     if not ODDS_API_KEY:
-        logger.error("[NHL] ODDS_API_KEY not set")
+        logger.error("[NHL] No ODDS_API_KEY")
         return []
 
     events = fetch_nhl_events()
     if not events:
-        logger.warning("[NHL] No NHL events today")
+        logger.warning("[NHL] No events today")
         return []
 
-    logger.info(
-        f"[NHL] Fetching props for {len(events)} events"
-    )
+    logger.info(f"[NHL] Fetching props for {len(events)} events")
 
-    # Sequential fetch (max_workers=1) to eliminate 429 rate limiting.
-    # 0.8s delay is enough to stay under rate limits with one worker.
-    def fetch_props_for_event_with_delay(event):
-        time.sleep(0.8)
-        return fetch_props_for_event(event)
+    MARKET_BATCHES = [
+        ["player_shots_on_goal", "player_points"],
+        ["player_goal_scorer",   "player_anytime_goalscorer"],
+    ]
+    BOOKS = "draftkings,fanduel,betmgm,caesars,betrivers"
 
     all_props = []
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        results = list(
-            executor.map(fetch_props_for_event_with_delay, events)
-        )
 
-    for result in results:
-        if result:
-            all_props.extend(result)
+    for event in events:
+        eid       = event.get("id")
+        home      = event.get("home_team", "")
+        away      = event.get("away_team", "")
+        game_time = event.get("commence_time", "")
+        matchup   = f"{away} @ {home}"
+
+        if not eid:
+            continue
+
+        for batch_idx, markets in enumerate(MARKET_BATCHES):
+            # Mirror MLB delay between batches
+            if batch_idx > 0:
+                time.sleep(0.5)
+
+            try:
+                resp = requests.get(
+                    f"{BASE_URL}/sports/{SPORT_KEY}/events/{eid}/odds",
+                    params={
+                        "apiKey":     ODDS_API_KEY,
+                        "regions":    "us",
+                        "markets":    ",".join(markets),
+                        "oddsFormat": "american",
+                        "bookmakers": BOOKS,
+                    },
+                    timeout=20,
+                )
+
+                # 422 = props not posted yet — normal, handle silently
+                if resp.status_code == 422:
+                    logger.info(f"[NHL] Not posted: {matchup} batch {batch_idx}")
+                    continue
+
+                # 429 = rate limited — back off and skip batch
+                if resp.status_code == 429:
+                    logger.warning("[NHL] Rate limited — sleeping 5s")
+                    time.sleep(5)
+                    continue
+
+                resp.raise_for_status()
+
+                quota = resp.headers.get("x-requests-remaining", "?")
+                logger.info(
+                    f"[NHL] {matchup} batch {batch_idx}: quota={quota}"
+                )
+
+                data = resp.json()
+
+                for book in data.get("bookmakers", []):
+                    book_title = book.get("title", "")
+                    if not book_title:
+                        continue
+
+                    for market in book.get("markets", []):
+                        market_key = market.get("key", "")
+                        outcomes   = market.get("outcomes", [])
+
+                        # ── CRITICAL PAIRING LOGIC — mirrors MLB exactly ──
+                        # outcome["description"] = player name
+                        # outcome["name"]        = "Over" or "Under"
+                        # Group Over/Under by player within each market+book
+                        player_map = {}
+
+                        for outcome in outcomes:
+                            player_name = outcome.get("description", "")
+                            side        = outcome.get("name", "")
+                            price       = outcome.get("price")
+                            point       = outcome.get("point")
+
+                            if not player_name or price is None:
+                                continue
+
+                            if player_name not in player_map:
+                                player_map[player_name] = {
+                                    "over_price":  None,
+                                    "under_price": None,
+                                    "line":        point,
+                                }
+
+                            if side == "Over":
+                                player_map[player_name]["over_price"] = price
+                                player_map[player_name]["line"]        = point
+                            elif side == "Under":
+                                player_map[player_name]["under_price"] = price
+
+                        # Build one row per player — require over price at minimum
+                        for pname, sides in player_map.items():
+                            if sides["over_price"] is None:
+                                continue
+
+                            all_props.append({
+                                "player":      pname,
+                                "stat":        market_key,
+                                "stat_label":  NHL_STAT_LABELS.get(
+                                    market_key,
+                                    market_key.replace("_", " ").title(),
+                                ),
+                                "line":        sides["line"],
+                                "over_price":  sides["over_price"],
+                                "under_price": sides["under_price"],
+                                "odds":        sides["over_price"],
+                                "bookmaker":   book_title,
+                                "home_team":   home,
+                                "away_team":   away,
+                                "matchup":     matchup,
+                                "game_time":   game_time,
+                                "sport":       "NHL",
+                            })
+
+            except Exception as e:
+                logger.error(
+                    f"[NHL] Error {matchup} batch {batch_idx}: {e}"
+                )
+                continue
+
+    stat_counts = {}
+    for p in all_props:
+        k = p.get("stat", "?")
+        stat_counts[k] = stat_counts.get(k, 0) + 1
 
     logger.info(
-        f"[NHL] Total raw props: {len(all_props)}"
+        f"[NHL] {len(all_props)} raw props "
+        f"from {len(events)} events: {stat_counts}"
     )
     return all_props
 
@@ -329,30 +245,26 @@ def fetch_nhl_props():
 def fetch_nhl_game_odds():
     """
     Game-level odds only (moneyline, spread, total).
-    Not props. Uses /odds endpoint directly.
-    Cost: 3 credits (3 markets x 1 region)
+    Not player props. Uses /odds endpoint directly.
     """
     if not ODDS_API_KEY:
         return []
 
     try:
-        response = requests.get(
+        resp = requests.get(
             f"{BASE_URL}/sports/{SPORT_KEY}/odds",
             params={
-                "apiKey": ODDS_API_KEY,
-                "regions": "us",
-                "markets": "h2h,spreads,totals",
+                "apiKey":     ODDS_API_KEY,
+                "regions":    "us",
+                "markets":    "h2h,spreads,totals",
                 "oddsFormat": "american",
-                "bookmakers": "draftkings,fanduel,betmgm"
+                "bookmakers": "draftkings,fanduel,betmgm",
             },
-            timeout=15
+            timeout=20,
         )
-        response.raise_for_status()
-        _log_quota(response)
-        data = response.json()
-        logger.info(
-            f"[NHL] Game odds: {len(data)} games"
-        )
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info(f"[NHL] Game odds: {len(data)} games")
         return data
     except Exception as e:
         logger.error(f"[NHL] fetch_nhl_game_odds error: {e}")
@@ -361,8 +273,7 @@ def fetch_nhl_game_odds():
 
 def get_nhl_game_environment_map():
     """
-    Returns a minimal environment map for NHL games.
-    NHL does not have ballpark factors like MLB,
-    so returns an empty dict — routes won't 500.
+    Returns an empty environment map for NHL.
+    NHL has no ballpark factors — routes won't 500.
     """
     return {}

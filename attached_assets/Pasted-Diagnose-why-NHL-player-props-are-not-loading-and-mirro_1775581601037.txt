@@ -1,0 +1,720 @@
+Diagnose why NHL player props are not loading
+and mirror the working MLB player props pipeline
+exactly for NHL.
+
+CRITICAL RULE: Read and inspect all existing 
+files before changing a single line.
+Do not break anything that is currently working.
+Do not change MLB props pipeline at all.
+Make NHL mirror MLB exactly.
+
+=== STEP 1: INSPECT MLB PIPELINE FIRST ===
+
+Before touching any NHL code, read and 
+understand exactly how MLB props work.
+Run these inspections and report findings:
+
+INSPECT 1 — Read the full MLB props fetch function:
+Find fetch_player_props() in odds_api.py
+Report:
+- What endpoint URL does it call?
+- What markets does it request?
+- What bookmakers param does it use?
+- How does it parse outcome["description"] 
+  for player name?
+- How does it pair Over/Under per player?
+- What does it return?
+
+INSPECT 2 — Read group_props_by_player():
+Find group_props_by_player() in odds_api.py
+Report:
+- How does it group the raw props?
+- What probability calculation does it use?
+- What filters does it apply?
+- What fields does each output prop have?
+
+INSPECT 3 — Read the MLB props route:
+Find /api/mlb/props in app.py
+Report:
+- Does it read from cache first?
+- What cache file does it use?
+- What does it return in the JSON response?
+
+INSPECT 4 — Read _fetch_and_process_mlb_props():
+Find this function in app.py
+Report:
+- What functions does it call in order?
+- What does it return?
+- How does it cache the result?
+
+INSPECT 5 — Check MLB scheduler:
+Find the MLB props scheduler job in app.py
+Report:
+- What time does it run?
+- What function does it call?
+
+INSPECT 6 — Check MLB cache file:
+Run in shell:
+python3 -c "
+import json, os
+f = 'mlb_props_cache.json'
+if os.path.exists(f):
+    with open(f) as fp:
+        d = json.load(fp)
+    print(f'MLB cache: {len(d)} props')
+    if d:
+        print('Keys in first prop:')
+        print(list(d[0].keys()))
+        print('Sample:')
+        print(json.dumps(d[0], indent=2))
+else:
+    print('MLB cache file missing')
+"
+
+INSPECT 7 — Read full nhl_odds_api.py:
+Read the entire nhl_odds_api.py file
+Report every function that exists and
+what each one does currently.
+
+INSPECT 8 — Check NHL cache:
+Run in shell:
+python3 -c "
+import json, os
+f = 'nhl_props_cache.json'
+if os.path.exists(f):
+    with open(f) as fp:
+        d = json.load(fp)
+    print(f'NHL cache: {len(d)} props')
+    if d:
+        print('Sample:', json.dumps(d[0], indent=2))
+else:
+    print('NHL cache does not exist')
+"
+
+INSPECT 9 — Test NHL events endpoint live:
+Run in shell:
+python3 -c "
+import os, requests
+key = os.getenv('ODDS_API_KEY')
+if not key:
+    print('NO API KEY')
+else:
+    r = requests.get(
+        'https://api.the-odds-api.com/v4'
+        '/sports/icehockey_nhl/events',
+        params={'apiKey': key, 'dateFormat': 'iso'},
+        timeout=15
+    )
+    data = r.json()
+    print(f'Events: {len(data)}')
+    print('Quota:', r.headers.get('x-requests-remaining'))
+    if data:
+        print('First event:', data[0])
+"
+
+INSPECT 10 — Test NHL props for one event:
+After INSPECT 9 finds events, run:
+python3 -c "
+import os, requests, json
+key = os.getenv('ODDS_API_KEY')
+r = requests.get(
+    'https://api.the-odds-api.com/v4'
+    '/sports/icehockey_nhl/events',
+    params={'apiKey': key},
+    timeout=15
+)
+events = r.json()
+if not events:
+    print('NO NHL EVENTS TODAY')
+else:
+    eid = events[0]['id']
+    matchup = (events[0].get('away_team','') + 
+               ' @ ' + 
+               events[0].get('home_team',''))
+    print(f'Testing: {matchup}')
+    
+    resp = requests.get(
+        f'https://api.the-odds-api.com/v4'
+        f'/sports/icehockey_nhl/events/{eid}/odds',
+        params={
+            'apiKey': key,
+            'regions': 'us',
+            'markets': 'player_shots_on_goal',
+            'oddsFormat': 'american',
+            'bookmakers': 'draftkings,fanduel,betmgm'
+        },
+        timeout=15
+    )
+    print(f'Status: {resp.status_code}')
+    print('Quota:', resp.headers.get(
+        'x-requests-remaining'
+    ))
+    if resp.status_code == 200:
+        data = resp.json()
+        books = data.get('bookmakers', [])
+        print(f'Books returned: {len(books)}')
+        for book in books[:1]:
+            print(f'Book: {book.get(\"title\")}')
+            for mkt in book.get('markets', []):
+                print(f'Market: {mkt.get(\"key\")}')
+                for o in mkt.get('outcomes', [])[:6]:
+                    print(f'  name={o.get(\"name\")} '
+                          f'desc={o.get(\"description\")} '
+                          f'price={o.get(\"price\")} '
+                          f'point={o.get(\"point\")}')
+    elif resp.status_code == 422:
+        print('422 - Props not posted yet')
+    else:
+        print(f'Error: {resp.text[:300]}')
+"
+
+=== STEP 2: REPORT ALL FINDINGS ===
+
+After all inspections complete, report:
+
+1. Exact MLB pipeline step by step
+2. Exact structure of one MLB prop dict
+3. Current state of nhl_odds_api.py
+4. Whether NHL events exist today
+5. Whether NHL props return data or 422
+6. What the raw NHL outcome structure 
+   looks like (name vs description fields)
+7. Exact reason NHL props are not loading
+
+=== STEP 3: REWRITE nhl_odds_api.py 
+TO MIRROR MLB EXACTLY ===
+
+Only after completing Steps 1 and 2,
+rewrite nhl_odds_api.py.
+
+The rewrite must:
+- Use identical structure to fetch_player_props()
+- Use identical outcome parsing logic
+- Use identical Over/Under pairing
+- Return identical prop dict shape
+- Use icehockey_nhl sport key
+
+Here is the complete replacement file.
+Use the exact MLB market batching pattern
+discovered in INSPECT 1, applied to NHL markets:
+
+NHL MARKETS (per official Odds API docs):
+Batch 1: player_shots_on_goal, player_points
+Batch 2: player_goal_scorer, 
+         player_anytime_goalscorer
+
+ENDPOINT per official docs:
+GET /v4/sports/icehockey_nhl/events
+  → FREE, no quota cost, gets event IDs
+
+GET /v4/sports/icehockey_nhl/events/{eventId}/odds
+  → costs quota per market per region
+  → player name in outcome["description"]
+  → side in outcome["name"] (Over/Under)
+
+Write the file using this exact template,
+filling in the NHL-specific values where
+[MLB VALUE] appears:
+
+---
+
+import requests
+from datetime import datetime, timedelta
+import os
+import logging
+import time
+
+logger = logging.getLogger(__name__)
+
+BASE_URL = "https://api.the-odds-api.com/v4"
+ODDS_API_KEY = os.getenv("ODDS_API_KEY")
+SPORT_KEY = "icehockey_nhl"
+
+# Mirror exact cache pattern from odds_api.py
+_cache_store = {}
+
+def _cache_get(key, ttl_seconds=300):
+    entry = _cache_store.get(key)
+    if entry and (time.time() - entry["ts"]) < ttl_seconds:
+        return entry["data"]
+    return None
+
+def _cache_set(key, data):
+    _cache_store[key] = {
+        "data": data, 
+        "ts": time.time()
+    }
+
+NHL_STAT_LABELS = {
+    "player_shots_on_goal":    "Shots on Goal",
+    "player_points":           "Points",
+    "player_goal_scorer":      "First Goal Scorer",
+    "player_anytime_goalscorer": "Anytime Goalscorer"
+}
+
+def fetch_nhl_events():
+    """
+    Step 1: Get NHL event list.
+    FREE endpoint — zero quota cost.
+    Per Odds API docs:
+    GET /v4/sports/icehockey_nhl/events
+    """
+    cached = _cache_get("nhl_events")
+    if cached is not None:
+        logger.info(
+            f"[NHL] {len(cached)} events from cache"
+        )
+        return cached
+
+    if not ODDS_API_KEY:
+        logger.error("[NHL] No ODDS_API_KEY")
+        return []
+
+    now = datetime.utcnow()
+    future = now + timedelta(hours=24)
+
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/sports/{SPORT_KEY}/events",
+            params={
+                "apiKey": ODDS_API_KEY,
+                "commenceTimeFrom": now.strftime(
+                    '%Y-%m-%dT%H:%M:%SZ'
+                ),
+                "commenceTimeTo": future.strftime(
+                    '%Y-%m-%dT%H:%M:%SZ'
+                ),
+                "dateFormat": "iso"
+            },
+            timeout=20
+        )
+        resp.raise_for_status()
+        events = resp.json()
+        logger.info(
+            f"[NHL] Fetched {len(events)} events (free)"
+        )
+        _cache_set("nhl_events", events)
+        return events
+    except Exception as e:
+        logger.error(
+            f"[NHL] fetch_nhl_events error: {e}"
+        )
+        return []
+
+
+def fetch_player_props():
+    """
+    Step 2: Fetch NHL player props.
+    Mirrors fetch_player_props() in odds_api.py exactly.
+    
+    Per official Odds API NHL docs:
+    - sport key: icehockey_nhl
+    - player name: outcome["description"]
+    - side: outcome["name"] = Over or Under
+    - endpoint: /events/{eventId}/odds
+    """
+    if not ODDS_API_KEY:
+        logger.error("[NHL] No ODDS_API_KEY")
+        return []
+
+    events = fetch_nhl_events()
+    if not events:
+        logger.warning("[NHL] No events today")
+        return []
+
+    logger.info(
+        f"[NHL] Fetching props for "
+        f"{len(events)} events"
+    )
+
+    # Mirror MLB batch pattern exactly
+    # Two batches to control quota cost
+    MARKET_BATCHES = [
+        ["player_shots_on_goal", "player_points"],
+        ["player_goal_scorer", 
+         "player_anytime_goalscorer"]
+    ]
+
+    # Same books as MLB
+    BOOKS = (
+        "draftkings,fanduel,betmgm,"
+        "caesars,betrivers"
+    )
+
+    all_props = []
+
+    for event in events:
+        eid       = event.get("id")
+        home      = event.get("home_team", "")
+        away      = event.get("away_team", "")
+        game_time = event.get("commence_time", "")
+        matchup   = f"{away} @ {home}"
+
+        if not eid:
+            continue
+
+        for batch_idx, markets in enumerate(
+            MARKET_BATCHES
+        ):
+            # Mirror MLB delay between batches
+            if batch_idx > 0:
+                time.sleep(0.5)
+
+            try:
+                resp = requests.get(
+                    f"{BASE_URL}/sports/{SPORT_KEY}"
+                    f"/events/{eid}/odds",
+                    params={
+                        "apiKey":     ODDS_API_KEY,
+                        "regions":    "us",
+                        "markets":    ",".join(markets),
+                        "oddsFormat": "american",
+                        "bookmakers": BOOKS
+                    },
+                    timeout=20
+                )
+
+                # 422 = props not posted yet
+                # Normal — handle silently
+                if resp.status_code == 422:
+                    logger.info(
+                        f"[NHL] Not posted: {matchup}"
+                    )
+                    continue
+
+                # 429 = rate limited
+                if resp.status_code == 429:
+                    logger.warning(
+                        "[NHL] Rate limited — wait 5s"
+                    )
+                    time.sleep(5)
+                    continue
+
+                resp.raise_for_status()
+
+                quota = resp.headers.get(
+                    "x-requests-remaining", "?"
+                )
+                logger.info(
+                    f"[NHL] {matchup} batch "
+                    f"{batch_idx} quota={quota}"
+                )
+
+                data = resp.json()
+
+                for book in data.get(
+                    "bookmakers", []
+                ):
+                    book_title = book.get(
+                        "title", ""
+                    )
+                    if not book_title:
+                        continue
+
+                    for market in book.get(
+                        "markets", []
+                    ):
+                        market_key = market.get(
+                            "key", ""
+                        )
+                        outcomes = market.get(
+                            "outcomes", []
+                        )
+
+                        # ── CRITICAL PAIRING LOGIC ──
+                        # MIRRORS MLB EXACTLY:
+                        # outcome["description"] = player
+                        # outcome["name"] = Over or Under
+                        # Group by player within market+book
+
+                        player_map = {}
+
+                        for outcome in outcomes:
+                            # Player name in description
+                            player_name = outcome.get(
+                                "description", ""
+                            )
+                            side  = outcome.get(
+                                "name", ""
+                            )
+                            price = outcome.get("price")
+                            point = outcome.get("point")
+
+                            if not player_name:
+                                continue
+                            if price is None:
+                                continue
+
+                            if player_name not in (
+                                player_map
+                            ):
+                                player_map[
+                                    player_name
+                                ] = {
+                                    "over_price":  None,
+                                    "under_price": None,
+                                    "line":        point
+                                }
+
+                            if side == "Over":
+                                player_map[
+                                    player_name
+                                ]["over_price"] = price
+                                player_map[
+                                    player_name
+                                ]["line"] = point
+                            elif side == "Under":
+                                player_map[
+                                    player_name
+                                ]["under_price"] = price
+
+                        # Build one row per player
+                        # Mirror MLB prop dict shape
+                        for pname, sides in (
+                            player_map.items()
+                        ):
+                            if sides[
+                                "over_price"
+                            ] is None:
+                                continue
+
+                            all_props.append({
+                                "player":      pname,
+                                "stat":        market_key,
+                                "stat_label":  (
+                                    NHL_STAT_LABELS.get(
+                                        market_key,
+                                        market_key
+                                        .replace("_"," ")
+                                        .title()
+                                    )
+                                ),
+                                "line":        sides["line"],
+                                "over_price":  sides[
+                                    "over_price"
+                                ],
+                                "under_price": sides[
+                                    "under_price"
+                                ],
+                                "odds":        sides[
+                                    "over_price"
+                                ],
+                                "bookmaker":   book_title,
+                                "home_team":   home,
+                                "away_team":   away,
+                                "matchup":     matchup,
+                                "game_time":   game_time,
+                                "sport":       "NHL"
+                            })
+
+            except Exception as e:
+                logger.error(
+                    f"[NHL] Error {matchup} "
+                    f"batch {batch_idx}: {e}"
+                )
+                continue
+
+    # Mirror MLB stat breakdown log
+    stat_counts = {}
+    for p in all_props:
+        k = p.get("stat", "?")
+        stat_counts[k] = stat_counts.get(k, 0) + 1
+
+    logger.info(
+        f"[NHL] {len(all_props)} raw props "
+        f"from {len(events)} events: {stat_counts}"
+    )
+    return all_props
+
+
+def fetch_nhl_game_odds():
+    """
+    Fetch NHL game lines (h2h, spreads, totals).
+    Separate from player props.
+    Mirrors parse_game_data() pattern from odds_api.py
+    """
+    if not ODDS_API_KEY:
+        return []
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/sports/{SPORT_KEY}/odds",
+            params={
+                "apiKey":     ODDS_API_KEY,
+                "regions":    "us",
+                "markets":    "h2h,spreads,totals",
+                "oddsFormat": "american",
+                "bookmakers": "draftkings,fanduel,betmgm"
+            },
+            timeout=20
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        logger.info(
+            f"[NHL] Game odds: {len(data)} games"
+        )
+        return data
+    except Exception as e:
+        logger.error(
+            f"[NHL] Game odds error: {e}"
+        )
+        return []
+
+---
+
+=== STEP 4: VERIFY _fetch_and_process_nhl_props
+IN app.py CALLS fetch_player_props() ===
+
+Find _fetch_and_process_nhl_props() in app.py.
+
+It MUST call nhl_odds_api.fetch_player_props()
+NOT fetch_nhl_props() or any other function name.
+
+If it calls the wrong function name update it:
+
+def _fetch_and_process_nhl_props():
+    try:
+        # Import the mirrored fetch function
+        from nhl_odds_api import fetch_player_props
+        from odds_api import group_props_by_player
+        from enrichment import (
+            cache_props_to_file,
+            load_props_from_file
+        )
+
+        logger.info("[NHL PROPS] Fetching...")
+        raw = fetch_player_props()
+
+        if not raw:
+            logger.warning(
+                "[NHL PROPS] No raw props — "
+                "checking stale cache"
+            )
+            stale = load_props_from_file(
+                "nhl_props_cache.json"
+            )
+            if stale:
+                logger.info(
+                    f"[NHL PROPS] Serving "
+                    f"{len(stale)} stale props"
+                )
+                return stale
+            return []
+
+        props = group_props_by_player(raw)
+
+        if not props:
+            logger.warning(
+                "[NHL PROPS] 0 after grouping"
+            )
+            return []
+
+        cache_props_to_file(
+            props, "nhl_props_cache.json"
+        )
+        logger.info(
+            f"[NHL PROPS] {len(props)} cached ✅"
+        )
+        return props
+
+    except Exception as e:
+        logger.error(
+            f"[NHL PROPS] Failed: {e}",
+            exc_info=True
+        )
+        return []
+
+=== STEP 5: TRIGGER IMMEDIATE FETCH ===
+
+After rewriting nhl_odds_api.py, immediately
+run a fresh NHL props fetch to prime the cache:
+
+Run in shell:
+python3 -c "
+import sys
+sys.path.insert(0, '.')
+import logging
+logging.basicConfig(level=logging.INFO)
+
+from nhl_odds_api import fetch_player_props
+from odds_api import group_props_by_player
+from enrichment import cache_props_to_file
+
+print('Fetching NHL events and props...')
+raw = fetch_player_props()
+print(f'Raw props collected: {len(raw)}')
+
+if raw:
+    grouped = group_props_by_player(raw)
+    print(f'After grouping: {len(grouped)} props')
+    if grouped:
+        cache_props_to_file(
+            grouped, 'nhl_props_cache.json'
+        )
+        print('Cached to nhl_props_cache.json ✅')
+        print('Sample:', grouped[0].get('player'),
+              grouped[0].get('stat'),
+              grouped[0].get('no_vig_prob'))
+else:
+    print('No props returned — check logs above')
+    print('If all 422: props not posted yet today')
+    print('Check again after 10 AM ET game day')
+"
+
+=== STEP 6: VERIFY OUTPUT MATCHES MLB ===
+
+After the fetch, compare NHL and MLB 
+prop structures to confirm they match:
+
+Run in shell:
+python3 -c "
+import json
+
+# Load both caches
+with open('mlb_props_cache.json') as f:
+    mlb = json.load(f)
+with open('nhl_props_cache.json') as f:
+    nhl = json.load(f)
+
+print('MLB props:', len(mlb))
+print('NHL props:', len(nhl))
+
+if mlb and nhl:
+    mlb_keys = set(mlb[0].keys())
+    nhl_keys = set(nhl[0].keys())
+    
+    print('MLB fields:', sorted(mlb_keys))
+    print('NHL fields:', sorted(nhl_keys))
+    
+    missing = mlb_keys - nhl_keys
+    extra   = nhl_keys - mlb_keys
+    
+    if missing:
+        print('MISSING from NHL:', missing)
+    if extra:
+        print('EXTRA in NHL:', extra)
+    if not missing and not extra:
+        print('✅ NHL and MLB props match perfectly')
+"
+
+=== CONSTRAINTS ===
+- Read and inspect MLB pipeline completely
+  before touching a single line of NHL code
+- Do NOT change odds_api.py at all
+- Do NOT change group_props_by_player()
+- Do NOT change probability.py
+- Do NOT change app.py except the
+  _fetch_and_process_nhl_props function
+  if it calls the wrong function name
+- Do NOT change any routes
+- Do NOT touch color scheme, affiliate links,
+  TikTok pixel, Meta pixel, or email gate
+- NHL prop dict must have identical keys
+  to MLB prop dict — verified in Step 6
+- 422 responses are normal and silent
+- 429 responses sleep 5s and continue
+- If NHL events return 0 today the fetch
+  returns empty — this is correct behavior
+  not a bug — NHL may have no games
+- The function in nhl_odds_api.py that
+  fetches props MUST be named
+  fetch_player_props() to mirror MLB

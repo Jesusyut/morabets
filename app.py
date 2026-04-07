@@ -1840,13 +1840,13 @@ def _fetch_and_process_nhl_props():
     Falls back to stale cache when all events return 422.
     """
     try:
-        from nhl_odds_api import fetch_nhl_props
+        from nhl_odds_api import fetch_player_props
         from odds_api import group_props_by_player as _group_props_by_player
         from enrichment import cache_props_to_file, load_props_from_file
 
         logger.info("[NHL PROPS] Starting fetch...")
 
-        raw = fetch_nhl_props()
+        raw = fetch_player_props()
 
         if not raw:
             logger.warning("[NHL PROPS] No raw props — checking yesterday's cache")
