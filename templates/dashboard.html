@@ -1841,6 +1841,34 @@
           body: JSON.stringify({ email: email, name: name })
         });
         var data = await res.json();
+
+        // Use server event_id for browser/server deduplication.
+        // Falls back to crypto.randomUUID() if missing.
+        var eventId = data.event_id ||
+          (typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : Math.random().toString(36).slice(2));
+
+        // ── META PIXEL LEAD EVENT ──────────────────────────────────
+        // Fires on successful new submission only.
+        // event_id matches server-side call so Meta counts it once.
+        if (!data.existing) {
+          try {
+            if (typeof fbq !== 'undefined') {
+              fbq('track', 'Lead', {
+                content_name:     'Mora Bets Free Access',
+                content_category: 'Sports Betting Tool',
+                value:            14.99,
+                currency:         'USD'
+              }, { eventID: eventId });
+              console.log('[META] Lead fired ✅ eventID:', eventId);
+            }
+          } catch(pixelErr) {
+            console.warn('[META] Lead pixel error:', pixelErr);
+          }
+        }
+        // ── END META PIXEL ─────────────────────────────────────────
+
         grantAccess();
       } catch(err) {
         // Network error — still grant access, never block the user
