@@ -477,25 +477,6 @@
         </div>
     </div>
 
-    <!-- Instagram Banner -->
-    <div id="ig-banner" style="margin-bottom:1rem;">
-      <div style="background:#F5FAF2;border:1px solid rgba(76,187,23,0.2);border-radius:0.75rem;padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">
-        <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;margin:0;">
-          📲 Get today's best picks in your Instagram stories —
-          <a href="https://instagram.com/MoraBets" target="_blank" style="color:#4CBB17;font-weight:600;text-decoration:none;">Follow @MoraBets</a>
-          and DM <strong style="color:#0F2406;">'new user'</strong> for your lifetime free promo code
-        </p>
-        <button onclick="document.getElementById('ig-banner').style.display='none';localStorage.setItem('ig_banner_dismissed','1');"
-                style="background:none;border:none;color:#A0BF96;font-size:1.25rem;cursor:pointer;flex-shrink:0;line-height:1;padding:0;">×</button>
-      </div>
-    </div>
-    <script>
-    if (localStorage.getItem('ig_banner_dismissed')) {
-      var b = document.getElementById('ig-banner');
-      if (b) b.style.display = 'none';
-    }
-    </script>
-
     <!-- Games Header + Count -->
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;">
         <div>
