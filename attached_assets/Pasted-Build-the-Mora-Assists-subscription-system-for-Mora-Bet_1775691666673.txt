@@ -1,0 +1,1539 @@
+Build the Mora Assists subscription system
+for Mora Bets. This includes:
+- Stripe subscription with 3-day trial
+- Subscriber management
+- Daily LLM pick selection at 10:30 AM ET
+- SendGrid email delivery
+- Mora Assists popup after 15 seconds
+- Checkout flow
+
+Read all existing files before writing
+any code. Do not break anything existing.
+Do not touch odds fetching, EV engine,
+email gate, Meta pixel, color scheme,
+or any existing routes not listed below.
+
+=== VERIFY SECRETS EXIST FIRST ===
+
+Before writing any code run in shell:
+python3 -c "
+import os
+keys = [
+    'ANTHROPIC_API_KEY',
+    'STRIPE_SECRET_KEY', 
+    'STRIPE_PUBLISHABLE_KEY',
+    'STRIPE_PRICE_ID',
+    'STRIPE_WEBHOOK_SECRET',
+    'SENDGRID_API_KEY',
+    'SENDGRID_FROM_EMAIL'
+]
+for k in keys:
+    v = os.getenv(k)
+    status = '✅' if v else '❌ MISSING'
+    print(f'{k}: {status}')
+"
+
+Report which secrets are missing.
+Do not proceed if any are missing.
+
+=== INSTALL DEPENDENCIES ===
+
+Run in shell:
+pip install anthropic sendgrid stripe \
+  --break-system-packages
+
+=== TASK 1: CREATE mora_assists.py ===
+
+Create a new file mora_assists.py
+This handles everything — LLM selection,
+email formatting, and delivery.
+
+import os
+import json
+import logging
+import anthropic
+import sendgrid
+from sendgrid.helpers.mail import Mail
+from datetime import datetime
+from enrichment import load_props_from_file
+
+logger = logging.getLogger(__name__)
+
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+SENDGRID_API_KEY  = os.getenv('SENDGRID_API_KEY')
+FROM_EMAIL        = os.getenv(
+    'SENDGRID_FROM_EMAIL', 'picks@morabets.com'
+)
+
+# ══════════════════════════════════════════
+# STEP 1: LOAD THE FULL BOARD
+# ══════════════════════════════════════════
+
+def load_full_board():
+    """
+    Load all cached props and game lines
+    across every sport.
+    As new sports are added they will be
+    picked up automatically here.
+    """
+    board = {
+        "props": [],
+        "lines": [],
+        "sports_found": []
+    }
+
+    # MLB props
+    mlb_props = load_props_from_file(
+        'mlb_props_cache.json'
+    )
+    if mlb_props:
+        board["props"].extend(mlb_props)
+        board["sports_found"].append("MLB")
+
+    # NHL props
+    nhl_props = load_props_from_file(
+        'nhl_props_cache.json'
+    )
+    if nhl_props:
+        board["props"].extend(nhl_props)
+        if "NHL" not in board["sports_found"]:
+            board["sports_found"].append("NHL")
+
+    # NFL props (when in season)
+    try:
+        nfl_props = load_props_from_file(
+            'nfl_props_cache.json'
+        )
+        if nfl_props:
+            board["props"].extend(nfl_props)
+            board["sports_found"].append("NFL")
+    except Exception:
+        pass
+
+    # Game lines — read from any lines cache
+    for cache_file in [
+        'mlb_lines_cache.json',
+        'nhl_lines_cache.json',
+        'nfl_lines_cache.json'
+    ]:
+        try:
+            lines = load_props_from_file(cache_file)
+            if lines:
+                board["lines"].extend(lines)
+        except Exception:
+            pass
+
+    # Filter props to quality threshold
+    board["props"] = [
+        p for p in board["props"]
+        if p.get("no_vig_prob", 0) >= 55
+    ]
+
+    # Filter lines to quality threshold
+    board["lines"] = [
+        l for l in board["lines"]
+        if l.get("no_vig_prob", 0) >= 60
+    ]
+
+    logger.info(
+        f"[ASSISTS] Board loaded: "
+        f"{len(board['props'])} props, "
+        f"{len(board['lines'])} lines, "
+        f"sports: {board['sports_found']}"
+    )
+    return board
+
+
+# ══════════════════════════════════════════
+# STEP 2: LLM PICK SELECTION
+# ══════════════════════════════════════════
+
+SELECTION_PROMPT = """
+You are the Mora Assists pick selector.
+
+Every morning you receive the full Mora Bets
+board — every sport, every market, every prop.
+Analyze everything. Do not limit to one sport.
+
+YOUR OUTPUT IS EXACTLY 5 PICKS:
+- 2 player props (context-driven)
+- 3 anchor lines (no-vig straight plays)
+
+═══════════════════════════════════════
+PROP RULES (Picks 1 and 2)
+═══════════════════════════════════════
+
+Minimum no_vig_prob: 55
+
+For every game check environment label:
+
+HIGH SCORING:
+→ Offensive props only
+→ Hits over, total bases over, RBIs over,
+  shots on goal over, receiving yards over
+→ Prefer favored team offensive players
+
+LOW SCORING:
+→ Pitching or defensive props only
+→ Pitcher strikeouts over
+→ Avoid offensive over totals
+
+NO environment label:
+→ Skip this game for props
+
+Select 2 props from 2 DIFFERENT games.
+Never 2 props from the same game.
+Prefer highest no_vig_prob across all sports.
+
+═══════════════════════════════════════
+ANCHOR RULES (Picks 3, 4, and 5)
+═══════════════════════════════════════
+
+Minimum no_vig_prob: 60
+Hard ceiling: -220 juice maximum ever
+
+Juice efficiency — rank by less juice
+for same probability always:
+
+TIER 1 BEST — positive odds above 55%
+  +105 at 61% = instant yes
+  Plus money with real edge = always take
+
+TIER 2 STRONG:
+  -110 to -160 at 60-64% = yes
+
+TIER 3 YES:
+  -160 to -200 at 63-67% = yes
+
+TIER 4 BORDERLINE:
+  -200 at 60% = last resort only
+
+TIER 5 NEVER:
+  Above -220 regardless of probability
+  -210 at 63% = reject always
+  -240 at 65% = reject always
+
+3 anchors from 3 different games.
+No game used in prop picks 1 or 2.
+Spread across sports when possible.
+
+═══════════════════════════════════════
+OUTPUT — PURE JSON ONLY
+No explanation. No markdown. Just JSON.
+═══════════════════════════════════════
+
+{
+  "picks": [
+    {
+      "pick_number": 1,
+      "type": "prop",
+      "player": "",
+      "stat": "",
+      "line": 0,
+      "direction": "over",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "favored_team": "",
+      "why": ""
+    },
+    {
+      "pick_number": 2,
+      "type": "prop",
+      "player": "",
+      "stat": "",
+      "line": 0,
+      "direction": "over",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "favored_team": "",
+      "why": ""
+    },
+    {
+      "pick_number": 3,
+      "type": "anchor",
+      "team": "",
+      "market": "",
+      "line": "",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "why": ""
+    },
+    {
+      "pick_number": 4,
+      "type": "anchor",
+      "team": "",
+      "market": "",
+      "line": "",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "why": ""
+    },
+    {
+      "pick_number": 5,
+      "type": "anchor",
+      "team": "",
+      "market": "",
+      "line": "",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "why": ""
+    }
+  ],
+  "generated_at": "",
+  "total_props_scanned": 0,
+  "total_lines_scanned": 0,
+  "sports_covered": []
+}
+
+WHY FIELD — plain English, simple:
+Props: mention environment and matchup
+  "High scoring game. Best hitter on 
+   the favored team. Clear play."
+Anchors: mention probability and juice
+  "62% true edge at -160. 
+   Market strongly favors this team."
+
+If fewer than 2 props qualify:
+  Replace missing prop with anchor pick.
+If fewer than 3 anchors qualify:
+  Send only what passes the rules.
+  Never force a bad pick.
+"""
+
+
+def select_picks_with_llm(board):
+    """
+    Send board data to Claude and get
+    5 curated picks back as JSON.
+    """
+    if not ANTHROPIC_API_KEY:
+        logger.error(
+            "[ASSISTS] No ANTHROPIC_API_KEY"
+        )
+        return None
+
+    client = anthropic.Anthropic(
+        api_key=ANTHROPIC_API_KEY
+    )
+
+    # Prepare board summary for LLM
+    board_summary = {
+        "props":             board["props"][:100],
+        "lines":             board["lines"][:50],
+        "sports_available":  board["sports_found"],
+        "total_props":       len(board["props"]),
+        "total_lines":       len(board["lines"]),
+        "generated_at":      datetime.utcnow(
+        ).isoformat()
+    }
+
+    user_message = (
+        f"Today's board data:\n"
+        f"{json.dumps(board_summary, indent=2)}"
+    )
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            system=SELECTION_PROMPT,
+            messages=[
+                {
+                    "role":    "user",
+                    "content": user_message
+                }
+            ]
+        )
+
+        raw = response.content[0].text.strip()
+
+        # Clean any markdown if present
+        raw = raw.replace(
+            "```json", ""
+        ).replace("```", "").strip()
+
+        picks_data = json.loads(raw)
+
+        logger.info(
+            f"[ASSISTS] LLM selected "
+            f"{len(picks_data.get('picks',[]))} "
+            f"picks"
+        )
+        return picks_data
+
+    except json.JSONDecodeError as e:
+        logger.error(
+            f"[ASSISTS] JSON parse error: {e}"
+            f"\nRaw: {raw[:500]}"
+        )
+        return None
+    except Exception as e:
+        logger.error(
+            f"[ASSISTS] LLM error: {e}"
+        )
+        return None
+
+
+# ══════════════════════════════════════════
+# STEP 3: FORMAT EMAIL
+# ══════════════════════════════════════════
+
+def format_picks_email(picks_data):
+    """
+    Format LLM picks into clean HTML email.
+    Plain English. Third grade level.
+    """
+    if not picks_data or not picks_data.get(
+        "picks"
+    ):
+        return None, None
+
+    picks    = picks_data["picks"]
+    today    = datetime.now().strftime(
+        "%A, %B %d"
+    )
+    props    = [
+        p for p in picks if p["type"] == "prop"
+    ]
+    anchors  = [
+        p for p in picks if p["type"] == "anchor"
+    ]
+
+    def fmt_odds(odds):
+        if odds > 0:
+            return f"+{odds}"
+        return str(odds)
+
+    subject = (
+        f"⚡ Mora Assists — {today} · "
+        f"{len(picks)} Picks Ready"
+    )
+
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {{
+    font-family: Inter, Arial, sans-serif;
+    background: #f5faf2;
+    margin: 0;
+    padding: 20px;
+    color: #0f2406;
+  }}
+  .container {{
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid #4cbb17;
+  }}
+  .header {{
+    background: #0f2406;
+    padding: 24px;
+    text-align: center;
+  }}
+  .logo {{
+    color: white;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 3px;
+  }}
+  .logo span {{ color: #4cbb17; }}
+  .date {{
+    color: #6b9e5a;
+    font-size: 13px;
+    margin-top: 4px;
+  }}
+  .section-label {{
+    background: #f5faf2;
+    padding: 12px 24px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #6b9e5a;
+    text-transform: uppercase;
+    border-bottom: 1px solid #e8f5e1;
+  }}
+  .pick-card {{
+    padding: 20px 24px;
+    border-bottom: 1px solid #e8f5e1;
+  }}
+  .pick-number {{
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b9e5a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }}
+  .pick-title {{
+    font-size: 18px;
+    font-weight: 900;
+    color: #0f2406;
+    margin-bottom: 4px;
+  }}
+  .pick-detail {{
+    font-size: 13px;
+    color: #6b9e5a;
+    margin-bottom: 8px;
+  }}
+  .pick-stats {{
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+  }}
+  .stat-box {{
+    background: #f5faf2;
+    border: 1px solid #e8f5e1;
+    border-radius: 8px;
+    padding: 8px 12px;
+    text-align: center;
+  }}
+  .stat-label {{
+    font-size: 10px;
+    color: #6b9e5a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }}
+  .stat-value {{
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f2406;
+  }}
+  .stat-value.green {{ color: #4cbb17; }}
+  .why {{
+    font-size: 13px;
+    color: #1a3d0a;
+    font-style: italic;
+    padding: 10px 12px;
+    background: #f5faf2;
+    border-left: 3px solid #4cbb17;
+    border-radius: 0 8px 8px 0;
+  }}
+  .instructions {{
+    padding: 24px;
+    background: #f5faf2;
+    text-align: center;
+  }}
+  .instructions h3 {{
+    color: #0f2406;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }}
+  .instructions p {{
+    color: #6b9e5a;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 4px 0;
+  }}
+  .cta-btn {{
+    display: inline-block;
+    background: #4cbb17;
+    color: white;
+    padding: 12px 28px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    margin-top: 16px;
+  }}
+  .footer {{
+    padding: 16px 24px;
+    text-align: center;
+    font-size: 11px;
+    color: #a0bf96;
+    border-top: 1px solid #e8f5e1;
+  }}
+  .footer a {{
+    color: #6b9e5a;
+    text-decoration: none;
+  }}
+  .env-badge {{
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 50px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-left: 6px;
+  }}
+  .high {{ background: #fef3c7; color: #92400e; }}
+  .low  {{ background: #e8f5e1; color: #2d6e0f; }}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="logo">
+      MORA <span>ASSISTS</span>
+    </div>
+    <div class="date">
+      {today} · Picks locked at 10:30 AM ET
+    </div>
+  </div>
+"""
+
+    # Prop picks section
+    if props:
+        html += """
+  <div class="section-label">
+    🎯 &nbsp; Prop Plays
+  </div>
+"""
+        for p in props:
+            env = p.get("environment", "")
+            env_badge = ""
+            if "HIGH" in env.upper():
+                env_badge = (
+                    '<span class="env-badge high">'
+                    'High Scoring</span>'
+                )
+            elif "LOW" in env.upper():
+                env_badge = (
+                    '<span class="env-badge low">'
+                    'Low Scoring</span>'
+                )
+
+            html += f"""
+  <div class="pick-card">
+    <div class="pick-number">
+      Pick {p['pick_number']} — Prop · 
+      {p.get('sport','')} · 
+      {p.get('matchup','')}
+      {env_badge}
+    </div>
+    <div class="pick-title">
+      {p.get('player','')} — 
+      {p.get('stat','')} 
+      OVER {p.get('line','')}
+    </div>
+    <div class="pick-detail">
+      Best line at {p.get('book','').title()}
+    </div>
+    <div class="pick-stats">
+      <div class="stat-box">
+        <div class="stat-label">Odds</div>
+        <div class="stat-value">
+          {fmt_odds(p.get('odds', 0))}
+        </div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">True Prob</div>
+        <div class="stat-value green">
+          {p.get('no_vig_prob',0)}%
+        </div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Edge</div>
+        <div class="stat-value">
+          {p.get('sport','')}
+        </div>
+      </div>
+    </div>
+    <div class="why">
+      {p.get('why','')}
+    </div>
+  </div>
+"""
+
+    # Anchor picks section
+    if anchors:
+        html += """
+  <div class="section-label">
+    ⚓ &nbsp; Anchor Plays
+  </div>
+"""
+        for p in anchors:
+            html += f"""
+  <div class="pick-card">
+    <div class="pick-number">
+      Pick {p['pick_number']} — Anchor · 
+      {p.get('sport','')} · 
+      {p.get('matchup','')}
+    </div>
+    <div class="pick-title">
+      {p.get('team','')} 
+      {p.get('market','').title()}
+    </div>
+    <div class="pick-detail">
+      Best line at {p.get('book','').title()}
+      {(' · ' + p.get('line','')) 
+       if p.get('line') else ''}
+    </div>
+    <div class="pick-stats">
+      <div class="stat-box">
+        <div class="stat-label">Odds</div>
+        <div class="stat-value">
+          {fmt_odds(p.get('odds',0))}
+        </div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">True Prob</div>
+        <div class="stat-value green">
+          {p.get('no_vig_prob',0)}%
+        </div>
+      </div>
+    </div>
+    <div class="why">
+      {p.get('why','')}
+    </div>
+  </div>
+"""
+
+    html += """
+  <div class="instructions">
+    <h3>How to use these picks</h3>
+    <p>Same unit every play. Never chase.</p>
+    <p>The math compounds over the season.</p>
+    <p>$20 flat per play is all you need.</p>
+    <a href="https://morabets.com/dashboard" 
+       class="cta-btn">
+      See the Full Board →
+    </a>
+  </div>
+
+  <div class="footer">
+    Mora Assists · $28.99/month · 
+    3-day free trial<br>
+    <a href="#">Manage subscription</a> · 
+    <a href="#">Unsubscribe</a>
+  </div>
+
+</div>
+</body>
+</html>
+"""
+
+    return subject, html
+
+
+# ══════════════════════════════════════════
+# STEP 4: LOAD SUBSCRIBERS
+# ══════════════════════════════════════════
+
+def load_active_subscribers():
+    """
+    Load all active Mora Assists subscribers.
+    Status must be 'active' or 'trial'.
+    """
+    import csv
+    subscribers = []
+    try:
+        if os.path.exists(
+            'mora_assists_subscribers.csv'
+        ):
+            with open(
+                'mora_assists_subscribers.csv'
+            ) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get('status') in [
+                        'active', 'trial'
+                    ]:
+                        subscribers.append(row)
+    except Exception as e:
+        logger.error(
+            f"[ASSISTS] Load subscribers: {e}"
+        )
+    return subscribers
+
+
+# ══════════════════════════════════════════
+# STEP 5: SEND EMAILS
+# ══════════════════════════════════════════
+
+def send_picks_email(
+    to_email, subject, html_content
+):
+    """Send one email via SendGrid."""
+    try:
+        sg = sendgrid.SendGridAPIClient(
+            api_key=SENDGRID_API_KEY
+        )
+        message = Mail(
+            from_email=FROM_EMAIL,
+            to_emails=to_email,
+            subject=subject,
+            html_content=html_content
+        )
+        response = sg.send(message)
+        return response.status_code in [
+            200, 201, 202
+        ]
+    except Exception as e:
+        logger.error(
+            f"[ASSISTS] Send failed "
+            f"{to_email}: {e}"
+        )
+        return False
+
+
+# ══════════════════════════════════════════
+# STEP 6: MAIN DAILY JOB
+# ══════════════════════════════════════════
+
+def run_daily_assists():
+    """
+    Main job called by scheduler at 10:30 AM ET.
+    Loads board, selects picks, sends emails.
+    """
+    logger.info(
+        "[ASSISTS] Starting daily run..."
+    )
+
+    # Load full board across all sports
+    board = load_full_board()
+
+    if not board["props"] and not board["lines"]:
+        logger.warning(
+            "[ASSISTS] Board empty — "
+            "no picks to send today"
+        )
+        return
+
+    # Select picks with LLM
+    picks_data = select_picks_with_llm(board)
+
+    if not picks_data:
+        logger.error(
+            "[ASSISTS] LLM returned no picks"
+        )
+        return
+
+    # Save today's picks to file
+    # (for debugging and record keeping)
+    today_str = datetime.now().strftime(
+        "%Y-%m-%d"
+    )
+    with open(
+        f'assists_picks_{today_str}.json', 'w'
+    ) as f:
+        json.dump(picks_data, f, indent=2)
+
+    logger.info(
+        f"[ASSISTS] Picks saved to "
+        f"assists_picks_{today_str}.json"
+    )
+
+    # Format email
+    subject, html = format_picks_email(
+        picks_data
+    )
+    if not subject or not html:
+        logger.error(
+            "[ASSISTS] Email format failed"
+        )
+        return
+
+    # Load active subscribers
+    subscribers = load_active_subscribers()
+    logger.info(
+        f"[ASSISTS] Sending to "
+        f"{len(subscribers)} subscribers"
+    )
+
+    if not subscribers:
+        logger.warning(
+            "[ASSISTS] No active subscribers yet"
+        )
+        return
+
+    # Send to all active subscribers
+    sent = 0
+    failed = 0
+    for sub in subscribers:
+        email = sub.get('email')
+        if not email:
+            continue
+        success = send_picks_email(
+            email, subject, html
+        )
+        if success:
+            sent += 1
+        else:
+            failed += 1
+
+    logger.info(
+        f"[ASSISTS] Sent: {sent} "
+        f"Failed: {failed}"
+    )
+    return {
+        "sent":   sent,
+        "failed": failed,
+        "picks":  len(
+            picks_data.get('picks', [])
+        )
+    }
+
+
+=== TASK 2: CREATE SUBSCRIBER MANAGEMENT ===
+
+Create mora_assists_subscribers.csv
+if it does not exist with headers:
+
+email, name, stripe_customer_id,
+stripe_subscription_id, status,
+subscribed_at, trial_ends_at,
+cancelled_at
+
+=== TASK 3: ADD STRIPE ROUTES TO app.py ===
+
+Add these routes to app.py:
+
+import stripe
+stripe.api_key = os.environ.get(
+    'STRIPE_SECRET_KEY'
+)
+
+@app.route('/assists/checkout', 
+           methods=['POST'])
+def assists_checkout():
+    """
+    Create Stripe checkout session for
+    Mora Assists $28.99/month 3-day trial.
+    """
+    try:
+        data  = request.json or {}
+        email = data.get('email', '')
+
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            mode='subscription',
+            customer_email=email or None,
+            line_items=[{
+                'price':    os.environ.get(
+                    'STRIPE_PRICE_ID'
+                ),
+                'quantity': 1
+            }],
+            subscription_data={
+                'trial_period_days': 3
+            },
+            success_url=(
+                'https://morabets.com/dashboard'
+                '?assists=success'
+            ),
+            cancel_url=(
+                'https://morabets.com/dashboard'
+                '?assists=cancelled'
+            )
+        )
+
+        return jsonify({
+            'checkout_url': session.url
+        })
+
+    except Exception as e:
+        logger.error(
+            f"[ASSISTS] Checkout error: {e}"
+        )
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/stripe/webhook', methods=['POST'])
+def stripe_webhook():
+    """
+    Handle Stripe subscription events.
+    Updates subscriber status automatically.
+    """
+    payload = request.data
+    sig     = request.headers.get(
+        'Stripe-Signature'
+    )
+    secret  = os.environ.get(
+        'STRIPE_WEBHOOK_SECRET'
+    )
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig, secret
+        )
+    except Exception as e:
+        logger.error(
+            f"[STRIPE] Webhook error: {e}"
+        )
+        return jsonify({'error': str(e)}), 400
+
+    _handle_stripe_event(event)
+    return jsonify({'received': True})
+
+
+def _handle_stripe_event(event):
+    """Process Stripe subscription events."""
+    import csv
+    from datetime import datetime, timedelta
+
+    event_type = event['type']
+    data       = event['data']['object']
+
+    logger.info(
+        f"[STRIPE] Event: {event_type}"
+    )
+
+    if event_type == (
+        'customer.subscription.created'
+    ):
+        # New subscriber — add to CSV
+        customer = stripe.Customer.retrieve(
+            data['customer']
+        )
+        email    = customer.get('email', '')
+        name     = customer.get('name', '')
+        trial_end = data.get('trial_end')
+        
+        trial_ends_at = (
+            datetime.fromtimestamp(
+                trial_end
+            ).isoformat()
+            if trial_end else ''
+        )
+
+        _save_subscriber({
+            'email':                  email,
+            'name':                   name or '',
+            'stripe_customer_id':     data[
+                'customer'
+            ],
+            'stripe_subscription_id': data['id'],
+            'status':                 'trial',
+            'subscribed_at':          (
+                datetime.utcnow().isoformat()
+            ),
+            'trial_ends_at':          trial_ends_at,
+            'cancelled_at':           ''
+        })
+        logger.info(
+            f"[STRIPE] New trial: {email}"
+        )
+
+    elif event_type in [
+        'invoice.payment_succeeded'
+    ]:
+        # Trial converted or renewed
+        _update_subscriber_status(
+            data.get('subscription'), 'active'
+        )
+
+    elif event_type in [
+        'customer.subscription.deleted',
+        'invoice.payment_failed'
+    ]:
+        # Cancelled or payment failed
+        _update_subscriber_status(
+            data.get('id') or data.get(
+                'subscription'
+            ),
+            'cancelled'
+        )
+
+
+def _save_subscriber(sub_data):
+    """Save new subscriber to CSV."""
+    import csv
+    FILE = 'mora_assists_subscribers.csv'
+    FIELDS = [
+        'email', 'name',
+        'stripe_customer_id',
+        'stripe_subscription_id',
+        'status', 'subscribed_at',
+        'trial_ends_at', 'cancelled_at'
+    ]
+    file_exists = os.path.exists(FILE)
+    with open(FILE, 'a', newline='') as f:
+        writer = csv.DictWriter(
+            f, fieldnames=FIELDS
+        )
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(sub_data)
+
+
+def _update_subscriber_status(
+    subscription_id, new_status
+):
+    """Update subscriber status in CSV."""
+    import csv, tempfile, shutil
+    FILE = 'mora_assists_subscribers.csv'
+    if not os.path.exists(FILE):
+        return
+
+    FIELDS = [
+        'email', 'name',
+        'stripe_customer_id',
+        'stripe_subscription_id',
+        'status', 'subscribed_at',
+        'trial_ends_at', 'cancelled_at'
+    ]
+
+    rows = []
+    with open(FILE, 'r') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get(
+                'stripe_subscription_id'
+            ) == subscription_id:
+                row['status'] = new_status
+                if new_status == 'cancelled':
+                    row['cancelled_at'] = (
+                        datetime.utcnow()
+                        .isoformat()
+                    )
+            rows.append(row)
+
+    with open(FILE, 'w', newline='') as f:
+        writer = csv.DictWriter(
+            f, fieldnames=FIELDS
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+    logger.info(
+        f"[STRIPE] Updated {subscription_id} "
+        f"→ {new_status}"
+    )
+
+
+@app.route('/api/assists/test-send',
+           methods=['POST'])
+def test_assists_send():
+    """
+    Test route — send today's picks to
+    one email address to verify system works.
+    Remove after confirming delivery.
+    """
+    from mora_assists import (
+        load_full_board,
+        select_picks_with_llm,
+        format_picks_email,
+        send_picks_email
+    )
+    data  = request.json or {}
+    email = data.get('email', '')
+
+    if not email:
+        return jsonify(
+            {'error': 'email required'}
+        ), 400
+
+    board      = load_full_board()
+    picks_data = select_picks_with_llm(board)
+    subject, html = format_picks_email(
+        picks_data
+    )
+    success = send_picks_email(
+        email, subject, html
+    )
+    return jsonify({
+        'success':    success,
+        'picks_count': len(
+            picks_data.get('picks', [])
+            if picks_data else []
+        )
+    })
+
+
+=== TASK 4: ADD SCHEDULER JOB AT 10:30 AM ===
+
+In the scheduler section of app.py add:
+
+from mora_assists import run_daily_assists
+
+scheduler.add_job(
+    func=run_daily_assists,
+    trigger='cron',
+    hour=10,
+    minute=30,
+    timezone='America/New_York',
+    id='mora_assists_daily',
+    name='Mora Assists Daily 10:30AM ET',
+    replace_existing=True
+)
+
+
+=== TASK 5: MORA ASSISTS POPUP 
+IN dashboard.html ===
+
+Add this popup to dashboard.html.
+Triggers 15 seconds after page load.
+Shows once per browser session.
+Full screen takeover.
+
+Add HTML just after the email gate div:
+
+<!-- Mora Assists Popup -->
+<div id="assists-popup"
+     class="hidden fixed inset-0 
+            z-[9998] flex items-center 
+            justify-center bg-black/60
+            backdrop-blur-sm">
+
+  <div class="w-full max-w-lg mx-4 
+              bg-white rounded-2xl 
+              overflow-hidden shadow-2xl
+              border-2 border-kelly">
+
+    <!-- Header -->
+    <div class="bg-kelly-bg px-8 py-6 
+                text-center">
+      <div class="text-kelly font-display 
+                  font-black text-sm 
+                  uppercase tracking-widest 
+                  mb-1">
+        Mora Assists
+      </div>
+      <h2 class="font-display font-black 
+                  text-white text-3xl 
+                  uppercase tracking-wide 
+                  leading-tight">
+        Don't know<br>what to bet?
+      </h2>
+      <p class="text-kelly font-display 
+                 font-bold text-xl 
+                 uppercase tracking-wide mt-1">
+        We'll tell you.
+      </p>
+    </div>
+
+    <!-- Body -->
+    <div class="px-8 py-6">
+
+      <p class="font-ui text-base 
+                 text-kelly-bg text-center 
+                 leading-relaxed mb-6">
+        Every morning at 10:30 AM —<br>
+        <strong>5 picks land in your inbox.</strong><br>
+        2 player props. 3 anchor plays.<br>
+        Ready to bet. No research needed.
+      </p>
+
+      <!-- Features -->
+      <div class="space-y-3 mb-6">
+        <div class="flex items-start gap-3">
+          <span class="text-kelly text-lg 
+                       flex-shrink-0 mt-0.5">
+            ✓
+          </span>
+          <p class="font-ui text-sm 
+                     text-text-secondary">
+            AI scans every MLB and NHL line —
+            only the best 5 make the cut
+          </p>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-kelly text-lg 
+                       flex-shrink-0 mt-0.5">
+            ✓
+          </span>
+          <p class="font-ui text-sm 
+                     text-text-secondary">
+            High scoring game? Offensive props.
+            Low scoring? Defensive plays.
+            The math decides — not a gut feeling
+          </p>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-kelly text-lg 
+                       flex-shrink-0 mt-0.5">
+            ✓
+          </span>
+          <p class="font-ui text-sm 
+                     text-text-secondary">
+            Open the email. Place the bets.
+            Done before 11 AM.
+          </p>
+        </div>
+      </div>
+
+      <!-- Price reveal -->
+      <div class="bg-kelly-surface border 
+                  border-kelly/20 rounded-xl 
+                  px-5 py-4 mb-5 text-center">
+        <p class="font-ui text-xs 
+                   text-green-muted 
+                   uppercase tracking-widest 
+                   mb-1">
+          After your free trial
+        </p>
+        <div class="flex items-center 
+                    justify-center gap-2">
+          <span class="font-display font-black 
+                       text-kelly text-3xl">
+            $28.99
+          </span>
+          <span class="font-ui text-sm 
+                       text-text-secondary">
+            /month
+          </span>
+        </div>
+        <p class="font-ui text-xs 
+                   text-kelly font-bold mt-1">
+          3 days completely free.
+          Cancel before then — pay nothing.
+        </p>
+      </div>
+
+      <!-- CTA -->
+      <button id="assists-cta"
+              class="w-full bg-kelly 
+                     text-white font-display 
+                     font-black text-lg 
+                     uppercase tracking-wide 
+                     py-4 rounded-xl 
+                     hover:bg-kelly-dark 
+                     transition-colors mb-3">
+        Start My 3-Day Free Trial →
+      </button>
+
+      <!-- Dismiss -->
+      <button id="assists-dismiss"
+              class="w-full text-center 
+                     font-ui text-xs 
+                     text-green-muted 
+                     hover:text-kelly-bg 
+                     py-2 transition-colors">
+        No thanks, I'll figure it out myself
+      </button>
+
+    </div>
+  </div>
+</div>
+
+
+Add this JavaScript before </body>:
+
+<script>
+(function() {
+
+  const POPUP_KEY = 'assists_popup_seen';
+  
+  // Don't show if already seen this session
+  if (sessionStorage.getItem(POPUP_KEY)) {
+    return;
+  }
+
+  // Don't show if email gate is still visible
+  const gate = document.getElementById(
+    'email-gate'
+  );
+  const gateVisible = gate && 
+    gate.style.display !== 'none' &&
+    !localStorage.getItem('mora_access');
+
+  if (gateVisible) return;
+
+  // Show after 15 seconds
+  setTimeout(function() {
+
+    // Check gate again at trigger time
+    if (!localStorage.getItem('mora_access')) {
+      return;
+    }
+
+    const popup = document.getElementById(
+      'assists-popup'
+    );
+    if (!popup) return;
+
+    popup.classList.remove('hidden');
+    popup.classList.add('flex');
+    sessionStorage.setItem(POPUP_KEY, '1');
+
+    // Handle CTA click → Stripe checkout
+    document.getElementById('assists-cta')
+      ?.addEventListener('click', async () => {
+        const btn = document.getElementById(
+          'assists-cta'
+        );
+        btn.textContent = 'Loading...';
+        btn.disabled = true;
+
+        const email = localStorage.getItem(
+          'mora_email'
+        ) || '';
+
+        try {
+          const res = await fetch(
+            '/assists/checkout',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ email })
+            }
+          );
+          const data = await res.json();
+
+          if (data.checkout_url) {
+            window.location.href = (
+              data.checkout_url
+            );
+          } else {
+            btn.textContent = (
+              'Start My 3-Day Free Trial →'
+            );
+            btn.disabled = false;
+          }
+        } catch(e) {
+          btn.textContent = (
+            'Start My 3-Day Free Trial →'
+          );
+          btn.disabled = false;
+        }
+      });
+
+    // Handle dismiss
+    document.getElementById('assists-dismiss')
+      ?.addEventListener('click', () => {
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+      });
+
+    // Close on backdrop click
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) {
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+      }
+    });
+
+  }, 15000); // 15 seconds
+
+})();
+</script>
+
+
+=== TASK 6: HANDLE SUCCESS REDIRECT ===
+
+When user returns from Stripe with
+?assists=success in the URL show a
+confirmation message replacing the popup.
+
+Add to the existing URL parameter check
+JavaScript in dashboard.html:
+
+const urlParams = new URLSearchParams(
+  window.location.search
+);
+
+if (urlParams.get('assists') === 'success') {
+  // Show success state
+  const popup = document.getElementById(
+    'assists-popup'
+  );
+  if (popup) {
+    popup.innerHTML = `
+      <div class="w-full max-w-lg mx-4 
+                  bg-white rounded-2xl 
+                  overflow-hidden shadow-2xl
+                  border-2 border-kelly 
+                  text-center p-10">
+        <div class="text-5xl mb-4">⚡</div>
+        <h2 class="font-display font-black 
+                    text-kelly-bg text-2xl 
+                    uppercase mb-2">
+          You're in.
+        </h2>
+        <p class="font-ui text-text-secondary 
+                   text-sm mb-2">
+          First picks land tomorrow at 10:30 AM ET.
+        </p>
+        <p class="font-ui text-text-secondary 
+                   text-sm mb-6">
+          Check your email — your trial 
+          starts today.
+        </p>
+        <button onclick="
+          document.getElementById(
+            'assists-popup'
+          ).classList.add('hidden')"
+                class="bg-kelly text-white 
+                       font-display font-bold 
+                       px-8 py-3 rounded-xl 
+                       hover:bg-kelly-dark">
+          See Today's Board →
+        </button>
+      </div>
+    `;
+    popup.classList.remove('hidden');
+    popup.classList.add('flex');
+  }
+
+  // Clean URL
+  window.history.replaceState(
+    {}, '', '/dashboard'
+  );
+}
+
+
+=== TASK 7: VERIFY FULL SYSTEM ===
+
+After all code is written verify:
+
+1. Run test send:
+   curl -X POST https://morabets.com/api/assists/test-send \
+   -H "Content-Type: application/json" \
+   -d '{"email":"your@email.com"}'
+
+   Confirm: picks selected, email delivered.
+
+2. Check scheduler:
+   Confirm mora_assists_daily job appears
+   in the scheduler job list.
+
+3. Check Stripe webhook:
+   Stripe Dashboard → Developers → Webhooks
+   Confirm morabets.com/stripe/webhook
+   shows as active.
+
+4. Test full flow:
+   Open morabets.com in incognito.
+   Submit email gate.
+   Wait 15 seconds.
+   Confirm Mora Assists popup appears.
+   Click CTA.
+   Confirm Stripe checkout loads.
+
+=== CONSTRAINTS ===
+- mora_assists.py is a NEW file only
+- Do not modify odds_api.py
+- Do not modify nhl_odds_api.py
+- Do not modify probability.py
+- Do not modify enrichment.py
+- Do not modify EV engine
+- Do not modify email gate logic
+- Do not modify Meta or TikTok pixel
+- Do not modify color scheme
+- Do not modify any existing routes
+  except adding new ones
+- Popup shows AFTER email gate clears
+  Never show both at same time
+- Popup shows once per SESSION only
+  not once per browser like the gate
+  User may see it again next visit
+- Test send route must be removed
+  after confirming delivery works
