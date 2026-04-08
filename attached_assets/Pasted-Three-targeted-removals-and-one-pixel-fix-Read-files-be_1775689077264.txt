@@ -1,0 +1,191 @@
+Three targeted removals and one pixel fix.
+Read files before changing anything.
+No unnecessary line changes.
+
+DO NOT touch the email gate popup,
+the main props board, odds fetching,
+EV engine, caching, scheduler,
+TikTok pixel, or color scheme.
+
+=== STEP 1: INSPECT BEFORE CHANGING ===
+
+INSPECT 1 — Find the slide-in popup:
+Search dashboard.html for:
+- "email-slide"
+- "GET TODAY'S BEST PICKS"
+- "get-today"
+- "slide-in"
+- "SEND ME TODAY'S PICKS"
+Report the full HTML block and its ID.
+
+INSPECT 2 — Find the slide-in JavaScript:
+Search dashboard.html for the JS that:
+- Sets a timer to show the slide-in
+- Listens for scroll to trigger it
+- Handles the slide-in form submit
+- Fires any fbq() or Meta pixel event
+Report all JS related to the slide-in.
+
+INSPECT 3 — Find all Meta pixel Lead events:
+Search dashboard.html for every instance of:
+  fbq('track', 'Lead'
+Report every location it appears —
+how many times, in which context,
+which form submit triggers each one.
+
+INSPECT 4 — Find affiliate link placeholders:
+Search dashboard.html for:
+- "FANDUEL_AFFILIATE_LINK_HERE"
+- "DRAFTKINGS_AFFILIATE_LINK_HERE"
+- "BETMGM_AFFILIATE_LINK_HERE"
+- "CAESARS_AFFILIATE_LINK_HERE"
+- "affiliate-book-card"
+- "sticky-bar"
+- "bar-affiliate-btn"
+- "Bet Now"
+- "Open Account"
+Report every location these appear.
+
+INSPECT 5 — Find affiliate_config.js:
+Check if static/affiliate_config.js exists.
+Report its contents.
+
+=== STEP 2: REMOVE SLIDE-IN POPUP ===
+
+Remove the entire slide-in email popup.
+This is the "GET TODAY'S BEST PICKS" 
+floating card that appears after 45 seconds
+or 60% scroll — NOT the email gate.
+
+The email gate stays completely untouched.
+
+Remove from dashboard.html:
+1. The entire slide-in HTML div block
+   (id="email-slide" or similar)
+2. The JavaScript that shows it:
+   - The setTimeout for 45 seconds
+   - The scroll event listener for 60%
+   - The slide-in form submit handler
+   - The showEmailSlide() function
+3. Any fbq('track', 'Lead') that fires
+   specifically from the slide-in form
+
+Do NOT remove:
+- The email gate popup (first visit gate)
+- The Meta pixel Lead event on the gate
+- Any other JavaScript
+
+=== STEP 3: REMOVE AFFILIATE PLACEHOLDERS ===
+
+Remove ALL affiliate placeholder links
+and their surrounding UI elements.
+
+Remove from dashboard.html:
+1. The entire "Where To Bet" / affiliate 
+   book cards section
+   (the grid of FanDuel, DraftKings, 
+   BetMGM, Caesars cards)
+
+2. The sticky bottom bar entirely
+   (the dark green bar at the bottom
+   with book buttons and rotating text)
+   Including:
+   - The sticky-bar HTML div
+   - The rotating messages JavaScript
+   - The bar dismiss button JavaScript
+   - The sessionStorage bar logic
+   - The padding div added for the bar
+
+3. Every "Bet Now →" button on pick cards
+   Replace each "Bet Now →" anchor tag
+   with nothing — remove the button entirely
+   from the card layout
+
+4. The affiliate_config.js script tag
+   in the head if it exists
+
+5. Delete static/affiliate_config.js
+   if it exists
+
+Keep the pick cards intact.
+Just remove the affiliate CTA buttons
+from each card. The card layout stays.
+The probability, odds, and book name
+display stays. Just no clickable link.
+
+=== STEP 4: FIX META PIXEL 
+DOUBLE FIRING ===
+
+After removing the slide-in, verify
+the Meta pixel Lead event fires exactly
+ONCE — only on the email gate submission.
+
+Find the remaining fbq('track', 'Lead')
+in dashboard.html.
+
+There should be exactly ONE instance left.
+It should be inside the gate-form
+success handler only.
+
+If any other Lead event exists anywhere
+in the file after the slide-in removal —
+delete it.
+
+The correct single firing location:
+
+// Inside gate-form submit success block:
+if (data.success) {
+  try {
+    if (typeof fbq !== 'undefined') {
+      fbq('track', 'Lead', {
+        content_name:     'Mora Bets Free Access',
+        content_category: 'Sports Betting Tool',
+        value:            14.99,
+        currency:         'USD'
+      }, {
+        eventID: eventId
+      });
+    }
+  } catch(e) {}
+  // ... rest of success handler
+}
+
+No other Lead events anywhere else.
+
+=== STEP 5: VERIFY ===
+
+After all changes run a search to confirm:
+
+Search dashboard.html for:
+- "email-slide" → should return 0 results
+- "FANDUEL_AFFILIATE_LINK_HERE" → 0 results
+- "sticky-bar" → 0 results
+- "Bet Now" → 0 results
+- "Open Account" → 0 results
+- fbq('track', 'Lead' → exactly 1 result
+
+Report counts for each search.
+
+Also confirm the email gate still exists:
+- "email-gate" → should return results
+- "gate-form" → should return results
+- "gate-signup" → should return results
+
+=== CONSTRAINTS ===
+- Email gate (first visit popup) 
+  stays completely untouched
+- Main props board stays untouched
+- Pick card layout stays — 
+  only remove the Bet Now button
+- Meta PageView event stays untouched
+- Meta Purchase events stay untouched
+- TikTok pixel stays untouched
+- /api/gate-signup route stays untouched
+- /api/subscriber-count stays untouched
+- No changes to any Python files
+- No changes to any odds or EV logic
+- No changes to color scheme
+- No changes to the nav or footer
+- The bottom padding added for the 
+  sticky bar should also be removed
+  since the bar is gone

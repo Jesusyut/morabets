@@ -70,9 +70,6 @@
     }
     </script>
 
-    <!-- Affiliate config (single source of truth for all book links) -->
-    <script src="/static/affiliate_config.js"></script>
-
     <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -293,31 +290,6 @@
             font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 700;
             padding: 0.2rem 0.6rem; border-radius: 50rem; display: inline-block;
         }
-
-        /* ── Book affiliate cards ── */
-        .book-card {
-            background: #FFFFFF; border: 1px solid rgba(76,187,23,0.2);
-            border-radius: 0.75rem; padding: 1rem; display: flex; flex-direction: column;
-            align-items: center; gap: 0.5rem; transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .book-card:hover { border-color: rgba(76,187,23,0.6); box-shadow: 0 4px 12px rgba(76,187,23,0.1); }
-        .book-cta {
-            background: #4CBB17; color: #FFFFFF;
-            font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
-            font-size: 0.85rem; padding: 0.4rem 0.9rem; border-radius: 0.4rem;
-            text-decoration: none; display: inline-block; transition: background 0.15s;
-        }
-        .book-cta:hover { background: #3A9012; color: #fff; }
-
-        /* ── Sticky bar affiliate buttons (inside dark bar — keep contrast) ── */
-        .bar-affiliate-btn {
-            font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.78rem;
-            padding: 0.35rem 0.9rem; border-radius: 50rem;
-            background: rgba(255,255,255,0.1); color: #fff;
-            text-decoration: none; white-space: nowrap; transition: all 0.15s;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        .bar-affiliate-btn:hover { background: #4CBB17; color: #0F2406; border-color: #4CBB17; }
 
         /* ── Disciplined Hand section ── */
         #disciplined-hand-btn {
@@ -548,28 +520,6 @@
         </div>
     </div>
 
-    <!-- Sportsbook Affiliate Grid -->
-    <div style="margin-top:2rem;">
-        <div style="font-family:'Inter',sans-serif;font-size:0.68rem;color:#6B9E5A;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem;">Line Shop — Best Books</div>
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.6rem;" id="book-affiliate-grid">
-            <div class="book-card">
-                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;color:#0F2406;">FanDuel</div>
-                <a href="#" id="aff-fanduel" target="_blank" rel="noopener noreferrer" class="book-cta">Bet Now →</a>
-            </div>
-            <div class="book-card">
-                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;">DraftKings</div>
-                <a href="#" id="aff-draftkings" target="_blank" rel="noopener noreferrer" class="book-cta">Bet Now →</a>
-            </div>
-            <div class="book-card">
-                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;">BetMGM</div>
-                <a href="#" id="aff-betmgm" target="_blank" rel="noopener noreferrer" class="book-cta">Bet Now →</a>
-            </div>
-            <div class="book-card">
-                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;">Caesars</div>
-                <a href="#" id="aff-caesars" target="_blank" rel="noopener noreferrer" class="book-cta">Bet Now →</a>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- ════════════════════════════════════════════════════
@@ -634,130 +584,11 @@
     </div>
 </footer>
 
-<!-- ── Sticky Bottom Affiliate Bar ── -->
-<div id="sticky-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:40;background:#0F2406;border-top:1px solid rgba(76,187,23,0.2);box-shadow:0 -4px 20px rgba(0,0,0,0.5);transition:transform 0.3s;">
-    <div style="max-width:1280px;margin:0 auto;padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">
-        <!-- Rotating message -->
-        <div style="display:flex;align-items:center;gap:0.5rem;flex:1;min-width:0;">
-            <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;color:#4CBB17;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;display:none;" class="bar-label-lg">Line Shop:</span>
-            <span id="bar-rotating-text" style="font-family:'Inter',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity 0.3s;">Always bet at the book with the best line — half a point of juice compounds over 162 games</span>
-        </div>
-        <!-- Book CTAs -->
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
-            <a href="#" id="bar-fanduel" target="_blank" rel="noopener noreferrer" class="bar-affiliate-btn">FanDuel</a>
-            <a href="#" id="bar-draftkings" target="_blank" rel="noopener noreferrer" class="bar-affiliate-btn">DraftKings</a>
-            <a href="#" id="bar-betmgm" target="_blank" rel="noopener noreferrer" class="bar-affiliate-btn" style="display:none;" class="bar-sm">BetMGM</a>
-            <a href="#" id="bar-caesars" target="_blank" rel="noopener noreferrer" class="bar-affiliate-btn" style="display:none;" class="bar-md">Caesars</a>
-        </div>
-        <!-- Dismiss -->
-        <button id="bar-dismiss" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:1.2rem;cursor:pointer;flex-shrink:0;padding:0 0.25rem;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.color='rgba(255,255,255,0.3)'">×</button>
-    </div>
-</div>
-<div style="height:3rem;"></div>
-
-<!-- ── Email Capture Slide-in ── -->
-<div id="email-slide" style="position:fixed;bottom:5rem;right:1rem;z-index:50;width:17rem;background:#FFFFFF;border:2px solid #4CBB17;border-radius:1rem;box-shadow:0 8px 32px rgba(76,187,23,0.15);padding:1.25rem;transform:translateY(2rem);opacity:0;transition:all 0.4s;pointer-events:none;">
-    <button id="email-slide-close" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;color:#A0BF96;font-size:1.1rem;cursor:pointer;line-height:1;" onmouseover="this.style.color='#0F2406'" onmouseout="this.style.color='#A0BF96'">×</button>
-    <div style="margin-bottom:0.75rem;">
-        <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.1rem;color:#0F2406;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.3rem;">Get today's best picks</p>
-        <p style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;margin:0;">Free edge picks + best lines delivered before first pitch. No spam.</p>
-    </div>
-    <form id="email-capture-form" style="display:flex;flex-direction:column;gap:0.5rem;">
-        <input type="email" id="slide-email-input" placeholder="your@email.com" style="background:#F5FAF2;border:1px solid rgba(76,187,23,0.3);border-radius:0.5rem;padding:0.5rem 0.75rem;color:#0F2406;font-family:'Inter',sans-serif;font-size:0.82rem;outline:none;width:100%;" onfocus="this.style.borderColor='#4CBB17'" onblur="this.style.borderColor='rgba(76,187,23,0.3)'">
-        <button type="submit" style="background:#4CBB17;color:#FFFFFF;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.9rem;padding:0.6rem;border-radius:0.5rem;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;transition:background 0.15s;" onmouseover="this.style.background='#3A9012'" onmouseout="this.style.background='#4CBB17'">Send Me Today's Picks →</button>
-    </form>
-    <p style="font-family:'Inter',sans-serif;font-size:0.68rem;color:#A0BF96;text-align:center;margin:0.5rem 0 0;">Free forever. Unsubscribe anytime.</p>
-</div>
 
 <!-- Bootstrap Bundle JS (for accordion collapse functionality) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    // ─────────────────────────────────────────────
-    //  Affiliate links — loaded from config
-    // ─────────────────────────────────────────────
-    (function() {
-        const a = typeof MORA_AFFILIATES !== 'undefined' ? MORA_AFFILIATES : {};
-        const set = (id, key) => { const el = document.getElementById(id); if (el && a[key] && a[key] !== key.toUpperCase()+'_AFFILIATE_LINK_HERE') el.href = a[key]; };
-        set('aff-fanduel',    'fanduel');
-        set('aff-draftkings', 'draftkings');
-        set('aff-betmgm',     'betmgm');
-        set('aff-caesars',    'caesars');
-        set('bar-fanduel',    'fanduel');
-        set('bar-draftkings', 'draftkings');
-        set('bar-betmgm',     'betmgm');
-        set('bar-caesars',    'caesars');
-    })();
-
-    // ─────────────────────────────────────────────
-    //  Sticky Bar — rotating messages + dismiss
-    // ─────────────────────────────────────────────
-    const barMessages = [
-        "Always bet at the book with the best line — half a point of juice compounds over 162 games",
-        "FanDuel vs DraftKings on the same pick can be worth 3–5% over a full season",
-        "Line shopping is the one free edge every bettor has access to — use it every single bet",
-        "The no-vig board shows you the best book for every pick automatically",
-        "Open accounts at multiple books — it's free and it's your biggest edge"
-    ];
-    let barMsgIndex = 0;
-    const barText = document.getElementById('bar-rotating-text');
-    if (sessionStorage.getItem('barDismissed')) {
-        document.getElementById('sticky-bar').style.transform = 'translateY(100%)';
-    }
-    setInterval(() => {
-        barMsgIndex = (barMsgIndex + 1) % barMessages.length;
-        barText.style.opacity = '0';
-        setTimeout(() => { barText.textContent = barMessages[barMsgIndex]; barText.style.opacity = '1'; }, 300);
-    }, 5000);
-    document.getElementById('bar-dismiss').addEventListener('click', () => {
-        document.getElementById('sticky-bar').style.transform = 'translateY(100%)';
-        sessionStorage.setItem('barDismissed', '1');
-    });
-
-    // ─────────────────────────────────────────────
-    //  Email Slide-in
-    // ─────────────────────────────────────────────
-    const emailSlide = document.getElementById('email-slide');
-    function showEmailSlide() {
-        if (sessionStorage.getItem('slideShown')) return;
-        if (window.innerWidth < 375) return;
-        sessionStorage.setItem('slideShown', '1');
-        emailSlide.style.transform = 'translateY(0)';
-        emailSlide.style.opacity = '1';
-        emailSlide.style.pointerEvents = 'auto';
-    }
-    const slideTimer = setTimeout(showEmailSlide, 45000);
-    window.addEventListener('scroll', () => {
-        const scrolled = window.scrollY / (document.body.scrollHeight - window.innerHeight);
-        if (scrolled > 0.6) { clearTimeout(slideTimer); showEmailSlide(); }
-    }, { passive: true });
-    document.getElementById('email-slide-close').addEventListener('click', () => {
-        emailSlide.style.transform = 'translateY(2rem)';
-        emailSlide.style.opacity = '0';
-        emailSlide.style.pointerEvents = 'none';
-    });
-    document.getElementById('email-capture-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const email = document.getElementById('slide-email-input').value;
-        if (!email) return;
-        fetch('/api/subscribe', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email: email})
-        });
-        emailSlide.innerHTML = `
-            <div style="text-align:center;padding:0.5rem 0;">
-                <div style="font-size:2rem;margin-bottom:0.5rem;">✓</div>
-                <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#4CBB17;font-size:1.1rem;text-transform:uppercase;margin:0;">You're in.</p>
-                <p style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;margin:0.3rem 0 0;">First pitch picks hit your inbox tomorrow morning.</p>
-            </div>`;
-        setTimeout(() => {
-            emailSlide.style.transform = 'translateY(2rem)';
-            emailSlide.style.opacity = '0';
-            emailSlide.style.pointerEvents = 'none';
-        }, 3000);
-    });
-
     // ─────────────────────────────────────────────
     //  Disciplined Hand toggle
     // ─────────────────────────────────────────────
