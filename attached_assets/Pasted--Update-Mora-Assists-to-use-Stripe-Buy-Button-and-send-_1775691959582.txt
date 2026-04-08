@@ -1,0 +1,656 @@
+```
+Update Mora Assists to use Stripe Buy Button
+and send a welcome email after signup.
+
+Read all existing files before changing anything.
+Do not break any existing functionality.
+Do not touch odds fetching, EV engine,
+email gate, Meta pixel, TikTok pixel,
+color scheme, or existing scheduler jobs.
+
+=== STEP 1: INSPECT EXISTING CODE ===
+
+INSPECT 1 — Find the assists popup in 
+dashboard.html:
+- Find the assists-cta button
+- Find the /assists/checkout fetch call
+- Find the Stripe checkout JavaScript
+Report the exact code blocks.
+
+INSPECT 2 — Find existing Stripe routes
+in app.py:
+- Find /assists/checkout route
+- Find /stripe/webhook route
+- Find _handle_stripe_event function
+- Find _save_subscriber function
+Report what exists.
+
+INSPECT 3 — Check mora_assists.py exists:
+- Confirm send_picks_email() exists
+- Confirm load_active_subscribers() exists
+- Confirm run_daily_assists() exists
+Report what functions are present.
+
+INSPECT 4 — Verify secrets available:
+Run in shell:
+python3 -c "
+import os
+keys = [
+    'ANTHROPIC_API_KEY',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_PUBLISHABLE_KEY', 
+    'STRIPE_PRICE_ID',
+    'STRIPE_WEBHOOK_SECRET',
+    'SENDGRID_API_KEY',
+    'EMAIL_FROM'
+]
+for k in keys:
+    v = os.getenv(k)
+    print(f'{k}: {\"✅\" if v else \"❌ MISSING\"}')"
+
+Report any missing secrets before proceeding.
+
+=== STEP 2: REPLACE CHECKOUT BUTTON 
+WITH STRIPE BUY BUTTON ===
+
+In dashboard.html find the assists popup.
+
+Find the assists-cta button:
+<button id="assists-cta" ...>
+  Start My 3-Day Free Trial →
+</button>
+
+Replace the entire button with the
+Stripe Buy Button embed.
+
+Add the Stripe Buy Button script to
+the <head> section of dashboard.html
+if not already present:
+
+<script async
+  src="https://js.stripe.com/v3/buy-button.js">
+</script>
+
+Replace the assists-cta button with:
+
+<div class="w-full flex justify-center mb-3">
+  <stripe-buy-button
+    buy-button-id="[PASTE_BUY_BUTTON_ID_HERE]"
+    publishable-key="[PASTE_PUBLISHABLE_KEY_HERE]"
+    customer-email-attribute="mora_email">
+  </stripe-buy-button>
+</div>
+
+Note: The agent must leave 
+[PASTE_BUY_BUTTON_ID_HERE] and 
+[PASTE_PUBLISHABLE_KEY_HERE] as 
+placeholder text — the developer will
+paste the real values from Stripe dashboard.
+Do not invent or guess these values.
+
+Also remove the assists-cta click handler
+JavaScript entirely since Stripe now
+handles the checkout natively.
+
+Remove this JS block:
+document.getElementById('assists-cta')
+  ?.addEventListener('click', async () => {
+    ... entire block ...
+  });
+
+=== STEP 3: REMOVE CUSTOM CHECKOUT ROUTE ===
+
+In app.py find and DELETE the entire
+/assists/checkout route:
+
+@app.route('/assists/checkout', 
+           methods=['POST'])
+def assists_checkout():
+    ...
+
+Remove it completely.
+The Stripe Buy Button handles checkout
+natively — this route is no longer needed.
+
+Keep the /stripe/webhook route.
+Keep all subscriber management functions.
+
+=== STEP 4: ADD WELCOME EMAIL 
+TO STRIPE WEBHOOK ===
+
+In app.py find _handle_stripe_event().
+
+Find the subscription.created handler:
+
+if event_type == (
+    'customer.subscription.created'
+):
+    ...
+    _save_subscriber({...})
+    logger.info(f"[STRIPE] New trial: {email}")
+
+After _save_subscriber() add the welcome
+email send:
+
+    # Send welcome email
+    try:
+        _send_welcome_email(email, name)
+        logger.info(
+            f"[STRIPE] Welcome email sent: {email}"
+        )
+    except Exception as e:
+        logger.warning(
+            f"[STRIPE] Welcome email failed: {e}"
+        )
+    # Never block signup for email failure
+
+
+=== STEP 5: CREATE _send_welcome_email() 
+IN app.py ===
+
+Add this function to app.py:
+
+def _send_welcome_email(email, name=''):
+    """
+    Send welcome email to new Mora Assists
+    subscriber after Stripe subscription created.
+    Includes what to expect and unsubscribe link.
+    """
+    import sendgrid
+    from sendgrid.helpers.mail import Mail
+
+    SENDGRID_API_KEY = os.environ.get(
+        'SENDGRID_API_KEY'
+    )
+    FROM_EMAIL = os.environ.get(
+        'EMAIL_FROM', 'picks@morabets.com'
+    )
+
+    if not SENDGRID_API_KEY:
+        logger.warning(
+            "[EMAIL] No SENDGRID_API_KEY"
+        )
+        return False
+
+    first_name = name.split()[0] if name else (
+        "there"
+    )
+
+    subject = (
+        "⚡ Welcome to Mora Assists — "
+        "your first picks arrive tomorrow"
+    )
+
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {{
+    font-family: Inter, Arial, sans-serif;
+    background: #f5faf2;
+    margin: 0;
+    padding: 20px;
+    color: #0f2406;
+  }}
+  .container {{
+    max-width: 560px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid #4cbb17;
+  }}
+  .header {{
+    background: #0f2406;
+    padding: 32px 24px;
+    text-align: center;
+  }}
+  .logo {{
+    color: white;
+    font-size: 32px;
+    font-weight: 900;
+    letter-spacing: 4px;
+  }}
+  .logo span {{ color: #4cbb17; }}
+  .tagline {{
+    color: #6b9e5a;
+    font-size: 13px;
+    margin-top: 6px;
+  }}
+  .body {{
+    padding: 36px 32px;
+  }}
+  h1 {{
+    font-size: 22px;
+    font-weight: 900;
+    color: #0f2406;
+    margin: 0 0 8px;
+  }}
+  p {{
+    font-size: 14px;
+    color: #6b9e5a;
+    line-height: 1.7;
+    margin: 0 0 16px;
+  }}
+  .highlight {{
+    color: #0f2406;
+    font-weight: 700;
+  }}
+  .what-to-expect {{
+    background: #f5faf2;
+    border: 1px solid #e8f5e1;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+  }}
+  .what-to-expect h3 {{
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f2406;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 12px;
+  }}
+  .step {{
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+  }}
+  .step-num {{
+    background: #4cbb17;
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }}
+  .step-text {{
+    font-size: 13px;
+    color: #1a3d0a;
+    line-height: 1.5;
+    margin: 0;
+  }}
+  .trial-notice {{
+    background: #e8f5e1;
+    border: 1px solid #4cbb17;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 20px 0;
+    text-align: center;
+  }}
+  .trial-notice p {{
+    margin: 0;
+    font-size: 13px;
+    color: #2d6e0f;
+    font-weight: 600;
+  }}
+  .cta-btn {{
+    display: block;
+    background: #4cbb17;
+    color: white;
+    text-align: center;
+    padding: 14px 28px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 15px;
+    margin: 24px 0 8px;
+  }}
+  .footer {{
+    background: #f5faf2;
+    padding: 20px 32px;
+    text-align: center;
+    border-top: 1px solid #e8f5e1;
+  }}
+  .footer p {{
+    font-size: 11px;
+    color: #a0bf96;
+    margin: 0 0 6px;
+  }}
+  .footer a {{
+    color: #6b9e5a;
+    text-decoration: underline;
+    font-size: 11px;
+  }}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="logo">
+      MORA <span>ASSISTS</span>
+    </div>
+    <div class="tagline">
+      Daily picks. Delivered before first pitch.
+    </div>
+  </div>
+
+  <div class="body">
+
+    <h1>You're in, {first_name}. ⚡</h1>
+
+    <p>
+      Your 3-day free trial starts today.
+      Your <span class="highlight">
+      first picks arrive tomorrow morning
+      </span> — 5 plays in your inbox 
+      by 10:30 AM ET.
+    </p>
+
+    <div class="what-to-expect">
+      <h3>Here's what happens next</h3>
+      <div class="step">
+        <div class="step-num">1</div>
+        <p class="step-text">
+          <strong>Every morning at 10 AM</strong> —
+          our system scans every MLB and 
+          NHL line on the board
+        </p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <p class="step-text">
+          <strong>AI selects 5 picks</strong> —
+          2 player props based on game environment,
+          3 anchor lines with real mathematical edge
+        </p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <p class="step-text">
+          <strong>Email lands by 10:30 AM</strong> —
+          open it, place the bets, 
+          done before lunch
+        </p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <p class="step-text">
+          <strong>Same unit every play</strong> —
+          flat stakes, no chasing.
+          The math compounds across the season.
+        </p>
+      </div>
+    </div>
+
+    <div class="trial-notice">
+      <p>
+        🔒 &nbsp; 3-day free trial — 
+        cancel anytime before day 3 
+        and you pay nothing.
+        $28.99/month after your trial ends.
+      </p>
+    </div>
+
+    <p>
+      While you wait for tomorrow's picks —
+      the full board is live right now.
+    </p>
+
+    <a href="https://morabets.com/dashboard" 
+       class="cta-btn">
+      See Today's Full Board →
+    </a>
+
+  </div>
+
+  <div class="footer">
+    <p>
+      You're receiving this because you 
+      subscribed to Mora Assists.
+    </p>
+    <p>
+      Mora Bets · Free sports analytics tool
+    </p>
+    <p style="margin-top: 8px;">
+      <a href="https://morabets.com/unsubscribe/assists?email={email}">
+        Cancel subscription &amp; unsubscribe
+      </a>
+      &nbsp;·&nbsp;
+      <a href="https://morabets.com/dashboard">
+        View dashboard
+      </a>
+    </p>
+    <p style="margin-top: 8px;">
+      © 2026 Mora Bets. 
+      For informational purposes only.
+      Please bet responsibly.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>
+"""
+
+    try:
+        sg = sendgrid.SendGridAPIClient(
+            api_key=SENDGRID_API_KEY
+        )
+        message = Mail(
+            from_email=FROM_EMAIL,
+            to_emails=email,
+            subject=subject,
+            html_content=html
+        )
+        response = sg.send(message)
+        return response.status_code in [
+            200, 201, 202
+        ]
+    except Exception as e:
+        logger.error(
+            f"[EMAIL] Welcome send failed: {e}"
+        )
+        return False
+
+
+=== STEP 6: ADD UNSUBSCRIBE ROUTE ===
+
+Add this route to app.py so users can
+cancel from the email link directly:
+
+@app.route('/unsubscribe/assists')
+def unsubscribe_assists():
+    """
+    One-click unsubscribe from email footer.
+    Cancels Stripe subscription and 
+    updates subscriber status.
+    """
+    import stripe
+    import csv
+    import tempfile
+
+    stripe.api_key = os.environ.get(
+        'STRIPE_SECRET_KEY'
+    )
+
+    email = request.args.get('email', '')
+
+    if not email:
+        return """
+        <html><body style="font-family:Inter;
+        text-align:center;padding:60px;">
+        <h2>Link invalid.</h2>
+        <p>Please contact us at 
+        picks@morabets.com</p>
+        </body></html>
+        """, 400
+
+    try:
+        # Find subscription ID for this email
+        FILE = 'mora_assists_subscribers.csv'
+        sub_id = None
+        name   = ''
+
+        if os.path.exists(FILE):
+            with open(FILE) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get(
+                        'email', ''
+                    ).lower() == email.lower():
+                        sub_id = row.get(
+                            'stripe_subscription_id'
+                        )
+                        name = row.get('name', '')
+                        break
+
+        # Cancel in Stripe if found
+        if sub_id:
+            try:
+                stripe.Subscription.cancel(sub_id)
+                logger.info(
+                    f"[UNSUB] Cancelled "
+                    f"Stripe sub: {sub_id}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[UNSUB] Stripe cancel: {e}"
+                )
+
+        # Update CSV status
+        _update_subscriber_status(
+            sub_id, 'cancelled'
+        )
+
+        logger.info(
+            f"[UNSUB] Unsubscribed: {email}"
+        )
+
+        return """
+        <html>
+        <head>
+        <style>
+          body {{
+            font-family: Inter, sans-serif;
+            background: #f5faf2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+          }}
+          .card {{
+            background: white;
+            border: 2px solid #4cbb17;
+            border-radius: 16px;
+            padding: 48px;
+            text-align: center;
+            max-width: 400px;
+          }}
+          h2 {{
+            color: #0f2406;
+            font-size: 24px;
+            margin-bottom: 12px;
+          }}
+          p {{
+            color: #6b9e5a;
+            font-size: 14px;
+            line-height: 1.6;
+          }}
+          a {{
+            display: inline-block;
+            background: #4cbb17;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 700;
+            margin-top: 20px;
+            font-size: 14px;
+          }}
+        </style>
+        </head>
+        <body>
+        <div class="card">
+          <div style="font-size:48px;
+                      margin-bottom:16px;">
+            ✓
+          </div>
+          <h2>You're unsubscribed.</h2>
+          <p>
+            Your Mora Assists subscription 
+            has been cancelled. No further 
+            charges will be made.
+          </p>
+          <p style="margin-top:12px;">
+            The free board at morabets.com 
+            is still available to you anytime.
+          </p>
+          <a href="https://morabets.com/dashboard">
+            Back to Dashboard
+          </a>
+        </div>
+        </body>
+        </html>
+        """
+
+    except Exception as e:
+        logger.error(
+            f"[UNSUB] Error: {e}"
+        )
+        return f"""
+        <html><body style="font-family:Inter;
+        text-align:center;padding:60px;">
+        <h2>Something went wrong.</h2>
+        <p>Email us: picks@morabets.com</p>
+        </body></html>
+        """, 500
+
+
+=== STEP 7: VERIFY ===
+
+After all changes confirm:
+
+1. Search dashboard.html for:
+   - "assists-cta" addEventListener → 
+     should be GONE
+   - "stripe-buy-button" → should exist
+   - "/assists/checkout" fetch → 
+     should be GONE
+
+2. Search app.py for:
+   - "/assists/checkout" route → 
+     should be GONE
+   - "_send_welcome_email" → should exist
+   - "/unsubscribe/assists" → should exist
+
+3. Test webhook manually in shell:
+python3 -c "
+import os, requests
+# Simulate what happens after deploy
+print('Webhook route registered: checking...')
+print('Unsubscribe route: /unsubscribe/assists')
+print('Welcome email function: _send_welcome_email')
+print('All routes ready for Stripe events.')
+"
+
+=== CONSTRAINTS ===
+- Do NOT invent the buy-button-id value
+  Leave [PASTE_BUY_BUTTON_ID_HERE] literally
+  Developer pastes real value from Stripe
+- Do NOT change /stripe/webhook route
+- Do NOT change _handle_stripe_event
+  except adding _send_welcome_email call
+- Do NOT change _save_subscriber
+- Do NOT change mora_assists.py
+- Do NOT change run_daily_assists scheduler
+- Do NOT touch email gate
+- Do NOT touch EV engine or odds fetching
+- Do NOT touch Meta or TikTok pixel
+- Do NOT touch color scheme
+- Unsubscribe page must work without JS
+  Pure server-side HTML response
+- Welcome email unsubscribe link must
+  include email as URL parameter
+- Never block webhook response for 
+  email failures — always return 200

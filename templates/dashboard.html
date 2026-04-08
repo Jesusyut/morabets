@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script async src="https://js.stripe.com/v3/buy-button.js"></script>
     <meta name='impact-site-verification' value='1f2adf2a-867f-43db-8f37-a72b9290ea17'>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4CBB17">
@@ -365,6 +366,70 @@
     </form>
 
   </div>
+</div>
+
+<!-- ── Mora Assists Popup ── -->
+<div id="assists-popup"
+     style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
+  <div style="width:100%;max-width:480px;margin:0 1rem;background:#fff;border-radius:20px;overflow:hidden;border:2.5px solid #4CBB17;box-shadow:0 24px 64px rgba(0,0,0,0.18);position:relative;">
+    <!-- Close -->
+    <button onclick="document.getElementById('assists-popup').style.display='none'"
+            style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:#6b9e5a;cursor:pointer;line-height:1;z-index:1;">×</button>
+    <!-- Header -->
+    <div style="background:#0f2406;padding:28px 24px 20px;text-align:center;">
+      <div style="color:#4CBB17;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;">NEW</div>
+      <div style="color:white;font-size:26px;font-weight:900;letter-spacing:3px;">MORA <span style="color:#4CBB17;">ASSISTS</span></div>
+      <div style="color:#6b9e5a;font-size:13px;margin-top:6px;">5 AI picks. Every morning. Inbox by 10:30 AM ET.</div>
+    </div>
+    <!-- Body -->
+    <div style="padding:28px 28px 8px;">
+      <p style="font-size:15px;font-weight:700;color:#0f2406;text-align:center;margin:0 0 18px;">
+        Stop hunting. Start winning.
+      </p>
+      <!-- Feature list -->
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:26px;height:26px;background:#4CBB17;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span style="font-size:13px;color:#1a3d0a;font-weight:600;">2 props matched to game environment (high/low scoring)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:26px;height:26px;background:#4CBB17;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span style="font-size:13px;color:#1a3d0a;font-weight:600;">3 anchor plays with real no-vig mathematical edge</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:26px;height:26px;background:#4CBB17;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span style="font-size:13px;color:#1a3d0a;font-weight:600;">Flat stakes. No parlay traps. The math compounds.</span>
+        </div>
+      </div>
+      <!-- Pricing -->
+      <div style="background:#f5faf2;border:1.5px solid #4CBB17;border-radius:12px;padding:14px 18px;text-align:center;margin-bottom:20px;">
+        <div style="font-size:24px;font-weight:900;color:#0f2406;">$28.99<span style="font-size:14px;font-weight:400;color:#6b9e5a;">/month</span></div>
+        <div style="font-size:12px;color:#4CBB17;font-weight:700;margin-top:2px;">3-day free trial · Cancel anytime</div>
+      </div>
+      <!-- Stripe Buy Button -->
+      <div style="display:flex;justify-content:center;margin-bottom:12px;">
+        <stripe-buy-button
+          buy-button-id="buy_btn_1TK5iw3n4IXG61tMgjoml5vr"
+          publishable-key="pk_live_51SNfuC3n4IXG61tM3hP6QJYZsVCzAboWnldZzMpocDhcavJmcsIebzzR4qh2lxS1THEV7NF0eIkuQK1UtJFhrnHV00HC9YhgR3"
+        ></stripe-buy-button>
+      </div>
+      <p style="font-size:11px;color:#a0bf96;text-align:center;margin:0 0 20px;">No commitment. Cancel before trial ends and pay nothing.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Assists Success Banner ── -->
+<div id="assists-success-banner"
+     style="display:none;position:fixed;top:0;left:0;right:0;z-index:10001;background:#0f2406;padding:14px 20px;text-align:center;border-bottom:2px solid #4CBB17;">
+  <span style="color:white;font-size:14px;font-weight:700;">⚡ Welcome to Mora Assists! Your first picks arrive tomorrow at 10:30 AM ET.</span>
+  <button onclick="document.getElementById('assists-success-banner').style.display='none'"
+          style="background:none;border:none;color:#4CBB17;font-size:18px;margin-left:16px;cursor:pointer;vertical-align:middle;">×</button>
 </div>
 
 <!-- ── Sticky Back Header (shown when inside a matchup) ── -->
@@ -1708,6 +1773,68 @@
     });
   }
 })();
+</script>
+
+<script>
+// ── Mora Assists Popup ──────────────────────────────────────────
+(function() {
+  // Handle ?assists=success redirect from Stripe
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('assists') === 'success') {
+    var banner = document.getElementById('assists-success-banner');
+    if (banner) banner.style.display = 'block';
+    // Clean URL without reload
+    var url = new URL(window.location.href);
+    url.searchParams.delete('assists');
+    window.history.replaceState({}, '', url.toString());
+  }
+
+  // Show popup 15s after load, once per SESSION (not per browser visit)
+  // Only after email gate is cleared
+  function maybeShowAssistsPopup() {
+    var hasAccess   = localStorage.getItem('mora_access');
+    var seenThisSession = sessionStorage.getItem('assists_popup_seen');
+    if (!hasAccess || seenThisSession) return;
+
+    sessionStorage.setItem('assists_popup_seen', '1');
+    setTimeout(function() {
+      var popup = document.getElementById('assists-popup');
+      if (popup) {
+        popup.style.display = 'flex';
+      }
+    }, 15000);
+  }
+
+  // Wait for gate to clear, then start the timer
+  var gateDiv = document.getElementById('email-gate');
+  if (gateDiv) {
+    var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        if (m.type === 'attributes' && m.attributeName === 'style') {
+          if (gateDiv.style.display === 'none' || gateDiv.style.visibility === 'hidden') {
+            observer.disconnect();
+            maybeShowAssistsPopup();
+          }
+        }
+      });
+    });
+    observer.observe(gateDiv, { attributes: true, attributeFilter: ['style'] });
+  }
+
+  // Also check immediately in case gate was already cleared
+  maybeShowAssistsPopup();
+
+  // Close popup on overlay click
+  var popup = document.getElementById('assists-popup');
+  if (popup) {
+    popup.addEventListener('click', function(e) {
+      if (e.target === popup) {
+        popup.style.display = 'none';
+      }
+    });
+  }
+})();
+// ── END Mora Assists Popup ─────────────────────────────────────
 </script>
 
 </body>

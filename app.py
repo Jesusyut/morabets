@@ -1983,6 +1983,18 @@ scheduler.add_job(
     replace_existing=True
 )
 
+# Mora Assists — send daily picks at 10:30 AM ET
+scheduler.add_job(
+    func=lambda: run_daily_assists(),
+    trigger="cron",
+    hour=10,
+    minute=30,
+    timezone="America/New_York",
+    id="mora_assists_daily",
+    name="Mora Assists Daily Picks 10:30AM ET",
+    replace_existing=True
+)
+
 
 
 # Global flag to track initialization
@@ -2365,6 +2377,310 @@ def admin_emails():
 #    "mora bets" (brand — fast)
 #    "no vig betting tool" (medium — 4-8 weeks)
 #    "MLB picks today free" (competitive — 3-6 months)
+
+# ══════════════════════════════════════════════════════════════
+# MORA ASSISTS — Stripe webhook, subscriber management, email
+# ══════════════════════════════════════════════════════════════
+
+import stripe as stripe_lib
+from mora_assists import run_daily_assists
+
+
+def _save_subscriber(data):
+    """Append or update a subscriber row in mora_assists_subscribers.csv."""
+    FILE = "mora_assists_subscribers.csv"
+    fieldnames = [
+        "email", "name", "stripe_customer_id",
+        "stripe_subscription_id", "status",
+        "subscribed_at", "trial_ends_at", "cancelled_at"
+    ]
+    rows = []
+    updated = False
+
+    if os.path.exists(FILE):
+        with open(FILE, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("email", "").lower() == data.get("email", "").lower():
+                    row.update({k: v for k, v in data.items() if v})
+                    updated = True
+                rows.append(row)
+
+    if not updated:
+        rows.append(data)
+
+    with open(FILE, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _update_subscriber_status(subscription_id, status):
+    """Update the status field for a given stripe_subscription_id."""
+    FILE = "mora_assists_subscribers.csv"
+    if not os.path.exists(FILE):
+        return
+
+    fieldnames = [
+        "email", "name", "stripe_customer_id",
+        "stripe_subscription_id", "status",
+        "subscribed_at", "trial_ends_at", "cancelled_at"
+    ]
+    rows = []
+    with open(FILE, newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("stripe_subscription_id") == subscription_id:
+                row["status"] = status
+                if status == "cancelled":
+                    row["cancelled_at"] = datetime.utcnow().isoformat()
+            rows.append(row)
+
+    with open(FILE, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _send_welcome_email(email, name=""):
+    """Send welcome email to a new Mora Assists subscriber via SendGrid."""
+    SENDGRID_KEY = os.environ.get("SENDGRID_API_KEY")
+    FROM_EMAIL   = os.environ.get("EMAIL_FROM", "picks@morabets.com")
+
+    if not SENDGRID_KEY:
+        logger.warning("[EMAIL] No SENDGRID_API_KEY — skipping welcome email")
+        return False
+
+    first_name = name.split()[0] if name else "there"
+    subject    = "⚡ Welcome to Mora Assists — your first picks arrive tomorrow"
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {{font-family:Inter,Arial,sans-serif;background:#f5faf2;margin:0;padding:20px;color:#0f2406;}}
+  .container {{max-width:560px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;border:2px solid #4cbb17;}}
+  .header {{background:#0f2406;padding:32px 24px;text-align:center;}}
+  .logo {{color:white;font-size:32px;font-weight:900;letter-spacing:4px;}}
+  .logo span {{color:#4cbb17;}}
+  .tagline {{color:#6b9e5a;font-size:13px;margin-top:6px;}}
+  .body {{padding:36px 32px;}}
+  h1 {{font-size:22px;font-weight:900;color:#0f2406;margin:0 0 8px;}}
+  p {{font-size:14px;color:#6b9e5a;line-height:1.7;margin:0 0 16px;}}
+  .highlight {{color:#0f2406;font-weight:700;}}
+  .what-to-expect {{background:#f5faf2;border:1px solid #e8f5e1;border-radius:12px;padding:20px;margin:20px 0;}}
+  .what-to-expect h3 {{font-size:13px;font-weight:700;color:#0f2406;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;}}
+  .step {{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;}}
+  .step-num {{background:#4cbb17;color:white;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}}
+  .step-text {{font-size:13px;color:#1a3d0a;line-height:1.5;margin:0;}}
+  .trial-notice {{background:#e8f5e1;border:1px solid #4cbb17;border-radius:10px;padding:14px 18px;margin:20px 0;text-align:center;}}
+  .trial-notice p {{margin:0;font-size:13px;color:#2d6e0f;font-weight:600;}}
+  .cta-btn {{display:block;background:#4cbb17;color:white;text-align:center;padding:14px 28px;border-radius:50px;text-decoration:none;font-weight:700;font-size:15px;margin:24px 0 8px;}}
+  .footer {{background:#f5faf2;padding:20px 32px;text-align:center;border-top:1px solid #e8f5e1;}}
+  .footer p {{font-size:11px;color:#a0bf96;margin:0 0 6px;}}
+  .footer a {{color:#6b9e5a;text-decoration:underline;font-size:11px;}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">MORA <span>ASSISTS</span></div>
+    <div class="tagline">Daily picks. Delivered before first pitch.</div>
+  </div>
+  <div class="body">
+    <h1>You're in, {first_name}. ⚡</h1>
+    <p>Your 3-day free trial starts today. Your <span class="highlight">first picks arrive tomorrow morning</span> — 5 plays in your inbox by 10:30 AM ET.</p>
+    <div class="what-to-expect">
+      <h3>Here's what happens next</h3>
+      <div class="step"><div class="step-num">1</div><p class="step-text"><strong>Every morning at 10 AM</strong> — our system scans every MLB and NHL line on the board</p></div>
+      <div class="step"><div class="step-num">2</div><p class="step-text"><strong>AI selects 5 picks</strong> — 2 player props based on game environment, 3 anchor lines with real mathematical edge</p></div>
+      <div class="step"><div class="step-num">3</div><p class="step-text"><strong>Email lands by 10:30 AM</strong> — open it, place the bets, done before lunch</p></div>
+      <div class="step"><div class="step-num">4</div><p class="step-text"><strong>Same unit every play</strong> — flat stakes, no chasing. The math compounds across the season.</p></div>
+    </div>
+    <div class="trial-notice"><p>🔒 &nbsp; 3-day free trial — cancel anytime before day 3 and you pay nothing. $28.99/month after your trial ends.</p></div>
+    <p>While you wait for tomorrow's picks — the full board is live right now.</p>
+    <a href="https://morabets.com/dashboard" class="cta-btn">See Today's Full Board →</a>
+  </div>
+  <div class="footer">
+    <p>You're receiving this because you subscribed to Mora Assists.</p>
+    <p>Mora Bets · Free sports analytics tool</p>
+    <p style="margin-top:8px;">
+      <a href="https://morabets.com/unsubscribe/assists?email={email}">Cancel subscription &amp; unsubscribe</a>
+      &nbsp;·&nbsp;
+      <a href="https://morabets.com/dashboard">View dashboard</a>
+    </p>
+    <p style="margin-top:8px;">© 2026 Mora Bets. For informational purposes only. Please bet responsibly.</p>
+  </div>
+</div>
+</body>
+</html>"""
+
+    try:
+        import sendgrid as sg_lib
+        from sendgrid.helpers.mail import Mail as SgMail
+        sg      = sg_lib.SendGridAPIClient(api_key=SENDGRID_KEY)
+        message = SgMail(from_email=FROM_EMAIL, to_emails=email, subject=subject, html_content=html)
+        resp    = sg.send(message)
+        return resp.status_code in [200, 201, 202]
+    except Exception as e:
+        logger.error(f"[EMAIL] Welcome send failed to {email}: {e}")
+        return False
+
+
+def _handle_stripe_event(event):
+    """Process a verified Stripe webhook event."""
+    event_type = event.get("type")
+    data_obj   = event.get("data", {}).get("object", {})
+
+    if event_type == "customer.subscription.created":
+        customer_id   = data_obj.get("customer")
+        subscription_id = data_obj.get("id")
+        status        = data_obj.get("status", "trialing")
+        trial_end_ts  = data_obj.get("trial_end")
+        trial_ends_at = (
+            datetime.utcfromtimestamp(trial_end_ts).isoformat()
+            if trial_end_ts else ""
+        )
+
+        email = ""
+        name  = ""
+        try:
+            stripe_lib.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+            customer   = stripe_lib.Customer.retrieve(customer_id)
+            email      = customer.get("email", "")
+            name       = customer.get("name", "")
+        except Exception as e:
+            logger.warning(f"[STRIPE] Could not retrieve customer {customer_id}: {e}")
+
+        csv_status = "trial" if "trial" in status else "active"
+        _save_subscriber({
+            "email":                  email,
+            "name":                   name,
+            "stripe_customer_id":     customer_id,
+            "stripe_subscription_id": subscription_id,
+            "status":                 csv_status,
+            "subscribed_at":          datetime.utcnow().isoformat(),
+            "trial_ends_at":          trial_ends_at,
+            "cancelled_at":           "",
+        })
+        logger.info(f"[STRIPE] New trial subscriber: {email}")
+
+        try:
+            _send_welcome_email(email, name)
+            logger.info(f"[STRIPE] Welcome email sent to {email}")
+        except Exception as e:
+            logger.warning(f"[STRIPE] Welcome email failed for {email}: {e}")
+
+    elif event_type == "customer.subscription.updated":
+        subscription_id = data_obj.get("id")
+        status = data_obj.get("status", "")
+        csv_status = "active" if status == "active" else (
+            "cancelled" if status in ["canceled", "cancelled"] else status
+        )
+        _update_subscriber_status(subscription_id, csv_status)
+        logger.info(f"[STRIPE] Subscription updated: {subscription_id} → {csv_status}")
+
+    elif event_type in ("customer.subscription.deleted", "customer.subscription.canceled"):
+        subscription_id = data_obj.get("id")
+        _update_subscriber_status(subscription_id, "cancelled")
+        logger.info(f"[STRIPE] Subscription cancelled: {subscription_id}")
+
+    elif event_type == "invoice.payment_failed":
+        subscription_id = data_obj.get("subscription")
+        if subscription_id:
+            _update_subscriber_status(subscription_id, "past_due")
+        logger.warning(f"[STRIPE] Payment failed for subscription: {subscription_id}")
+
+
+@app.route("/stripe/webhook", methods=["POST"])
+def stripe_webhook():
+    """Receive and verify Stripe webhook events."""
+    payload       = request.get_data()
+    sig_header    = request.headers.get("Stripe-Signature", "")
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
+    if not webhook_secret:
+        logger.warning("[STRIPE] No STRIPE_WEBHOOK_SECRET — processing event without verification")
+        try:
+            event = request.get_json()
+            _handle_stripe_event(event)
+            return jsonify({"status": "ok"}), 200
+        except Exception as e:
+            logger.error(f"[STRIPE] Webhook processing error: {e}")
+            return jsonify({"error": str(e)}), 400
+
+    try:
+        stripe_lib.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+        event = stripe_lib.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except stripe_lib.error.SignatureVerificationError as e:
+        logger.warning(f"[STRIPE] Signature verification failed: {e}")
+        return jsonify({"error": "Invalid signature"}), 400
+    except Exception as e:
+        logger.error(f"[STRIPE] Webhook parse error: {e}")
+        return jsonify({"error": str(e)}), 400
+
+    try:
+        _handle_stripe_event(event)
+    except Exception as e:
+        logger.error(f"[STRIPE] Event handler error: {e}")
+
+    return jsonify({"status": "ok"}), 200
+
+
+@app.route("/unsubscribe/assists")
+def unsubscribe_assists():
+    """One-click unsubscribe from email footer. Works without JavaScript."""
+    email = request.args.get("email", "").strip()
+
+    if not email:
+        return """<html><body style="font-family:Inter;text-align:center;padding:60px;">
+        <h2>Link invalid.</h2><p>Please contact us at picks@morabets.com</p>
+        </body></html>""", 400
+
+    try:
+        stripe_lib.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+
+        sub_id = None
+        if os.path.exists("mora_assists_subscribers.csv"):
+            with open("mora_assists_subscribers.csv", newline="") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("email", "").lower() == email.lower():
+                        sub_id = row.get("stripe_subscription_id", "")
+                        break
+
+        if sub_id and stripe_lib.api_key:
+            try:
+                stripe_lib.Subscription.cancel(sub_id)
+                logger.info(f"[UNSUB] Cancelled Stripe subscription: {sub_id}")
+            except Exception as e:
+                logger.warning(f"[UNSUB] Stripe cancel error: {e}")
+
+        _update_subscriber_status(sub_id, "cancelled")
+        logger.info(f"[UNSUB] Unsubscribed: {email}")
+
+        return """<html>
+<head><style>
+  body{font-family:Inter,sans-serif;background:#f5faf2;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}
+  .card{background:white;border:2px solid #4cbb17;border-radius:16px;padding:48px;text-align:center;max-width:400px;}
+  h2{color:#0f2406;font-size:24px;margin-bottom:12px;}
+  p{color:#6b9e5a;font-size:14px;line-height:1.6;}
+  a{display:inline-block;background:#4cbb17;color:white;padding:12px 24px;border-radius:50px;text-decoration:none;font-weight:700;margin-top:20px;font-size:14px;}
+</style></head>
+<body><div class="card">
+  <div style="font-size:48px;margin-bottom:16px;">✓</div>
+  <h2>You're unsubscribed.</h2>
+  <p>Your Mora Assists subscription has been cancelled. No further charges will be made.</p>
+  <p style="margin-top:12px;">The free board at morabets.com is still available to you anytime.</p>
+  <a href="https://morabets.com/dashboard">Back to Dashboard</a>
+</div></body></html>"""
+
+    except Exception as e:
+        logger.error(f"[UNSUB] Error: {e}")
+        return f"""<html><body style="font-family:Inter;text-align:center;padding:60px;">
+        <h2>Something went wrong.</h2><p>Email us: picks@morabets.com</p>
+        </body></html>""", 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
