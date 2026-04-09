@@ -2627,6 +2627,44 @@ def stripe_webhook():
     return jsonify({"status": "ok"}), 200
 
 
+@app.route('/api/assists/test-send', methods=['POST'])
+def test_assists_send():
+    try:
+        from mora_assists import (
+            load_full_board,
+            select_picks_with_llm,
+            format_picks_email,
+            send_picks_email
+        )
+        data  = request.json or {}
+        email = data.get('email', '')
+
+        if not email:
+            return jsonify(
+                {'error': 'email required'}
+            ), 400
+
+        board      = load_full_board()
+        picks_data = select_picks_with_llm(board)
+        subject, html = format_picks_email(picks_data)
+        success = send_picks_email(
+            email, subject, html
+        )
+        return jsonify({
+            'success':     success,
+            'picks_count': len(
+                picks_data.get('picks', [])
+                if picks_data else []
+            ),
+            'sports':      board.get(
+                'sports_found', []
+            )
+        })
+    except Exception as e:
+        logger.error(f"[TEST] {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/unsubscribe/assists")
 def unsubscribe_assists():
     """One-click unsubscribe from email footer. Works without JavaScript."""
