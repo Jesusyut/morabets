@@ -2322,20 +2322,6 @@ def gate_signup():
         return jsonify({"success": True})
 
 
-@app.route('/api/debug/test-lead-pixel')
-def test_lead_pixel():
-    """Test Meta Lead event server-side. Remove after confirming working."""
-    from meta_pixel import track_lead, get_event_id
-    event_id = get_event_id()
-    result = track_lead(request, customer_email='test@morabets.com', event_id=event_id)
-    return jsonify({
-        "server_event_fired": result,
-        "event_id":           event_id,
-        "token_configured":   bool(os.environ.get('META_ACCESS_TOKEN')),
-        "pixel_configured":   bool(os.environ.get('META_PIXEL_ID'))
-    })
-
-
 @app.route('/api/subscriber-count')
 def subscriber_count():
     """Return current subscriber count."""
