@@ -30,26 +30,26 @@ def load_full_board():
     """
     board = {"props": [], "lines": [], "sports_found": []}
 
-    mlb_props = load_props_from_file("mlb_props_cache.json")
+    mlb_props = load_props_from_file("/var/data/mlb_props_cache.json")
     if mlb_props:
         board["props"].extend(mlb_props)
         board["sports_found"].append("MLB")
 
-    nhl_props = load_props_from_file("nhl_props_cache.json")
+    nhl_props = load_props_from_file("/var/data/nhl_props_cache.json")
     if nhl_props:
         board["props"].extend(nhl_props)
         if "NHL" not in board["sports_found"]:
             board["sports_found"].append("NHL")
 
     try:
-        nfl_props = load_props_from_file("nfl_props_cache.json")
+        nfl_props = load_props_from_file("/var/data/nfl_props_cache.json")
         if nfl_props:
             board["props"].extend(nfl_props)
             board["sports_found"].append("NFL")
     except Exception:
         pass
 
-    for cache_file in ["mlb_lines_cache.json", "nhl_lines_cache.json", "nfl_lines_cache.json"]:
+    for cache_file in ["/var/data/mlb_lines_cache.json", "/var/data/nhl_lines_cache.json", "/var/data/nfl_lines_cache.json"]:
         try:
             lines = load_props_from_file(cache_file)
             if lines:
@@ -394,8 +394,8 @@ def load_active_subscribers():
     import csv
     subscribers = []
     try:
-        if os.path.exists("mora_assists_subscribers.csv"):
-            with open("mora_assists_subscribers.csv") as f:
+        if os.path.exists("/var/data/mora_assists_subscribers.csv"):
+            with open("/var/data/mora_assists_subscribers.csv") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     if row.get("status") in ["active", "trial"]:
@@ -442,10 +442,10 @@ def run_daily_assists():
         return
 
     today_str = datetime.now().strftime("%Y-%m-%d")
-    with open(f"assists_picks_{today_str}.json", "w") as f:
+    with open(f"/var/data/assists_picks_{today_str}.json", "w") as f:
         json.dump(picks_data, f, indent=2)
 
-    logger.info(f"[ASSISTS] Picks saved to assists_picks_{today_str}.json")
+    logger.info(f"[ASSISTS] Picks saved to /var/data/assists_picks_{today_str}.json")
 
     subject, html = format_picks_email(picks_data)
     if not subject or not html:

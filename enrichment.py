@@ -137,7 +137,7 @@ def get_lineup_position_multiplier(player_name):
 
 MLB_STATS_API = "https://statsapi.mlb.com/api/v1"
 
-def cache_props_to_file(props, filename="mlb_props_cache.json"):
+def cache_props_to_file(props, filename="/var/data/mlb_props_cache.json"):
     """Redis-free prop caching using flat JSON file"""
     try:
         with open(filename, "w") as f:
@@ -148,7 +148,7 @@ def cache_props_to_file(props, filename="mlb_props_cache.json"):
         print(f"[CACHE ERROR] Failed to write cache: {e}")
         return False
 
-def load_props_from_file(filename="mlb_props_cache.json"):
+def load_props_from_file(filename="/var/data/mlb_props_cache.json"):
     """Load props from file cache"""
     try:
         with open(filename, "r") as f:

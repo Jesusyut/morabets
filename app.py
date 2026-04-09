@@ -34,6 +34,11 @@ from nfl_game_enrichment import build_nfl_environment_map, enrich_nfl_props_with
 # MLB game context enrichment
 from mlb_game_enrichment import enrich_mlb_props_with_context, filter_positive_environment_props
 
+try:
+    os.makedirs('/var/data', exist_ok=True)
+except OSError:
+    pass
+
 # Configure logging - reduce external API noise
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -616,7 +621,7 @@ def mlb_props():
     try:
         from enrichment import load_props_from_file
 
-        cache_file = "mlb_props_cache.json"
+        cache_file = "/var/data/mlb_props_cache.json"
         cache_fresh = False
 
         if os.path.exists(cache_file):
@@ -665,7 +670,7 @@ def get_props():
         from enrichment import load_props_from_file
         
         # Load props from file cache (no Redis dependency)
-        props_data = load_props_from_file("mlb_props_cache.json")
+        props_data = load_props_from_file("/var/data/mlb_props_cache.json")
         
         if not props_data:
             print("⚠️ No cached props available in file")
@@ -1119,7 +1124,7 @@ def api_nhl_props():
     try:
         from enrichment import load_props_from_file
 
-        cache_file = "nhl_props_cache.json"
+        cache_file = "/var/data/nhl_props_cache.json"
         cache_fresh = False
 
         if os.path.exists(cache_file):
@@ -1486,8 +1491,8 @@ def cache_status():
     from enrichment import load_props_from_file
     import os
 
-    mlb_props = load_props_from_file("mlb_props_cache.json")
-    nhl_props = load_props_from_file("nhl_props_cache.json")
+    mlb_props = load_props_from_file("/var/data/mlb_props_cache.json")
+    nhl_props = load_props_from_file("/var/data/nhl_props_cache.json")
 
     def file_age_minutes(filename):
         try:
@@ -1499,7 +1504,7 @@ def cache_status():
     return jsonify({
         "mlb": {
             "props_count": len(mlb_props),
-            "cache_age_minutes": file_age_minutes("mlb_props_cache.json"),
+            "cache_age_minutes": file_age_minutes("/var/data/mlb_props_cache.json"),
             "tiers": {
                 "LOCK": len([p for p in mlb_props if p.get("confidence_tier") == "LOCK"]),
                 "FIRE": len([p for p in mlb_props if p.get("confidence_tier") == "FIRE"]),
@@ -1508,7 +1513,7 @@ def cache_status():
         },
         "nhl": {
             "props_count": len(nhl_props),
-            "cache_age_minutes": file_age_minutes("nhl_props_cache.json"),
+            "cache_age_minutes": file_age_minutes("/var/data/nhl_props_cache.json"),
             "tiers": {
                 "LOCK": len([p for p in nhl_props if p.get("confidence_tier") == "LOCK"]),
                 "FIRE": len([p for p in nhl_props if p.get("confidence_tier") == "FIRE"]),
@@ -1526,7 +1531,7 @@ def get_enhanced_mlb_props():
         from enrichment import load_props_from_file
         
         # Load props from file cache
-        props_data = load_props_from_file("mlb_props_cache.json")
+        props_data = load_props_from_file("/var/data/mlb_props_cache.json")
         
         if not props_data:
             return jsonify({"error": "No MLB props available"}), 503
@@ -1824,7 +1829,7 @@ def _fetch_and_process_mlb_props():
             logger.warning("[MLB PROPS] 0 props after grouping")
             return []
 
-        cache_props_to_file(props, "mlb_props_cache.json")
+        cache_props_to_file(props, "/var/data/mlb_props_cache.json")
         logger.info(f"[MLB PROPS] Cached {len(props)} props ✅")
 
         return props
@@ -1850,7 +1855,7 @@ def _fetch_and_process_nhl_props():
 
         if not raw:
             logger.warning("[NHL PROPS] No raw props — checking yesterday's cache")
-            stale = load_props_from_file("nhl_props_cache.json")
+            stale = load_props_from_file("/var/data/nhl_props_cache.json")
             if stale:
                 logger.info(
                     f"[NHL PROPS] Serving {len(stale)} stale props "
@@ -1864,7 +1869,7 @@ def _fetch_and_process_nhl_props():
             logger.warning("[NHL PROPS] 0 after grouping")
             return []
 
-        cache_props_to_file(props, "nhl_props_cache.json")
+        cache_props_to_file(props, "/var/data/nhl_props_cache.json")
         logger.info(f"[NHL PROPS] Cached {len(props)} ✅")
 
         return props
@@ -2121,8 +2126,8 @@ def cache_check():
         }
 
     return jsonify({
-        "mlb":       file_info("mlb_props_cache.json"),
-        "nhl":       file_info("nhl_props_cache.json"),
+        "mlb":       file_info("/var/data/mlb_props_cache.json"),
+        "nhl":       file_info("/var/data/nhl_props_cache.json"),
         "timestamp": datetime.utcnow().isoformat()
     })
 
@@ -2181,7 +2186,7 @@ init_thread.start()
 
 # ── Email Gate ──────────────────────────────────────────────────────────────
 
-EMAIL_LIST_FILE = 'email_subscribers.csv'
+EMAIL_LIST_FILE = '/var/data/email_subscribers.csv'
 
 
 def _load_emails():
@@ -2388,7 +2393,7 @@ from mora_assists import run_daily_assists
 
 def _save_subscriber(data):
     """Append or update a subscriber row in mora_assists_subscribers.csv."""
-    FILE = "mora_assists_subscribers.csv"
+    FILE = "/var/data/mora_assists_subscribers.csv"
     fieldnames = [
         "email", "name", "stripe_customer_id",
         "stripe_subscription_id", "status",
@@ -2417,7 +2422,7 @@ def _save_subscriber(data):
 
 def _update_subscriber_status(subscription_id, status):
     """Update the status field for a given stripe_subscription_id."""
-    FILE = "mora_assists_subscribers.csv"
+    FILE = "/var/data/mora_assists_subscribers.csv"
     if not os.path.exists(FILE):
         return
 
@@ -2684,8 +2689,8 @@ def unsubscribe_assists():
         stripe_lib.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
 
         sub_id = None
-        if os.path.exists("mora_assists_subscribers.csv"):
-            with open("mora_assists_subscribers.csv", newline="") as f:
+        if os.path.exists("/var/data/mora_assists_subscribers.csv"):
+            with open("/var/data/mora_assists_subscribers.csv", newline="") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     if row.get("email", "").lower() == email.lower():
