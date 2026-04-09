@@ -2490,6 +2490,11 @@ def _send_welcome_email(email, name=""):
   <div class="body">
     <h1>You're in, {first_name}. ⚡</h1>
     <p>Your 3-day free trial starts today. Your <span class="highlight">first picks arrive tomorrow morning</span> — 5 plays in your inbox by 10:30 AM ET.</p>
+    <div style="background:#fff8e1;border:1px solid #f59e0b;border-radius:10px;padding:14px 18px;margin:16px 0;">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#92400e;">⚠️ Important — do this right now:</p>
+      <p style="margin:0 0 6px;font-size:13px;color:#92400e;">1. Check your spam or junk folder for this email if you don't see it in your inbox.</p>
+      <p style="margin:0;font-size:13px;color:#92400e;">2. Save this email address as a contact — <strong>picks@morabets.com</strong> — so your daily picks never land in spam.</p>
+    </div>
     <div class="what-to-expect">
       <h3>Here's what happens next</h3>
       <div class="step"><div class="step-num">1</div><p class="step-text"><strong>Every morning at 10 AM</strong> — our system scans every MLB and NHL line on the board</p></div>
