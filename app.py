@@ -2204,9 +2204,10 @@ def _load_emails():
     return emails
 
 
-def _save_email(email: str, name: str = ''):
-    """Append a new email row to the CSV file."""
+def _save_email(email: str, name: str = '') -> bool:
+    """Append a new email row to the CSV file. Returns True on success."""
     try:
+        os.makedirs(os.path.dirname(EMAIL_LIST_FILE), exist_ok=True)
         file_exists = os.path.exists(EMAIL_LIST_FILE)
         with open(EMAIL_LIST_FILE, 'a', newline='') as f:
             writer = csv.DictWriter(
@@ -2219,8 +2220,25 @@ def _save_email(email: str, name: str = ''):
                 'name':         name,
                 'signed_up_at': datetime.utcnow().isoformat()
             })
+
+        # ── BACKUP WRITE ──────────────────────────────────────────
+        backup = '/var/data/emails_backup.txt'
+        try:
+            with open(backup, 'a') as b:
+                b.write(
+                    f"{datetime.utcnow().isoformat()}|{email}|{name}\n"
+                )
+        except Exception as backup_err:
+            logger.warning(f"[GATE] Backup write failed: {backup_err}")
+        # ── END BACKUP ────────────────────────────────────────────
+
+        logger.info(f"[GATE] Saved: {email} → {EMAIL_LIST_FILE}")
+        return True
+
     except Exception as e:
-        logger.error(f"[GATE] Save email error: {e}")
+        logger.error(f"[GATE] Save failed: {e}")
+        logger.error(f"[GATE] LOST EMAIL: {email}")
+        return False
 
 
 @app.route('/api/gate-signup', methods=['POST'])
@@ -2244,9 +2262,12 @@ def gate_signup():
             logger.info(f"[GATE] Returning user: {email}")
             return jsonify({"success": True, "existing": True})
 
-        _save_email(email, name)
+        saved = _save_email(email, name)
         count = len(_load_emails())
-        logger.info(f"[GATE] New signup: {email} (total: {count})")
+        if saved:
+            logger.info(f"[GATE] ✅ Email saved: {email} to {EMAIL_LIST_FILE} (total: {count})")
+        else:
+            logger.error(f"[GATE] ❌ Write failed for: {email} — check disk mount at /var/data")
 
         # Generate shared event_id for browser + server deduplication
         event_id = get_event_id()
