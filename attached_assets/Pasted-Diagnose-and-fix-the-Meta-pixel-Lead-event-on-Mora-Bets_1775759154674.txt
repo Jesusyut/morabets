@@ -1,0 +1,333 @@
+Diagnose and fix the Meta pixel Lead event
+on Mora Bets. We show 16 leads in Meta
+but only 4 emails in the CSV.
+Every Lead pixel event must equal exactly
+one real email submission. Nothing else.
+
+DO NOT touch odds fetching, EV engine,
+caching, scheduler, color scheme,
+affiliate links, or TikTok pixel.
+Only inspect and fix Meta pixel firing.
+
+=== STEP 1: FULL PIXEL AUDIT ===
+
+Search dashboard.html for EVERY instance
+of fbq( and report each one:
+
+grep -n "fbq(" templates/dashboard.html
+
+Report:
+- Line number
+- Full line of code
+- What event it fires
+- What triggers it (page load vs user action)
+
+Also search all Python files:
+
+grep -rn "fbq\|track_lead\|meta_pixel\|PageView\|Lead\|Purchase" \
+  app.py meta_pixel.py 2>/dev/null
+
+Report every server-side pixel call found.
+
+=== STEP 2: IDENTIFY THE OVERCOUNTING ===
+
+The gap is 16 Meta leads vs 4 CSV emails.
+This means the Lead event is firing
+without a real form submission occurring.
+
+Check for these specific bugs:
+
+BUG A — Lead firing on page load:
+Search for fbq('track', 'Lead') that is
+NOT inside a form submit handler.
+Any Lead event outside an addEventListener
+or form submit = firing on every page load.
+
+BUG B — Lead firing for returning users:
+If the gate checks localStorage and the
+user already has access, the Lead event
+must NOT fire again.
+Check if the returning user path fires Lead.
+
+BUG C — Lead firing on gate dismiss:
+If user closes the gate without submitting,
+Lead must NOT fire.
+Check if any close/dismiss handler fires Lead.
+
+BUG D — Lead firing on page load 
+if mora_access localStorage is already set:
+The gate hides itself but if Lead fires
+before checking localStorage it counts
+every page load as a lead.
+
+BUG E — Server-side Lead firing without
+a matching browser submission:
+Check if track_lead() in meta_pixel.py
+is being called from any route other
+than /api/gate-signup.
+
+BUG F — Lead firing twice per submission:
+One browser fire + one server-side fire
+without proper event_id deduplication.
+If event_ids don't match Meta counts both
+as separate leads.
+
+=== STEP 3: THE CORRECT FIRING LOGIC ===
+
+The Lead event must fire EXACTLY ONCE
+per unique email submission.
+
+CORRECT flow:
+1. User visits site — NO Lead event
+2. User sees gate — NO Lead event
+3. Returning user (localStorage set) — 
+   gate hidden immediately, NO Lead event
+4. User types email and clicks submit
+5. POST /api/gate-signup called
+6. Server saves email to CSV
+7. Server fires server-side Lead via
+   Conversions API with unique event_id
+8. Server returns event_id in response
+9. Browser fires fbq('track', 'Lead')
+   with SAME event_id for deduplication
+10. Meta deduplicates and counts ONE lead
+
+INCORRECT flows to eliminate:
+- fbq Lead on page load = counts visits
+- fbq Lead on gate view = counts impressions
+- fbq Lead on returning user = counts
+  every repeat visit
+- fbq Lead without event_id = double counts
+  with server-side
+
+=== STEP 4: APPLY FIXES ===
+
+Based on what the audit finds, apply
+targeted fixes.
+
+--- FIX A: Remove any page load Lead fires ---
+
+Find any fbq('track', 'Lead') that exists
+OUTSIDE of a form submit success handler.
+
+Delete it entirely. The ONLY place
+fbq('track', 'Lead') should exist is
+inside this exact block:
+
+if (data.success) {
+  // This is the ONLY correct location
+  try {
+    if (typeof fbq !== 'undefined') {
+      fbq('track', 'Lead', {
+        content_name:     'Mora Bets Free Access',
+        content_category: 'Sports Betting Tool',
+        value:            14.99,
+        currency:         'USD'
+      }, {
+        eventID: eventId
+      });
+    }
+  } catch(e) {}
+}
+
+--- FIX B: Add returning user gate ---
+
+At the very top of the gate JavaScript
+IIFE, before anything else:
+
+(function() {
+  const hasAccess = localStorage.getItem(
+    'mora_access'
+  );
+  const gate = document.getElementById(
+    'email-gate'
+  );
+
+  if (hasAccess) {
+    // User already submitted email
+    // Hide gate immediately
+    // DO NOT fire any pixel event
+    if (gate) gate.style.display = 'none';
+    return; // EXIT — nothing else runs
+  }
+
+  // Only new users reach this point
+  // ... rest of gate logic
+})();
+
+--- FIX C: Verify event_id deduplication ---
+
+The server returns event_id in the
+/api/gate-signup response.
+The browser must use that SAME event_id.
+
+Verify this pattern exists in the
+gate form submit handler:
+
+const res = await fetch('/api/gate-signup', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({ email, name })
+});
+const data = await res.json();
+
+if (data.success) {
+  // Use server's event_id for deduplication
+  const eventId = data.event_id ||
+    (typeof crypto !== 'undefined' ?
+      crypto.randomUUID() : 
+      Math.random().toString(36)
+    );
+
+  try {
+    if (typeof fbq !== 'undefined') {
+      fbq('track', 'Lead', {
+        content_name:     'Mora Bets Free Access',
+        content_category: 'Sports Betting Tool',
+        value:            14.99,
+        currency:         'USD'
+      }, {
+        eventID: eventId
+      });
+    }
+  } catch(e) {}
+
+  localStorage.setItem('mora_access', '1');
+  localStorage.setItem('mora_email', email);
+  // animate gate out...
+}
+
+--- FIX D: Verify server-side only fires
+once per signup ---
+
+In app.py /api/gate-signup route verify
+track_lead() is called ONLY when the
+email is NEW — not for returning users.
+
+Current correct logic:
+existing = _load_emails()
+if email in existing:
+    # RETURNING USER — no pixel fire
+    return jsonify({
+        "success": True,
+        "existing": True
+        # No event_id returned
+        # Browser checks for event_id
+        # before firing pixel
+    })
+
+# NEW USER ONLY — save and fire pixel
+_save_email(email, name)
+event_id = get_event_id()
+track_lead(request,
+           customer_email=email,
+           event_id=event_id)
+return jsonify({
+    "success": True,
+    "event_id": event_id  # Browser uses this
+})
+
+--- FIX E: Browser checks for event_id
+before firing ---
+
+The browser should only fire the Lead
+pixel if data.event_id is present.
+Returning users get no event_id.
+
+Update the browser fire to:
+
+if (data.success) {
+  // Only fire pixel if server confirmed
+  // this is a new email (event_id present)
+  if (data.event_id) {
+    try {
+      if (typeof fbq !== 'undefined') {
+        fbq('track', 'Lead', {
+          content_name:     'Mora Bets Free Access',
+          content_category: 'Sports Betting Tool',
+          value:            14.99,
+          currency:         'USD'
+        }, {
+          eventID: data.event_id
+        });
+      }
+    } catch(e) {}
+  }
+
+  localStorage.setItem('mora_access', '1');
+  localStorage.setItem('mora_email', email);
+  // animate gate out
+}
+
+This is the critical fix. If event_id
+is missing (returning user) the browser
+pixel never fires. Only new emails
+trigger the Lead event.
+
+=== STEP 5: VERIFY THE FIX ===
+
+After applying fixes run this audit:
+
+grep -n "fbq('track', 'Lead'" \
+  templates/dashboard.html
+
+Should return EXACTLY ONE result.
+That result should be inside the
+data.event_id check block.
+
+Also verify:
+
+grep -n "track_lead\|Lead" \
+  app.py | grep -v "#"
+
+Should show track_lead() called in
+exactly ONE place — inside the new
+user branch of /api/gate-signup.
+
+=== STEP 6: TEST IN BROWSER ===
+
+After deploy open morabets.com in
+browser with Meta Pixel Helper 
+Chrome extension installed.
+
+TEST 1 — Fresh visit (no localStorage):
+Open incognito tab → visit morabets.com
+Pixel Helper should show: PageView only
+NO Lead event on page load
+
+TEST 2 — Submit email:
+Type email → click submit
+Pixel Helper should show: Lead event fires
+ONCE with value 14.99
+
+TEST 3 — Return visit:
+Close incognito → open normal tab
+(localStorage has mora_access = 1)
+Visit morabets.com
+Pixel Helper should show: PageView only
+NO Lead event
+Gate should not appear
+
+TEST 4 — Submit same email again:
+Open new incognito tab
+Clear localStorage manually
+Submit the same email used in TEST 2
+/api/gate-signup returns existing: true
+NO event_id in response
+Pixel Helper should show: NO Lead event
+
+All 4 tests must pass before running ads.
+
+=== CONSTRAINTS ===
+- Only one Lead event fires per unique email
+- Returning users never trigger Lead
+- event_id always used for deduplication
+- Server-side fires only for new emails
+- Browser fires only when event_id present
+- Do not touch PageView event
+- Do not touch Purchase event
+- Do not touch TikTok pixel
+- Do not touch any odds or EV logic
+- Do not touch mora_assists.py
+- Do not touch color scheme
+- Do not touch Zapier webhook logic
