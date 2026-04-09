@@ -36,3 +36,8 @@ externalPort = 80
 [deployment]
 deploymentTarget = "autoscale"
 run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--workers=2", "--timeout=30", "app:app"]
+
+[userenv]
+
+[userenv.shared]
+ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/22797974/u78nnml/"

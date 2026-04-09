@@ -2241,13 +2241,22 @@ def _save_email(email: str, name: str = '') -> bool:
         return False
 
 
+# REQUIRED ENVIRONMENT VARIABLES:
+# ZAPIER_WEBHOOK_URL — from zapier.com
+#   Webhooks by Zapier → Catch Hook
+#   Maps to: Google Sheets + Mailchimp
+#   Every signup fires this immediately
+#   This is the PRIMARY email storage
+#   CSV file is backup only
+
 @app.route('/api/gate-signup', methods=['POST'])
 def gate_signup():
     """
-    Save email from gate form and fire Meta Conversions API Lead event.
-    Always returns success so the gate never blocks a user.
+    Save email from gate form. Fires Zapier webhook first (primary storage),
+    then saves to local CSV (backup). Always returns success — never blocks user.
     """
     try:
+        import requests as http_requests
         from meta_pixel import track_lead, get_event_id
 
         data  = request.json or {}
@@ -2256,6 +2265,32 @@ def gate_signup():
 
         if not email or '@' not in email:
             return jsonify({"success": False, "error": "Invalid email"}), 400
+
+        # ── ZAPIER WEBHOOK ────────────────────────────────────────────────────
+        # Fires FIRST — before duplicate check and before CSV write.
+        # Email is safe in external storage immediately, even if CSV fails.
+        zapier_url = os.environ.get('ZAPIER_WEBHOOK_URL')
+        if zapier_url:
+            try:
+                hook_resp = http_requests.post(
+                    zapier_url,
+                    json={
+                        "email":     email,
+                        "name":      name,
+                        "source":    "mora_bets_gate",
+                        "signed_up": datetime.utcnow().isoformat(),
+                        "url":       "morabets.com"
+                    },
+                    timeout=5
+                )
+                logger.info(
+                    f"[ZAPIER] ✅ Fired for {email} — status {hook_resp.status_code}"
+                )
+            except Exception as ze:
+                logger.error(f"[ZAPIER] ❌ Failed for {email}: {ze}")
+        else:
+            logger.warning("[ZAPIER] No webhook URL set — skipping")
+        # ── END ZAPIER ────────────────────────────────────────────────────────
 
         existing = _load_emails()
         if email in existing:
