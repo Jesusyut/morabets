@@ -1,0 +1,98 @@
+Remove the open spots counter from the 
+email gate popup only.
+
+DO NOT remove the email gate itself.
+DO NOT touch any other functionality.
+DO NOT touch app.py, mora_assists.py,
+or any Python files.
+One targeted HTML change only.
+
+=== FIND AND REMOVE IN dashboard.html ===
+
+Find the counter section inside the 
+email gate popup. It looks like this:
+
+<div class="bg-kelly-surface border 
+            border-kelly/20 rounded-xl 
+            px-4 py-3 mb-6">
+  <p class="font-display font-bold 
+             text-kelly-bg text-sm 
+             uppercase tracking-wide">
+    Free access ends September 1st
+  </p>
+  <div class="flex items-center 
+              justify-center gap-2 mt-1">
+    <span class="text-2xl font-black 
+                 font-data text-kelly"
+          id="user-counter">
+      —
+    </span>
+    <span class="text-xs font-ui 
+                 text-text-secondary">
+      of 10,000 free spots claimed
+    </span>
+  </div>
+  <div class="w-full bg-kelly/10 
+              rounded-full h-1.5 mt-2">
+    <div class="bg-kelly h-1.5 
+                rounded-full transition-all"
+         id="counter-bar"
+         style="width: 0%">
+    </div>
+  </div>
+</div>
+
+Replace the entire block with just 
+the date line, no counter, no bar:
+
+<div class="bg-kelly-surface border 
+            border-kelly/20 rounded-xl 
+            px-4 py-3 mb-6">
+  <p class="font-display font-bold 
+             text-kelly-bg text-sm 
+             uppercase tracking-wide 
+             text-center">
+    Free access ends September 1st
+  </p>
+</div>
+
+Also find and remove the JavaScript 
+that loads the counter. It looks like:
+
+async function loadCounter() {
+  try {
+    const res = await fetch(
+      '/api/subscriber-count'
+    );
+    ...entire function...
+  }
+}
+
+loadCounter();
+
+Remove the entire loadCounter function
+and the loadCounter() call.
+
+=== VERIFY ===
+
+Search dashboard.html for:
+- "user-counter" → should return 0
+- "counter-bar" → should return 0  
+- "loadCounter" → should return 0
+- "subscriber-count" → should return 0
+- "spots claimed" → should return 0
+- "email-gate" → should still exist
+- "gate-form" → should still exist
+
+Report counts for each search.
+
+=== CONSTRAINTS ===
+- Email gate stays completely intact
+- September 1st text stays
+- Only remove the number counter 
+  and progress bar
+- Only remove loadCounter() JS
+- Do not touch app.py
+- Do not touch any routes
+- Do not touch Meta pixel
+- Do not touch any other JS
