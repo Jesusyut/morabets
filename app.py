@@ -240,7 +240,30 @@ def home():
     """Permanent redirect to dashboard — 301 passes SEO value to /dashboard."""
     return redirect(url_for("dashboard"), code=301)
 
-
+@app.route('/manifest.json')
+def pwa_manifest():
+    """PWA web app manifest for home screen install."""
+    return jsonify({
+        "name": "Mora Bets",
+        "short_name": "Mora Bets",
+        "description": "Free daily no-vig picks",
+        "start_url": "/dashboard",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#4CBB17",
+        "icons": [
+            {
+                "src": "/static/logo-192.png",
+                "sizes": "192x192",
+                "type": "image/png"
+            },
+            {
+                "src": "/static/logo-512.png",
+                "sizes": "512x512",
+                "type": "image/png"
+            }
+        ]
+    })
 
 
 @app.route('/admin/health')
