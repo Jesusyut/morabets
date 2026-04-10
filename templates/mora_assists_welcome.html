@@ -1,0 +1,242 @@
+<!--
+  STRIPE SETUP:
+  In Stripe Dashboard → Products →
+  Mora Assists → Payment Link → Edit
+  → After payment → Don't show Stripe page
+  → Redirect URL:
+  https://morabets.com/mora-assists-welcome
+
+  This page fires the StartTrial Meta
+  pixel event on every successful signup.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4CBB17">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Welcome to Mora Assists — Mora Bets</title>
+
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1688269505510635');
+  fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1688269505510635&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Meta Pixel Code -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'kelly':         '#4CBB17',
+            'kelly-dark':    '#3A9012',
+            'kelly-bg':      '#0F2406',
+            'off-white':     '#F5FAF2',
+            'green-tint':    '#E8F5E1',
+            'green-muted':   '#6B9E5A',
+            'text-primary':  '#0F2406',
+            'text-secondary':'#1A3D0A',
+          },
+          fontFamily: {
+            'display': ['"Barlow Condensed"', 'sans-serif'],
+            'ui':      ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #FFFFFF; }
+    .status-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #4CBB17;
+      margin-right: 5px;
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+  </style>
+</head>
+<body class="font-ui text-text-primary" style="background:#FFFFFF;">
+
+  <!-- ── NAV ── -->
+  <nav style="background:#FFFFFF;border-bottom:2px solid #4CBB17;box-shadow:0 2px 8px rgba(76,187,23,0.1);position:sticky;top:0;z-index:50;">
+    <div style="max-width:1280px;margin:0 auto;padding:0.7rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;">
+      <a href="/dashboard" style="text-decoration:none;display:flex;align-items:center;gap:0.6rem;">
+        <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;background:#4CBB17;flex-shrink:0;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 14 L8 7 L12 10 L17 3" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="17" cy="3" r="2" fill="#FFFFFF"/>
+          </svg>
+        </div>
+        <div style="display:flex;flex-direction:column;line-height:1;">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.15rem;letter-spacing:0.12em;color:#0F2406;text-transform:uppercase;">MORA</span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.15rem;letter-spacing:0.12em;color:#4CBB17;text-transform:uppercase;margin-top:-3px;">BETS</span>
+        </div>
+      </a>
+      <div style="font-size:0.75rem;font-family:'Inter',sans-serif;color:#6B9E5A;">
+        <span class="status-dot"></span>Board live
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── HERO ── -->
+  <section style="background:#0F2406;" class="py-16 px-6 text-center">
+    <div class="max-w-2xl mx-auto">
+      <span class="inline-block bg-kelly text-kelly-bg font-display font-bold uppercase tracking-widest text-xs px-4 py-2 rounded-full mb-6">
+        You're In
+      </span>
+      <h1 class="font-display font-black text-white text-4xl md:text-5xl uppercase tracking-wide leading-tight">
+        Welcome to Mora Assists.
+      </h1>
+      <p class="font-ui text-green-muted text-lg max-w-lg mx-auto mt-4 leading-relaxed">
+        You're on a 3-day free trial. Here's everything you need to get set up before tomorrow morning.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── STEP SECTION ── -->
+  <section class="py-16 px-6" style="background:#FFFFFF;">
+    <div class="max-w-3xl mx-auto">
+      <p class="font-display font-bold uppercase tracking-widest text-xs text-green-muted mb-8 text-center">
+        3 Steps To Get Started
+      </p>
+
+      <!-- Step 1 -->
+      <div style="background:#F5FAF2;border:1px solid rgba(76,187,23,0.2);border-left:4px solid #4CBB17;border-radius:0 16px 16px 0;padding:28px 32px;margin-bottom:16px;display:flex;align-items:flex-start;gap:24px;">
+        <span class="font-display font-black text-kelly leading-none flex-shrink-0" style="font-size:3rem;">1</span>
+        <div>
+          <h3 class="font-display font-bold text-xl uppercase tracking-wide text-kelly-bg mb-2">
+            Add Mora Bets to your home screen
+          </h3>
+          <p class="font-ui text-sm text-text-secondary leading-relaxed">
+            Open morabets.com in your browser every morning to check today's board. For faster access, save it directly to your home screen so it opens like an app.<br><br>
+            <strong>iPhone:</strong> Safari → Share icon → Add to Home Screen<br>
+            <strong>Android:</strong> Chrome → three dots → Add to Home Screen
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div style="background:#F5FAF2;border:1px solid rgba(76,187,23,0.2);border-left:4px solid #4CBB17;border-radius:0 16px 16px 0;padding:28px 32px;margin-bottom:16px;display:flex;align-items:flex-start;gap:24px;">
+        <span class="font-display font-black text-kelly leading-none flex-shrink-0" style="font-size:3rem;">2</span>
+        <div>
+          <h3 class="font-display font-bold text-xl uppercase tracking-wide text-kelly-bg mb-2">
+            Set your unit size before you bet
+          </h3>
+          <p class="font-ui text-sm text-text-secondary leading-relaxed">
+            Choose one flat dollar amount that represents 2–3% of your total bankroll. This is your unit. Every play gets this exact amount — no exceptions.<br><br>
+            $50 bankroll → $1–1.50 per play<br>
+            $200 bankroll → $4–6 per play<br>
+            $500 bankroll → $10–15 per play<br><br>
+            Same unit every time. This is how the math compounds over a season.
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div style="background:#F5FAF2;border:1px solid rgba(76,187,23,0.2);border-left:4px solid #4CBB17;border-radius:0 16px 16px 0;padding:28px 32px;margin-bottom:16px;display:flex;align-items:flex-start;gap:24px;">
+        <span class="font-display font-black text-kelly leading-none flex-shrink-0" style="font-size:3rem;">3</span>
+        <div>
+          <h3 class="font-display font-bold text-xl uppercase tracking-wide text-kelly-bg mb-2">
+            Check your inbox at 10:30 AM ET
+          </h3>
+          <p class="font-ui text-sm text-text-secondary leading-relaxed">
+            Your daily picks land every morning at 10:30 AM Eastern before first pitch.<br><br>
+            Save <strong>picks@morabets.com</strong> as a contact right now so nothing goes to spam.<br><br>
+            If today's email hasn't arrived yet, check your spam folder and mark it as not spam.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── BANKROLL STATS SECTION ── -->
+  <section style="background:#0F2406;" class="py-16 px-6">
+    <div class="max-w-3xl mx-auto">
+      <p class="font-display font-bold uppercase tracking-widest text-xs text-green-muted mb-8 text-center">
+        Why flat betting compounds
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div style="background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);border-radius:16px;padding:24px;" class="text-center">
+          <div class="font-display font-black text-kelly" style="font-size:2.5rem;">162</div>
+          <div class="font-ui text-xs text-green-muted uppercase mt-1">games this season</div>
+        </div>
+        <div style="background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);border-radius:16px;padding:24px;" class="text-center">
+          <div class="font-display font-black text-white" style="font-size:2.5rem;">54%</div>
+          <div class="font-ui text-xs text-green-muted uppercase mt-1">win rate grows a $500 bankroll</div>
+        </div>
+        <div style="background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);border-radius:16px;padding:24px;" class="text-center">
+          <div class="font-display font-black text-kelly" style="font-size:2.5rem;">2x</div>
+          <div class="font-ui text-xs text-green-muted uppercase mt-1">seasons changes your pockets</div>
+        </div>
+      </div>
+
+      <p class="font-ui text-sm text-green-muted max-w-xl mx-auto leading-relaxed mt-8 text-center">
+        The only reason the profitable bettors are ahead of you is time. They started earlier and stayed consistent longer. You started today. That matters.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── CTA SECTION ── -->
+  <section class="py-16 px-6 text-center" style="background:#FFFFFF;">
+    <div class="max-w-md mx-auto">
+      <h2 class="font-display font-bold text-2xl uppercase tracking-wide text-kelly-bg mb-4">
+        Go check today's board
+      </h2>
+      <p class="font-ui text-sm text-text-secondary leading-relaxed mb-8">
+        Every MLB and NHL line is already ranked by true probability. Your picks email is the curated best of what you see there.
+      </p>
+      <a href="https://morabets.com/dashboard"
+         class="inline-block bg-kelly text-kelly-bg font-display font-bold uppercase tracking-wide text-base px-10 py-4 rounded-full hover:bg-kelly-dark transition-colors">
+        Open Today's Board →
+      </a>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer style="background:#F5FAF2;border-top:1px solid rgba(76,187,23,0.15);padding:1.25rem 1rem;margin-top:2rem;">
+    <div style="max-width:1280px;margin:0 auto;text-align:center;font-family:'Inter',sans-serif;font-size:0.72rem;color:#6B9E5A;">
+      <p style="margin:0;">© 2026 Mora Bets. For informational and entertainment purposes only. Please bet responsibly.</p>
+      <p style="margin:0.25rem 0 0;color:#A0BF96;">Free sports analytics — no account required</p>
+    </div>
+  </footer>
+
+  <!-- StartTrial Meta Pixel Event -->
+  <script>
+  window.addEventListener('load', function() {
+    if (typeof fbq !== 'undefined') {
+      fbq('track', 'StartTrial', {
+        value:         28.99,
+        currency:      'USD',
+        predicted_ltv: 57.98
+      });
+      console.log('[META] StartTrial fired');
+    }
+  });
+  </script>
+
+</body>
+</html>

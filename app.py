@@ -240,6 +240,12 @@ def home():
     """Permanent redirect to dashboard — 301 passes SEO value to /dashboard."""
     return redirect(url_for("dashboard"), code=301)
 
+@app.route('/mora-assists-welcome')
+def mora_assists_welcome():
+    """Thank you + onboarding page shown after Mora Assists Stripe trial signup."""
+    return render_template('mora_assists_welcome.html')
+
+
 @app.route('/manifest.json')
 def pwa_manifest():
     """PWA web app manifest for home screen install."""
@@ -315,6 +321,12 @@ def sitemap():
     <lastmod>{today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/mora-assists-welcome</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 </urlset>"""
     return _Response(sitemap_xml, mimetype="application/xml")
