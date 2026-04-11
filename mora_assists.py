@@ -620,19 +620,90 @@ def format_picks_email(picks_data):
 # ══════════════════════════════════════════
 
 def load_active_subscribers():
-    """Load all active Mora Assists subscribers (status: active or trial)."""
+    """
+    Load active Mora Assists subscribers.
+    Auto-expires trials that have ended.
+    Auto-removes cancelled subscribers from the send list.
+    """
     import csv
-    subscribers = []
+    from datetime import datetime
+
+    FILE = '/var/data/mora_assists_subscribers.csv'
+    FIELDS = [
+        'email', 'name',
+        'stripe_customer_id',
+        'stripe_subscription_id',
+        'status', 'subscribed_at',
+        'trial_ends_at', 'cancelled_at',
+        'phone', 'sms_opt_in'
+    ]
+
+    active   = []
+    updated  = False
+    all_rows = []
+    now      = datetime.utcnow()
+    expired  = []
+    skipped  = []
+
     try:
-        if os.path.exists("/var/data/mora_assists_subscribers.csv"):
-            with open("/var/data/mora_assists_subscribers.csv") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row.get("status") in ["active", "trial"]:
-                        subscribers.append(row)
+        if not os.path.exists(FILE):
+            logger.warning('[ASSISTS] No subscriber file')
+            return []
+
+        with open(FILE, 'r') as f:
+            rows = list(csv.DictReader(f))
+
+        for row in rows:
+            status = row.get('status', '')
+            email  = row.get('email', '')
+
+            # Skip cancelled entirely
+            if status == 'cancelled':
+                skipped.append(email)
+                all_rows.append(row)
+                continue
+
+            # Check if trial has expired
+            if status == 'trial':
+                trial_end_str = row.get('trial_ends_at', '')
+                if trial_end_str:
+                    try:
+                        trial_end = datetime.fromisoformat(trial_end_str[:19])
+                        if now > trial_end:
+                            row['status'] = 'expired'
+                            expired.append(email)
+                            updated = True
+                            all_rows.append(row)
+                            continue
+                    except Exception:
+                        pass
+
+            # Active or valid trial
+            if status in ['active', 'trial']:
+                active.append(row)
+
+            all_rows.append(row)
+
+        # Write back only if statuses actually changed
+        if updated:
+            with open(FILE, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=FIELDS)
+                writer.writeheader()
+                for row in all_rows:
+                    clean = {k: row.get(k, '') for k in FIELDS}
+                    writer.writerow(clean)
+
+        if expired:
+            logger.info(f'[ASSISTS] Expired trials: {expired}')
+        if skipped:
+            logger.info(f'[ASSISTS] Skipped cancelled: {skipped}')
+
+        logger.info(f'[ASSISTS] Active subscribers for today: {len(active)}')
+        return active
+
     except Exception as e:
-        logger.error(f"[ASSISTS] Load subscribers: {e}")
-    return subscribers
+        logger.error(f'[ASSISTS] load_active error: {e}')
+        return []
 
 
 # ══════════════════════════════════════════
@@ -649,6 +720,61 @@ def send_picks_email(to_email, subject, html_content):
     except Exception as e:
         logger.error(f"[ASSISTS] Send failed {to_email}: {e}")
         return False
+
+
+def send_trial_expiry_warning(email, name):
+    """
+    Sends a retention email ~24 hours before trial ends.
+    Called from run_daily_assists() when trial_ends_at is within 20-28 hours.
+    """
+    first = name.split()[0] if name else 'there'
+    subject = "Your Mora Assists trial ends tomorrow."
+    html = f"""<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:20px;background:#f5faf2;font-family:Inter,Arial,sans-serif;">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;border:2px solid #4cbb17;overflow:hidden;">
+  <div style="background:#0f2406;padding:24px;text-align:center;">
+    <div style="font-family:'Arial Black',Arial,sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:3px;">
+      MORA <span style="color:#4cbb17;">ASSISTS</span>
+    </div>
+  </div>
+  <div style="padding:32px;">
+    <h1 style="font-size:20px;font-weight:900;color:#0f2406;margin:0 0 12px;">
+      Hey {first} — your trial ends tomorrow.
+    </h1>
+    <p style="font-size:15px;color:#1a3d0a;line-height:1.7;margin:0 0 16px;">
+      You've been getting 7 picks every morning — 2 props, 3 anchors, 2 casual plays.
+    </p>
+    <p style="font-size:15px;color:#1a3d0a;line-height:1.7;margin:0 0 24px;">
+      Tomorrow at midnight your trial ends. If you want picks to keep landing
+      in your inbox through baseball season — lock it in today.
+    </p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+         style="display:inline-block;background:#4cbb17;color:#0f2406;font-family:'Arial Black',Arial,sans-serif;font-size:16px;font-weight:900;text-decoration:none;padding:16px 36px;border-radius:50px;">
+        Keep My Picks — $28.99/mo →
+      </a>
+    </div>
+    <p style="font-size:13px;color:#6b9e5a;text-align:center;margin:0;">
+      Cancel anytime. No questions asked.
+    </p>
+  </div>
+  <div style="background:#f5faf2;padding:16px;text-align:center;border-top:1px solid #e8f5e1;">
+    <p style="margin:0;font-size:11px;color:#a0bf96;">
+      Mora Assists · picks@morabets.com ·
+      <a href="https://morabets.com/unsubscribe/assists?email={email}" style="color:#6b9e5a;">Unsubscribe</a>
+    </p>
+  </div>
+</div>
+</body>
+</html>"""
+    try:
+        client = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+        msg = Mail(from_email=FROM_EMAIL, to_emails=email, subject=subject, html_content=html)
+        client.send(msg)
+        logger.info(f'[ASSISTS] Trial warning sent: {email}')
+    except Exception as e:
+        logger.error(f'[ASSISTS] Warning email failed: {e}')
 
 
 # ══════════════════════════════════════════
@@ -759,6 +885,26 @@ def run_daily_assists():
     if not subscribers:
         logger.warning("[ASSISTS] No active subscribers yet")
         return
+
+    # Send trial expiry warning to anyone whose trial ends in 20-28 hours
+    for sub in subscribers:
+        trial_end_str = sub.get('trial_ends_at', '')
+        if not trial_end_str:
+            continue
+        try:
+            trial_end  = datetime.fromisoformat(trial_end_str[:19])
+            hours_left = (trial_end - datetime.utcnow()).total_seconds() / 3600
+            if 20 <= hours_left <= 28:
+                send_trial_expiry_warning(
+                    sub.get('email', ''),
+                    sub.get('name', '')
+                )
+                logger.info(
+                    f'[ASSISTS] Trial warning: {sub.get("email")} '
+                    f'({hours_left:.0f}hrs left)'
+                )
+        except Exception:
+            continue
 
     sent   = 0
     failed = 0
