@@ -242,8 +242,14 @@ def home():
 
 @app.route('/mora-assists-welcome')
 def mora_assists_welcome():
-    """Thank you + onboarding page shown after Mora Assists Stripe trial signup."""
+    """Thank you page — shown after Stripe trial signup. Fires StartTrial pixel."""
     return render_template('mora_assists_welcome.html')
+
+
+@app.route('/mora-assists-setup')
+def mora_assists_setup():
+    """Onboarding instructions page — linked from welcome page. No pixel fires here."""
+    return render_template('mora_assists_setup.html')
 
 
 @app.route('/manifest.json')
