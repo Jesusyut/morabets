@@ -2685,6 +2685,127 @@ def _handle_stripe_event(event):
         logger.warning(f"[STRIPE] Payment failed for subscription: {subscription_id}")
 
 
+def _sync_to_brevo(email, name=""):
+    """Stub — extend if Brevo/Sendinblue integration is added later."""
+    pass
+
+
+@app.route('/zapier/new-assists-subscriber', methods=['POST'])
+def zapier_new_assists_subscriber():
+    """
+    Called by Zapier when a new Mora Assists subscription is created in Stripe.
+    Saves the subscriber and sends the welcome email via SendGrid.
+    This replaces the broken Stripe webhook.
+    """
+    try:
+        data = request.json or {}
+        logger.info(f"[ZAPIER] New subscriber payload received: {data}")
+
+        email = (
+            data.get('customer_email') or
+            data.get('email') or
+            data.get('Customer Email') or ''
+        ).strip().lower()
+
+        name = (
+            data.get('customer_name') or
+            data.get('name') or
+            data.get('Customer Name') or ''
+        ).strip()
+
+        stripe_customer_id = (
+            data.get('customer') or
+            data.get('customer_id') or
+            data.get('Customer') or ''
+        )
+
+        stripe_subscription_id = (
+            data.get('subscription') or
+            data.get('id') or
+            data.get('Subscription ID') or ''
+        )
+
+        if not email or '@' not in email:
+            logger.error(f"[ZAPIER] Invalid email in payload: {data}")
+            return jsonify({'success': False, 'error': 'No valid email in payload'}), 400
+
+        # Check if already subscribed
+        FILE = '/var/data/mora_assists_subscribers.csv'
+        existing_emails = set()
+        if os.path.exists(FILE):
+            with open(FILE) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    existing_emails.add(row.get('email', '').lower())
+
+        if email in existing_emails:
+            logger.info(f"[ZAPIER] Already exists: {email}")
+            return jsonify({'success': True, 'existing': True, 'email': email})
+
+        # Save to subscriber CSV — ensure dir exists first
+        saved = False
+        try:
+            os.makedirs('/var/data', exist_ok=True)
+            trial_ends = (datetime.utcnow() + timedelta(days=3)).isoformat()
+            _save_subscriber({
+                'email':                  email,
+                'name':                   name,
+                'stripe_customer_id':     stripe_customer_id,
+                'stripe_subscription_id': stripe_subscription_id,
+                'status':                 'trial',
+                'subscribed_at':          datetime.utcnow().isoformat(),
+                'trial_ends_at':          trial_ends,
+                'cancelled_at':           ''
+            })
+            saved = True
+            logger.info(f"[ZAPIER] ✅ Subscriber saved: {email}")
+        except Exception as se:
+            logger.error(f"[ZAPIER] ❌ CSV write failed for {email}: {se}")
+
+        # Send welcome email — always attempt regardless of CSV result
+        try:
+            _send_welcome_email(email, name)
+            logger.info(f"[ZAPIER] ✅ Welcome email sent: {email}")
+        except Exception as we:
+            logger.error(f"[ZAPIER] Welcome email failed for {email}: {we}")
+
+        # Sync to marketing list (no-op until Brevo is wired)
+        try:
+            _sync_to_brevo(email, name)
+        except Exception:
+            pass
+
+        return jsonify({
+            'success': True,
+            'email':   email,
+            'name':    name,
+            'status':  'trial',
+            'saved':   saved,
+            'message': 'Subscriber processed'
+        })
+
+    except Exception as e:
+        logger.error(f"[ZAPIER] Subscriber route error: {e}", exc_info=True)
+        # Return 200 so Zapier does not retry endlessly
+        return jsonify({'success': True, 'warning': str(e)})
+
+
+@app.route('/admin/subscribers-check')
+def admin_subscribers_check():
+    """Quick check of who is in the Mora Assists picks list. Verify Zapier writes."""
+    try:
+        FILE = '/var/data/mora_assists_subscribers.csv'
+        rows = []
+        if os.path.exists(FILE):
+            with open(FILE) as f:
+                rows = list(csv.DictReader(f))
+
+        active = [r for r in rows if r.get('status') in ['active', 'trial']]
+        return jsonify({'total': len(rows), 'active': len(active), 'subscribers': active})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/stripe/webhook", methods=["POST"])
 def stripe_webhook():
     """Receive and verify Stripe webhook events."""

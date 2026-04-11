@@ -1,0 +1,214 @@
+Add a Zapier-facing webhook route that
+receives new Mora Assists subscriber data
+from Stripe via Zapier and saves them
+to the picks CSV and sends welcome email.
+
+This replaces the broken Stripe webhook.
+Zapier is the middleware — more reliable,
+already proven working on the email gate.
+
+DO NOT touch odds fetching, EV engine,
+email gate, Meta pixel, color scheme,
+or any existing routes except adding
+the new one below.
+
+=== ADD ROUTE TO app.py ===
+
+@app.route(
+    '/zapier/new-assists-subscriber',
+    methods=['POST']
+)
+def zapier_new_assists_subscriber():
+    """
+    Called by Zapier when a new Mora Assists
+    subscription is created in Stripe.
+    
+    Zapier sends Stripe subscription data.
+    We save the subscriber and send
+    the welcome email via SendGrid.
+    
+    This replaces the broken Stripe webhook.
+    """
+    try:
+        data = request.json or {}
+
+        logger.info(
+            f"[ZAPIER] New subscriber "
+            f"payload received: {data}"
+        )
+
+        # Extract fields from Stripe data
+        # Zapier maps Stripe fields directly
+        email = (
+            data.get('customer_email') or
+            data.get('email') or
+            data.get('Customer Email') or
+            ''
+        ).strip().lower()
+
+        name = (
+            data.get('customer_name') or
+            data.get('name') or
+            data.get('Customer Name') or
+            ''
+        ).strip()
+
+        stripe_customer_id = (
+            data.get('customer') or
+            data.get('customer_id') or
+            data.get('Customer') or
+            ''
+        )
+
+        stripe_subscription_id = (
+            data.get('subscription') or
+            data.get('id') or
+            data.get('Subscription ID') or
+            ''
+        )
+
+        if not email or '@' not in email:
+            logger.error(
+                f"[ZAPIER] Invalid email "
+                f"in payload: {data}"
+            )
+            return jsonify({
+                'success': False,
+                'error':   'No valid email in payload'
+            }), 400
+
+        # Check if already subscribed
+        FILE = '/var/data/mora_assists_subscribers.csv'
+        import csv
+        existing_emails = set()
+        if os.path.exists(FILE):
+            with open(FILE) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    existing_emails.add(
+                        row.get('email','').lower()
+                    )
+
+        if email in existing_emails:
+            logger.info(
+                f"[ZAPIER] Already exists: {email}"
+            )
+            return jsonify({
+                'success':  True,
+                'existing': True,
+                'email':    email
+            })
+
+        # Save to CSV
+        from datetime import datetime, timedelta
+        trial_ends = (
+            datetime.utcnow() + timedelta(days=3)
+        ).isoformat()
+
+        _save_subscriber({
+            'email':
+                email,
+            'name':
+                name,
+            'stripe_customer_id':
+                stripe_customer_id,
+            'stripe_subscription_id':
+                stripe_subscription_id,
+            'status':
+                'trial',
+            'subscribed_at':
+                datetime.utcnow().isoformat(),
+            'trial_ends_at':
+                trial_ends,
+            'cancelled_at':
+                ''
+        })
+
+        logger.info(
+            f"[ZAPIER] ✅ Subscriber saved: "
+            f"{email}"
+        )
+
+        # Send welcome email via SendGrid
+        try:
+            _send_welcome_email(email, name)
+            logger.info(
+                f"[ZAPIER] ✅ Welcome email "
+                f"sent: {email}"
+            )
+        except Exception as e:
+            logger.error(
+                f"[ZAPIER] Welcome email "
+                f"failed for {email}: {e}"
+            )
+            # Don't fail the response —
+            # subscriber is saved regardless
+
+        # Also sync to Brevo marketing list
+        try:
+            _sync_to_brevo(email, name)
+        except Exception:
+            pass
+
+        return jsonify({
+            'success': True,
+            'email':   email,
+            'name':    name,
+            'status':  'trial',
+            'message': f'Subscriber added and '
+                       f'welcome email sent'
+        })
+
+    except Exception as e:
+        logger.error(
+            f"[ZAPIER] Subscriber route "
+            f"error: {e}",
+            exc_info=True
+        )
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+=== ALSO ADD ADMIN VERIFY ROUTE ===
+
+@app.route('/admin/subscribers-check')
+def admin_subscribers_check():
+    """
+    Quick check of who is in the picks list.
+    Verify Zapier is writing correctly.
+    Remove after confirming working.
+    """
+    import csv
+    try:
+        FILE = '/var/data/mora_assists_subscribers.csv'
+        rows = []
+        if os.path.exists(FILE):
+            with open(FILE) as f:
+                rows = list(csv.DictReader(f))
+
+        active = [
+            r for r in rows
+            if r.get('status') in ['active','trial']
+        ]
+
+        return jsonify({
+            'total':       len(rows),
+            'active':      len(active),
+            'subscribers': active
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+=== CONSTRAINTS ===
+- Route accepts POST from Zapier only
+- Always return 200 even on email failure
+  so Zapier does not retry endlessly
+- Subscriber saves even if welcome 
+  email fails
+- Log every step for Render log visibility
+- Do not touch /stripe/webhook route
+- Do not touch email gate
+- Do not touch EV engine or odds fetching
+- Do not touch color scheme
