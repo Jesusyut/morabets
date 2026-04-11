@@ -49,13 +49,31 @@ def load_full_board():
     except Exception:
         pass
 
-    for cache_file in ["/var/data/mlb_lines_cache.json", "/var/data/nhl_lines_cache.json", "/var/data/nfl_lines_cache.json"]:
+    lines_files = [
+        '/var/data/mlb_lines_cache.json',
+        '/var/data/nhl_lines_cache.json',
+        '/var/data/nfl_lines_cache.json',
+        'mlb_lines_cache.json',
+        'nhl_lines_cache.json',
+    ]
+
+    for cache_file in lines_files:
         try:
             lines = load_props_from_file(cache_file)
             if lines:
                 board["lines"].extend(lines)
+                logger.info(
+                    f"[BOARD] Loaded {len(lines)} "
+                    f"lines from {cache_file}"
+                )
         except Exception:
             pass
+
+    if not board["lines"]:
+        logger.warning(
+            "[BOARD] No lines cache found — "
+            "LLM will use props only for anchors"
+        )
 
     board["props"] = [p for p in board["props"] if p.get("no_vig_prob", 0) >= 55]
     board["lines"] = [l for l in board["lines"] if l.get("no_vig_prob", 0) >= 60]
@@ -72,6 +90,8 @@ def load_full_board():
 # ══════════════════════════════════════════
 
 SELECTION_PROMPT = """
+You are a professional data analyst, the best in the market for oddsmakers.
+You know the right proportions.
 You are the Mora Assists pick selector.
 
 Every morning you receive the full Mora Bets board — every sport, every market, every prop.
@@ -110,22 +130,41 @@ Prefer highest no_vig_prob across all sports.
 ANCHOR RULES (Picks 3, 4, and 5)
 ═══════════════════════════════════════
 
-Minimum no_vig_prob: 60
-Hard ceiling: -220 juice maximum ever
+Anchors are ANY bet that is NOT a player prop. This includes:
 
-Juice efficiency — rank by less juice for same probability always:
+- Moneyline (team to win outright)
+- Run line / Puck line / Spread (team to cover the spread)
+- Game totals (over/under total runs, goals, or points scored)
+- Any other game-level market available on the board
 
-TIER 1 BEST — positive odds above 55%
-  +105 at 61% = instant yes
+DO NOT limit anchors to one market type.
+If the board has moneylines use them.
+If it has totals use them.
+If it has spreads use them.
+Mix across market types if that gives the best probability picks.
 
-TIER 2 STRONG: -110 to -160 at 60-64% = yes
-TIER 3 YES:    -160 to -200 at 63-67% = yes
-TIER 4 BORDERLINE: -200 at 60% = last resort only
-TIER 5 NEVER: Above -220 regardless of probability
+The board data you receive includes BOTH props and lines. Anchors come from the lines section of the board.
+
+If the lines section appears empty, look inside the props data for any game-level entries that are not player-specific — some game lines may be mixed into the props feed.
+
+Minimum no_vig_prob: 60%
+Hard ceiling: -220 juice maximum
+
+JUICE EFFICIENCY — same rules as before:
+Tier 1: Positive odds above 55% — take immediately
+Tier 2: -110 to -160 at 60-64% — strong yes
+Tier 3: -160 to -200 at 63-67% — yes
+Tier 4: -200 at 60% — last resort only
+Tier 5: Above -220 — never
 
 3 anchors from 3 different games.
-No game used in prop picks 1 or 2.
+No game already used in prop picks 1 or 2.
 Spread across sports when possible.
+
+If fewer than 3 qualifying anchors exist today, fill remaining slots with the best available props above 60% probability rather than sending empty anchor slots with odds: 0 and prob: 0.0.
+
+NEVER return an anchor pick with odds: 0 or no_vig_prob: 0.0 — that means no data was found.
+Replace empty anchors with bonus prop picks above 60% instead.
 
 ═══════════════════════════════════════
 CASUAL BETTOR PICKS (Picks 6 and 7)
