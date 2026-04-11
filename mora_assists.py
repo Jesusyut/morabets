@@ -128,6 +128,36 @@ No game used in prop picks 1 or 2.
 Spread across sports when possible.
 
 ═══════════════════════════════════════
+CASUAL BETTOR PICKS (Picks 6 and 7)
+═══════════════════════════════════════
+
+Select exactly 2 additional picks for casual entertainment.
+
+These are NOT sharp picks.
+They are fun, accessible plays that a casual fan watching the game tonight
+would actually enjoy having action on.
+
+Rules:
+- No-vig probability: 55% to 65% ONLY
+  Below 55% = skip
+  Above 65% = goes in anchors not here
+- Prefer recognizable star players for props (Judge, Ohtani, McDavid etc)
+- Prefer primetime games or marquee matchups fans are already watching
+- Prefer plus money or light juice (-130 or better) — casual bettors hate heavy favorites
+- Can be a prop OR a game line
+- Must be from a different game than picks 1-5
+- One sentence "why" must be written in plain casual language —
+  no math jargon, no "no-vig",
+  just: "Yankees are hot at home and this line is undervalued"
+
+These picks are labeled "For The Fans" in the email.
+They carry less mathematical edge but more entertainment value.
+The framing is fun — not a sharp play, just a solid lean worth a unit if you're watching the game anyway.
+
+If fewer than 2 casual picks qualify today, return only what qualifies.
+Never force a pick below 55%.
+
+═══════════════════════════════════════
 OUTPUT — PURE JSON ONLY
 No explanation. No markdown. Just JSON.
 ═══════════════════════════════════════
@@ -212,15 +242,56 @@ No explanation. No markdown. Just JSON.
   "generated_at": "",
   "total_props_scanned": 0,
   "total_lines_scanned": 0,
-  "sports_covered": []
+  "sports_covered": [],
+  "casual_picks": [
+    {
+      "pick_number": 6,
+      "type": "casual",
+      "label": "For The Fans",
+      "player": "",
+      "team": "",
+      "stat": "",
+      "line": "",
+      "market": "",
+      "direction": "over",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "why_casual": ""
+    },
+    {
+      "pick_number": 7,
+      "type": "casual",
+      "label": "For The Fans",
+      "player": "",
+      "team": "",
+      "stat": "",
+      "line": "",
+      "market": "",
+      "direction": "over",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "why_casual": ""
+    }
+  ]
 }
 
 WHY FIELD — plain English, simple:
 Props: mention environment and matchup — "High scoring game. Best hitter on the favored team. Clear play."
 Anchors: mention probability and juice — "62% true edge at -160. Market strongly favors this team."
+Casual (why_casual): write like a friend texting a pick — one sentence, conversational, no analytics language.
+  Examples: "Judge has gone deep in 4 straight at home and the line is soft tonight."
+            "Oilers are a different team in the playoffs and this total feels low."
+            "Fade the public here — everyone's on the Lakers but the math says otherwise."
 
 If fewer than 2 props qualify: replace missing prop with anchor pick.
 If fewer than 3 anchors qualify: send only what passes the rules. Never force a bad pick.
+If fewer than 2 casual picks qualify: return only what qualifies. Never force below 55%.
 """
 
 
@@ -364,6 +435,49 @@ def format_picks_email(picks_data):
       <div class="stat-box"><div class="stat-label">True Prob</div><div class="stat-value green">{p.get('no_vig_prob', 0)}%</div></div>
     </div>
     <div class="why">{p.get('why','')}</div>
+  </div>
+"""
+
+    casual = picks_data.get('casual_picks', [])
+    if casual:
+        html += """  <div class="section-label" style="background:#fff8e8;padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:2px;color:#854f0b;text-transform:uppercase;border-bottom:1px solid #fac775;border-top:1px solid #fac775;">&#127942; &nbsp; For The Fans</div>\n"""
+        for p in casual:
+            odds_display = f'+{p.get("odds",0)}' if p.get('odds', 0) > 0 else str(p.get('odds', 0))
+            if p.get('player'):
+                pick_title = f'{p["player"]} — {p.get("stat","")} OVER {p.get("line","")}'
+            else:
+                pick_title = f'{p.get("team","")} {p.get("market","").title()}'
+            html += f"""  <div style="padding:20px 24px;border-bottom:1px solid #e8f5e1;background:#ffffff;">
+    <div style="font-size:11px;font-weight:700;color:#854f0b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
+      Pick {p['pick_number']} &nbsp;·&nbsp; For The Fans &nbsp;·&nbsp; {p.get('sport','')} &nbsp;·&nbsp; {p.get('matchup','')}
+    </div>
+    <div style="font-size:18px;font-weight:900;color:#0f2406;margin-bottom:4px;font-family:'Arial Black',Arial,sans-serif;">
+      {pick_title}
+    </div>
+    <div style="font-size:13px;color:#6b9e5a;margin-bottom:10px;">Best line at {p.get('book','').title()}</div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;">
+      <div style="background:#f5faf2;border:1px solid #e8f5e1;border-radius:8px;padding:8px 14px;text-align:center;min-width:70px;">
+        <div style="font-size:10px;color:#6b9e5a;text-transform:uppercase;letter-spacing:1px;">Odds</div>
+        <div style="font-size:16px;font-weight:700;color:#0f2406;">{odds_display}</div>
+      </div>
+      <div style="background:#f5faf2;border:1px solid #e8f5e1;border-radius:8px;padding:8px 14px;text-align:center;min-width:80px;">
+        <div style="font-size:10px;color:#6b9e5a;text-transform:uppercase;letter-spacing:1px;">Lean</div>
+        <div style="font-size:16px;font-weight:700;color:#4cbb17;">{p.get('no_vig_prob',0)}%</div>
+      </div>
+      <div style="background:#fff8e8;border:1px solid #fac775;border-radius:8px;padding:8px 14px;text-align:center;min-width:80px;">
+        <div style="font-size:10px;color:#854f0b;text-transform:uppercase;letter-spacing:1px;">Vibe</div>
+        <div style="font-size:13px;font-weight:700;color:#633806;">Casual &#127942;</div>
+      </div>
+    </div>
+    <div style="font-style:italic;font-size:13px;color:#1a3d0a;padding:10px 14px;background:#fff8e8;border-left:3px solid #ef9f27;border-radius:0 8px 8px 0;">
+      {p.get('why_casual','')}
+    </div>
+  </div>
+"""
+        html += """  <div style="padding:12px 24px;background:#fff8e8;text-align:center;border-bottom:1px solid #e8f5e1;">
+    <p style="margin:0;font-size:11px;color:#854f0b;font-style:italic;">
+      For The Fans picks are entertainment plays — solid leans, not sharp edges. Bet responsibly. One unit max.
+    </p>
   </div>
 """
 
