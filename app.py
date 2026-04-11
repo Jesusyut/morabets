@@ -2038,7 +2038,8 @@ scheduler.add_job(
     timezone="America/New_York",
     id="mora_assists_daily",
     name="Mora Assists Daily Picks 10:30AM ET",
-    replace_existing=True
+    replace_existing=True,
+    misfire_grace_time=3600
 )
 
 
@@ -2788,6 +2789,26 @@ def zapier_new_assists_subscriber():
         logger.error(f"[ZAPIER] Subscriber route error: {e}", exc_info=True)
         # Return 200 so Zapier does not retry endlessly
         return jsonify({'success': True, 'warning': str(e)})
+
+
+@app.route('/api/scheduler-status')
+def scheduler_status():
+    """Check if the APScheduler is running and list all jobs with next run times."""
+    try:
+        jobs = scheduler.get_jobs()
+        return jsonify({
+            'running': scheduler.running,
+            'jobs': [
+                {
+                    'id':       j.id,
+                    'name':     j.name,
+                    'next_run': str(j.next_run_time)
+                }
+                for j in jobs
+            ]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/admin/subscribers-check')

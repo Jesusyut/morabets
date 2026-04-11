@@ -26,60 +26,73 @@ FROM_EMAIL        = os.getenv("EMAIL_FROM", "picks@morabets.com")
 def load_full_board():
     """
     Load all cached props and game lines across every sport.
-    As new sports are added they will be picked up automatically.
+    Props come from local JSON cache files.
+    Lines come from the in-memory app cache (mlb_odds / nhl_odds).
     """
     board = {"props": [], "lines": [], "sports_found": []}
 
-    mlb_props = load_props_from_file("/var/data/mlb_props_cache.json")
-    if mlb_props:
-        board["props"].extend(mlb_props)
-        board["sports_found"].append("MLB")
-
-    nhl_props = load_props_from_file("/var/data/nhl_props_cache.json")
-    if nhl_props:
-        board["props"].extend(nhl_props)
-        if "NHL" not in board["sports_found"]:
-            board["sports_found"].append("NHL")
-
-    try:
-        nfl_props = load_props_from_file("/var/data/nfl_props_cache.json")
-        if nfl_props:
-            board["props"].extend(nfl_props)
-            board["sports_found"].append("NFL")
-    except Exception:
-        pass
-
-    lines_files = [
-        '/var/data/mlb_lines_cache.json',
-        '/var/data/nhl_lines_cache.json',
-        '/var/data/nfl_lines_cache.json',
-        'mlb_lines_cache.json',
-        'nhl_lines_cache.json',
+    # ── PROPS ── check both /var/data/ and local ./
+    prop_files = [
+        ('mlb_props_cache.json',      'MLB'),
+        ('/var/data/mlb_props_cache.json', 'MLB'),
+        ('nhl_props_cache.json',      'NHL'),
+        ('/var/data/nhl_props_cache.json', 'NHL'),
+        ('nfl_props_cache.json',      'NFL'),
+        ('/var/data/nfl_props_cache.json', 'NFL'),
     ]
-
-    for cache_file in lines_files:
+    seen_files = set()
+    for filepath, sport in prop_files:
+        if filepath in seen_files:
+            continue
         try:
-            lines = load_props_from_file(cache_file)
-            if lines:
-                board["lines"].extend(lines)
-                logger.info(
-                    f"[BOARD] Loaded {len(lines)} "
-                    f"lines from {cache_file}"
-                )
+            props = load_props_from_file(filepath)
+            if props:
+                board["props"].extend(props)
+                seen_files.add(filepath)
+                if sport not in board["sports_found"]:
+                    board["sports_found"].append(sport)
+                logger.info(f"[BOARD] {len(props)} props from {filepath}")
         except Exception:
             pass
 
+    # ── LINES ── read from in-memory app cache (populated by update_odds())
+    try:
+        from app import cache_get
+        import json as _json
+
+        line_keys = [
+            ('mlb_odds', 'MLB'),
+            ('nhl_odds', 'NHL'),
+            ('mlb_curated_picks', 'MLB'),
+            ('nhl_curated_picks', 'NHL'),
+        ]
+        for key, sport in line_keys:
+            try:
+                val = cache_get(key)
+                if val:
+                    data = _json.loads(val) if isinstance(val, str) else val
+                    if isinstance(data, list) and data:
+                        board["lines"].extend(data)
+                        if sport not in board["sports_found"]:
+                            board["sports_found"].append(sport)
+                        logger.info(f"[BOARD] {len(data)} lines from cache key: {key}")
+            except Exception:
+                continue
+    except Exception as e:
+        logger.warning(f"[BOARD] Lines cache error: {e}")
+
     if not board["lines"]:
         logger.warning(
-            "[BOARD] No lines cache found — "
-            "LLM will use props only for anchors"
+            "[BOARD] No lines cache found. "
+            "LLM will select anchors from high-probability props."
         )
 
-    board["props"] = [p for p in board["props"] if p.get("no_vig_prob", 0) >= 55]
+    # Filter to quality minimums
+    board["props"] = [p for p in board["props"] if p.get("no_vig_prob", 0) >= 52]
     board["lines"] = [l for l in board["lines"] if l.get("no_vig_prob", 0) >= 60]
 
     logger.info(
-        f"[ASSISTS] Board loaded: {len(board['props'])} props, "
+        f"[BOARD] Final: {len(board['props'])} props, "
         f"{len(board['lines'])} lines, sports: {board['sports_found']}"
     )
     return board
@@ -90,115 +103,182 @@ def load_full_board():
 # ══════════════════════════════════════════
 
 SELECTION_PROMPT = """
-You are a professional data analyst, the best in the market for oddsmakers.
+You are a professional data analyst —
+the best in the market for oddsmakers.
 You know the right proportions.
 You are the Mora Assists pick selector.
 
-Every morning you receive the full Mora Bets board — every sport, every market, every prop.
-Analyze everything. Do not limit to one sport.
+Every morning you receive the full board.
+Analyze everything across all sports.
 
-YOUR OUTPUT IS EXACTLY 5 PICKS:
-- 2 player props (context-driven)
-- 3 anchor lines (no-vig straight plays)
+YOUR OUTPUT IS EXACTLY 7 PICKS:
+- 2 player props (picks 1 and 2)
+- 3 anchor plays (picks 3, 4, and 5)
+- 2 casual picks (picks 6 and 7)
+
+═══════════════════════════════════════
+BOOKS — DRAFTKINGS AND FANDUEL ONLY
+═══════════════════════════════════════
+
+For ALL picks — props, anchors, casual —
+ONLY recommend lines available at:
+- DraftKings
+- FanDuel
+
+Never recommend BetMGM, Caesars,
+BetRivers, or any other book.
+If a pick is only available at other books
+skip it and find one at DK or FD.
+
+═══════════════════════════════════════
+PROBABILITY RULES — STRICT
+═══════════════════════════════════════
+
+Core picks (props + anchors) 1-5:
+  PREFERRED range: 62% to 68%
+  MAXIMUM: 70% hard ceiling
+  MINIMUM: 60%
+
+  Above 70% almost always means juice
+  of -400 or worse. The subscriber cannot
+  profit long term at that juice.
+  SKIP these entirely even if the
+  probability looks strong.
+
+  The sweet spot is 62-68% with juice
+  between -150 and -210.
+  This is where mathematical edge meets
+  realistic returns.
+
+Casual picks 6-7:
+  Range: 55% to 65%
+  Entertainment plays.
+  Prefer plus money or light juice
+  (-130 or better).
+
+═══════════════════════════════════════
+JUICE LIMITS — HARD RULES
+═══════════════════════════════════════
+
+NEVER recommend any pick with juice
+worse than -250. Not even at 70%.
+
+At -300 or worse the bettor needs to
+win 75%+ just to break even.
+That is not a bet — it is a donation.
+
+JUICE EFFICIENCY RANKING:
+  Tier 1 BEST: +100 or better at 55%+
+  Tier 2 STRONG: -110 to -180 at 62-68%
+  Tier 3 OK: -180 to -220 at 65-68%
+  Tier 4 BORDERLINE: -220 to -250 at 67-68%
+  Tier 5 NEVER: worse than -250 ever
+
+A -185 line at 63% true probability
+is the ideal Mora Assists pick.
+A -450 line at 69% is a terrible pick.
+Always choose the -185 over the -450.
 
 ═══════════════════════════════════════
 PROP RULES (Picks 1 and 2)
 ═══════════════════════════════════════
 
-Minimum no_vig_prob: 55
+Minimum no_vig_prob: 60%
+Maximum juice: -250
+Preferred: 62-68% at DraftKings or FanDuel
 
-For every game check environment label:
+Check game environment label:
+HIGH SCORING → offensive props
+  (hits over, total bases, RBIs,
+   shots on goal, points)
+LOW SCORING → pitching or defensive props
+  (strikeouts over, hits allowed)
 
-HIGH SCORING:
-→ Offensive props only
-→ Hits over, total bases over, RBIs over, shots on goal over, receiving yards over
-→ Prefer favored team offensive players
-
-LOW SCORING:
-→ Pitching or defensive props only
-→ Pitcher strikeouts over
-→ Avoid offensive over totals
-
-NO environment label:
-→ Skip this game for props
-
+Prefer props from favored team players.
 Select 2 props from 2 DIFFERENT games.
-Never 2 props from the same game.
-Prefer highest no_vig_prob across all sports.
 
 ═══════════════════════════════════════
 ANCHOR RULES (Picks 3, 4, and 5)
 ═══════════════════════════════════════
 
-Anchors are ANY bet that is NOT a player prop. This includes:
+Anchors = ANY bet that is NOT a player prop.
 
+This includes:
 - Moneyline (team to win outright)
-- Run line / Puck line / Spread (team to cover the spread)
-- Game totals (over/under total runs, goals, or points scored)
-- Any other game-level market available on the board
+- Run line / Puck line / Spread
+- Game total (over/under)
+- Any game-level market
 
-DO NOT limit anchors to one market type.
-If the board has moneylines use them.
-If it has totals use them.
-If it has spreads use them.
-Mix across market types if that gives the best probability picks.
+Check the lines data in the board first.
+If lines data is available use it.
 
-The board data you receive includes BOTH props and lines. Anchors come from the lines section of the board.
+If lines data is empty or sparse,
+select anchors from high-probability
+PROPS above 60% that were not used
+in picks 1 or 2.
 
-If the lines section appears empty, look inside the props data for any game-level entries that are not player-specific — some game lines may be mixed into the props feed.
+NEVER return an anchor with:
+- odds: 0
+- no_vig_prob: 0.0
+- team: empty string
 
-Minimum no_vig_prob: 60%
-Hard ceiling: -220 juice maximum
+If you cannot find 3 qualifying anchors
+with real data, use 3 bonus prop picks
+instead. Empty picks destroy trust.
 
-JUICE EFFICIENCY — same rules as before:
-Tier 1: Positive odds above 55% — take immediately
-Tier 2: -110 to -160 at 60-64% — strong yes
-Tier 3: -160 to -200 at 63-67% — yes
-Tier 4: -200 at 60% — last resort only
-Tier 5: Above -220 — never
-
-3 anchors from 3 different games.
-No game already used in prop picks 1 or 2.
-Spread across sports when possible.
-
-If fewer than 3 qualifying anchors exist today, fill remaining slots with the best available props above 60% probability rather than sending empty anchor slots with odds: 0 and prob: 0.0.
-
-NEVER return an anchor pick with odds: 0 or no_vig_prob: 0.0 — that means no data was found.
-Replace empty anchors with bonus prop picks above 60% instead.
+Minimum: 60% no-vig probability
+Maximum juice: -250 hard limit
+Preferred: 62-68% at DK or FD
+3 picks from 3 DIFFERENT games.
 
 ═══════════════════════════════════════
-CASUAL BETTOR PICKS (Picks 6 and 7)
+CASUAL PICKS (Picks 6 and 7)
 ═══════════════════════════════════════
 
-Select exactly 2 additional picks for casual entertainment.
+Entertainment angle. Fun plays.
+Casual fans watching the game tonight.
 
-These are NOT sharp picks.
-They are fun, accessible plays that a casual fan watching the game tonight
-would actually enjoy having action on.
+Range: 55% to 65% no-vig probability
+Juice: -130 or better preferred
+       Never worse than -200 for casual
+Books: DraftKings or FanDuel only
 
-Rules:
-- No-vig probability: 55% to 65% ONLY
-  Below 55% = skip
-  Above 65% = goes in anchors not here
-- Prefer recognizable star players for props (Judge, Ohtani, McDavid etc)
-- Prefer primetime games or marquee matchups fans are already watching
-- Prefer plus money or light juice (-130 or better) — casual bettors hate heavy favorites
-- Can be a prop OR a game line
-- Must be from a different game than picks 1-5
-- One sentence "why" must be written in plain casual language —
-  no math jargon, no "no-vig",
-  just: "Yankees are hot at home and this line is undervalued"
+Prefer:
+- Recognizable star players
+  (Judge, Ohtani, McDavid, etc.)
+- Primetime or marquee matchups
+- Plus money or light juice lines
+- Different game from picks 1-5
 
-These picks are labeled "For The Fans" in the email.
-They carry less mathematical edge but more entertainment value.
-The framing is fun — not a sharp play, just a solid lean worth a unit if you're watching the game anyway.
+why_casual must sound like a friend
+texting you a pick. One sentence.
+Plain language. No math jargon.
+Example: "Judge has been on fire at home
+and this line is way too cheap tonight."
 
-If fewer than 2 casual picks qualify today, return only what qualifies.
-Never force a pick below 55%.
+═══════════════════════════════════════
+CONTEXTUAL EDGE REQUIREMENT
+═══════════════════════════════════════
+
+Every pick must have a contextual reason
+beyond just the probability number.
+
+Consider:
+- Is this team at home or away?
+- Is it a high or low scoring environment?
+- Is the player on the favored team?
+- Is there a matchup advantage?
+- Is the line undervalued vs the market?
+
+The "why" field must reflect this context.
+Not just "62% true probability."
+This is: "Yankees at home vs weak Tampa
+rotation in a high scoring environment —
+market undervaluing the home advantage."
 
 ═══════════════════════════════════════
 OUTPUT — PURE JSON ONLY
-No explanation. No markdown. Just JSON.
+No text. No markdown. Just the JSON.
 ═══════════════════════════════════════
 
 {
@@ -278,10 +358,6 @@ No explanation. No markdown. Just JSON.
       "why": ""
     }
   ],
-  "generated_at": "",
-  "total_props_scanned": 0,
-  "total_lines_scanned": 0,
-  "sports_covered": [],
   "casual_picks": [
     {
       "pick_number": 6,
@@ -317,19 +393,20 @@ No explanation. No markdown. Just JSON.
       "matchup": "",
       "why_casual": ""
     }
-  ]
+  ],
+  "generated_at": "",
+  "total_props_scanned": 0,
+  "total_lines_scanned": 0,
+  "sports_covered": []
 }
 
 WHY FIELD — plain English, simple:
-Props: mention environment and matchup — "High scoring game. Best hitter on the favored team. Clear play."
-Anchors: mention probability and juice — "62% true edge at -160. Market strongly favors this team."
-Casual (why_casual): write like a friend texting a pick — one sentence, conversational, no analytics language.
-  Examples: "Judge has gone deep in 4 straight at home and the line is soft tonight."
-            "Oilers are a different team in the playoffs and this total feels low."
-            "Fade the public here — everyone's on the Lakers but the math says otherwise."
+Props: mention environment and matchup context.
+Anchors: mention matchup and why the line is undervalued.
+Casual (why_casual): write like a friend texting — one sentence, conversational, no analytics language.
 
 If fewer than 2 props qualify: replace missing prop with anchor pick.
-If fewer than 3 anchors qualify: send only what passes the rules. Never force a bad pick.
+If fewer than 3 anchors qualify: use bonus prop picks above 60%. Never force empty zeros.
 If fewer than 2 casual picks qualify: return only what qualifies. Never force below 55%.
 """
 
@@ -575,6 +652,73 @@ def send_picks_email(to_email, subject, html_content):
 
 
 # ══════════════════════════════════════════
+# STEP 5.5: POST-SELECTION VALIDATION
+# ══════════════════════════════════════════
+
+def validate_picks(picks_data):
+    """
+    Remove any picks that violate hard rules before sending email.
+    Prevents -500 juice picks or empty zero-data picks from going out.
+    """
+    if not picks_data:
+        return picks_data
+
+    clean_picks = []
+    removed = 0
+
+    for p in picks_data.get('picks', []):
+        odds  = p.get('odds', 0)
+        prob  = p.get('no_vig_prob', 0)
+        ptype = p.get('type', '')
+
+        # Hard reject: no data at all
+        if odds == 0 and prob == 0.0:
+            logger.warning(
+                f"[VALIDATE] Removed empty pick {p.get('pick_number')} "
+                f"(odds=0, prob=0)"
+            )
+            removed += 1
+            continue
+
+        # Hard reject: juice worse than -250
+        if odds < -250:
+            logger.warning(
+                f"[VALIDATE] Removed pick {p.get('pick_number')} — "
+                f"juice {odds} exceeds -250 limit"
+            )
+            removed += 1
+            continue
+
+        # Hard reject: probability above 70% for core picks
+        if ptype != 'casual' and prob > 70.0:
+            logger.warning(
+                f"[VALIDATE] Removed pick {p.get('pick_number')} — "
+                f"prob {prob}% above 70% ceiling"
+            )
+            removed += 1
+            continue
+
+        # Hard reject: probability below 60% for core picks
+        if ptype != 'casual' and prob < 60.0:
+            logger.warning(
+                f"[VALIDATE] Removed pick {p.get('pick_number')} — "
+                f"prob {prob}% below 60% floor"
+            )
+            removed += 1
+            continue
+
+        clean_picks.append(p)
+
+    if removed > 0:
+        logger.warning(
+            f"[VALIDATE] Removed {removed} picks that failed quality check"
+        )
+
+    picks_data['picks'] = clean_picks
+    return picks_data
+
+
+# ══════════════════════════════════════════
 # STEP 6: MAIN DAILY JOB
 # ══════════════════════════════════════════
 
@@ -589,16 +733,20 @@ def run_daily_assists():
         return
 
     picks_data = select_picks_with_llm(board)
+    picks_data = validate_picks(picks_data)
 
     if not picks_data:
         logger.error("[ASSISTS] LLM returned no picks")
         return
 
     today_str = datetime.now().strftime("%Y-%m-%d")
-    with open(f"/var/data/assists_picks_{today_str}.json", "w") as f:
-        json.dump(picks_data, f, indent=2)
-
-    logger.info(f"[ASSISTS] Picks saved to /var/data/assists_picks_{today_str}.json")
+    save_path = f"assists_picks_{today_str}.json"
+    try:
+        with open(save_path, "w") as f:
+            json.dump(picks_data, f, indent=2)
+        logger.info(f"[ASSISTS] Picks saved to {save_path}")
+    except Exception as se:
+        logger.warning(f"[ASSISTS] Could not save picks JSON: {se}")
 
     subject, html = format_picks_email(picks_data)
     if not subject or not html:
