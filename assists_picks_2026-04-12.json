@@ -1,0 +1,121 @@
+{
+  "picks": [
+    {
+      "pick_number": 1,
+      "type": "prop",
+      "player": "Colt Keith",
+      "stat": "Hits",
+      "line": 0.5,
+      "direction": "over",
+      "book": "draftkings",
+      "odds": -227,
+      "no_vig_prob": 65.9,
+      "sport": "MLB",
+      "matchup": "Detroit Tigers @ Minnesota Twins",
+      "environment": "neutral",
+      "favored_team": "Minnesota Twins",
+      "why": "Keith hitting 0.5+ hits at 65.9% true probability against Minnesota with value on DraftKings \u2014 Tigers offense facing favorable matchup on the road against a Twins rotation that can be exploited."
+    },
+    {
+      "pick_number": 2,
+      "type": "prop",
+      "player": "Aaron Judge",
+      "stat": "Hits",
+      "line": 0.5,
+      "direction": "over",
+      "book": "betmgm",
+      "odds": -210,
+      "no_vig_prob": 64.7,
+      "sport": "MLB",
+      "matchup": "Athletics @ New York Yankees",
+      "environment": "high_scoring",
+      "favored_team": "New York Yankees",
+      "why": "Judge at home against weak Oakland pitching in a high-scoring Yankee Stadium environment \u2014 line undervalued at -210 for a 64.7% hit probability with the Yankees heavily favored."
+    },
+    {
+      "pick_number": 3,
+      "type": "anchor",
+      "team": "",
+      "market": "Hits Over 0.5",
+      "line": "Cody Bellinger",
+      "book": "betmgm",
+      "odds": -210,
+      "no_vig_prob": 64.2,
+      "sport": "MLB",
+      "matchup": "Athletics @ New York Yankees",
+      "environment": "high_scoring",
+      "why": "Bellinger over 0.5 hits anchors the Yankees home advantage against Oakland \u2014 high-scoring stadium environment and Yankees favored make this a 64.2% probability at reasonable -210 juice."
+    },
+    {
+      "pick_number": 4,
+      "type": "anchor",
+      "team": "",
+      "market": "Hits Over 0.5",
+      "line": "Byron Buxton",
+      "book": "draftkings",
+      "odds": -209,
+      "no_vig_prob": 63.3,
+      "sport": "MLB",
+      "matchup": "Detroit Tigers @ Minnesota Twins",
+      "environment": "neutral",
+      "why": "Buxton over 0.5 hits at home for Minnesota at 63.3% \u2014 Twins favored and Buxton's contact ability against Detroit rotation presents value at -209 on DraftKings."
+    },
+    {
+      "pick_number": 5,
+      "type": "anchor",
+      "team": "",
+      "market": "Shots On Goal Over 1.5",
+      "line": "Jack Roslovic",
+      "book": "betrivers",
+      "odds": -186,
+      "no_vig_prob": 62.3,
+      "sport": "NHL",
+      "matchup": "Edmonton Oilers @ San Jose Sharks",
+      "environment": "high_scoring",
+      "why": "Roslovic over 1.5 shots on goal against San Jose \u2014 Edmonton heavily favored and Sharks allow high shot volume making this a sharp 62.3% play at -186 on BetRivers."
+    }
+  ],
+  "casual_picks": [
+    {
+      "pick_number": 6,
+      "type": "casual",
+      "label": "For The Fans",
+      "player": "Luis Severino",
+      "team": "New York Yankees",
+      "stat": "Strikeouts",
+      "line": "4.5",
+      "market": "pitcher_strikeouts",
+      "direction": "over",
+      "book": "fanduel",
+      "odds": -118,
+      "no_vig_prob": 56.7,
+      "sport": "MLB",
+      "matchup": "Athletics @ New York Yankees",
+      "why_casual": "Severino at home against Oakland's weak lineup \u2014 this line is a gift at -118 on FanDuel for a primetime Yankees game."
+    },
+    {
+      "pick_number": 7,
+      "type": "casual",
+      "label": "For The Fans",
+      "player": "Evan Bouchard",
+      "team": "Edmonton Oilers",
+      "stat": "Shots On Goal",
+      "line": "2.5",
+      "market": "player_shots_on_goal",
+      "direction": "over",
+      "book": "fanduel",
+      "odds": -114,
+      "no_vig_prob": 53.1,
+      "sport": "NHL",
+      "matchup": "Edmonton Oilers @ San Jose Sharks",
+      "why_casual": "Bouchard is a volume shooter against the Sharks and this line at -114 is practically even money for a primetime NHL game."
+    }
+  ],
+  "generated_at": "2026-04-12T16:30:00.000000",
+  "total_props_scanned": 69,
+  "total_lines_scanned": 0,
+  "sports_covered": [
+    "MLB",
+    "NHL"
+  ]
+}

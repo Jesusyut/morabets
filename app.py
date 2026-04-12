@@ -2048,45 +2048,137 @@ scheduler.add_job(
 app_initialized = False
 
 def background_initializer():
-    """Background initialization of expensive operations"""
+    """
+    Registers all scheduled jobs and primes caches on startup.
+    Runs in a background thread so it does not block server startup.
+    Re-registers every job on every startup — APScheduler does not
+    persist jobs across process restarts on Render.
+    """
     global app_initialized
     import time
     time.sleep(5)  # Wait for server to fully boot
-    
+
     try:
-        logger.info("🚀 Starting background initialization...")
-        
-        # Start scheduler
+        logger.info("🚀 Starting background init...")
+
+        # ── START SCHEDULER ──────────────────────────────────────
         if not scheduler.running:
             scheduler.start()
-            logger.info("✅ Background scheduler started")
-        
-        # Initial cache priming (non-blocking)
-        logger.info("🔄 Starting cache priming...")
+            logger.info("✅ Scheduler started")
+        else:
+            logger.info("⚠️ Scheduler already running")
+
+        # ── REGISTER MORA ASSISTS JOB ─────────────────────────────
+        # MUST run every startup — APScheduler does not persist jobs
+        # across Render process restarts.
+        try:
+            from mora_assists import run_daily_assists as _run_assists
+            scheduler.add_job(
+                func=_run_assists,
+                trigger='cron',
+                hour=10,
+                minute=30,
+                timezone='America/New_York',
+                id='mora_assists_daily',
+                name='Mora Assists 10:30AM ET',
+                replace_existing=True,
+                misfire_grace_time=3600,
+                coalesce=True
+            )
+            job = scheduler.get_job('mora_assists_daily')
+            if job:
+                logger.info(f"✅ mora_assists_daily registered — next: {job.next_run_time}")
+            else:
+                logger.error("❌ mora_assists_daily failed to register")
+        except Exception as e:
+            logger.error(f"❌ Failed to register mora_assists job: {e}")
+
+        # ── REGISTER MLB PROPS JOB ───────────────────────────────
+        try:
+            scheduler.add_job(
+                func=_fetch_and_process_mlb_props,
+                trigger='cron',
+                hour=10,
+                minute=0,
+                timezone='America/New_York',
+                id='mlb_props_daily',
+                name='MLB Props Daily 10AM ET',
+                replace_existing=True,
+                misfire_grace_time=3600,
+                coalesce=True
+            )
+            logger.info("✅ MLB props job registered")
+        except Exception as e:
+            logger.warning(f"MLB props job error: {e}")
+
+        # ── REGISTER NHL PROPS JOB ───────────────────────────────
+        try:
+            scheduler.add_job(
+                func=_fetch_and_process_nhl_props,
+                trigger='cron',
+                hour=10,
+                minute=15,
+                timezone='America/New_York',
+                id='nhl_props_daily',
+                name='NHL Props Daily 10:15AM ET',
+                replace_existing=True,
+                misfire_grace_time=3600,
+                coalesce=True
+            )
+            logger.info("✅ NHL props job registered")
+        except Exception as e:
+            logger.warning(f"NHL props job error: {e}")
+
+        # ── REGISTER GAME ODDS REFRESH ───────────────────────────
+        try:
+            scheduler.add_job(
+                func=update_odds,
+                trigger='cron',
+                hour='10,18',
+                minute=30,
+                timezone='America/New_York',
+                id='game_lines_twice_daily',
+                name='Game Lines 10:30AM + 6:30PM ET',
+                replace_existing=True,
+                misfire_grace_time=3600,
+                coalesce=True
+            )
+            logger.info("✅ Game odds job registered")
+        except Exception as e:
+            logger.warning(f"Odds job error: {e}")
+
+        # ── LOG ALL REGISTERED JOBS ──────────────────────────────
+        all_jobs = scheduler.get_jobs()
+        logger.info(f"📋 Total scheduled jobs: {len(all_jobs)}")
+        for j in all_jobs:
+            logger.info(f"  {j.id} → {j.next_run_time}")
+
+        # ── PRIME CACHES ─────────────────────────────────────────
+        logger.info("🔄 Priming caches...")
         try:
             update_odds()
             logger.info("✅ Odds cache primed")
         except Exception as e:
-            logger.warning(f"Odds cache priming failed: {e}")
-        
+            logger.warning(f"Odds cache failed: {e}")
+
         try:
             _fetch_and_process_mlb_props()
             logger.info("✅ MLB props primed")
         except Exception as e:
-            logger.warning(f"MLB props priming failed: {e}")
+            logger.warning(f"MLB props failed: {e}")
 
         try:
             _fetch_and_process_nhl_props()
             logger.info("✅ NHL props primed")
         except Exception as e:
-            logger.warning(f"NHL props priming failed: {e}")
+            logger.warning(f"NHL props failed: {e}")
 
         app_initialized = True
-        logger.info("🎉 Background initialization complete")
-        
+        logger.info("🎉 Background init complete")
+
     except Exception as e:
-        logger.error(f"Background initialization failed: {e}")
-        app_initialized = True  # Mark as complete even if failed
+        logger.error(f"Background init failed: {e}", exc_info=True)
+        app_initialized = True
 
 
 
@@ -2793,20 +2885,58 @@ def zapier_new_assists_subscriber():
 
 @app.route('/api/scheduler-status')
 def scheduler_status():
-    """Check if the APScheduler is running and list all jobs with next run times."""
+    """
+    Check scheduler health and registered jobs.
+    Visit: morabets.com/api/scheduler-status
+    """
     try:
-        jobs = scheduler.get_jobs()
+        from datetime import datetime as _dt
+        jobs      = scheduler.get_jobs()
+        mora_job  = scheduler.get_job('mora_assists_daily')
         return jsonify({
-            'running': scheduler.running,
-            'jobs': [
-                {
-                    'id':       j.id,
-                    'name':     j.name,
-                    'next_run': str(j.next_run_time)
-                }
+            'scheduler_running':   scheduler.running,
+            'total_jobs':          len(jobs),
+            'mora_assists_daily': {
+                'registered':    mora_job is not None,
+                'next_run':      str(mora_job.next_run_time) if mora_job else 'NOT REGISTERED',
+                'misfire_grace': mora_job.misfire_grace_time if mora_job else None,
+            },
+            'all_jobs': [
+                {'id': j.id, 'name': j.name, 'next_run': str(j.next_run_time)}
                 for j in jobs
-            ]
+            ],
+            'server_time_utc': str(_dt.utcnow()),
+            'status': '✅ healthy' if mora_job else '❌ mora_assists_daily missing'
         })
+    except Exception as e:
+        return jsonify({'error': str(e), 'status': '❌ error'}), 500
+
+
+@app.route('/api/send-picks-now', methods=['POST'])
+def send_picks_now():
+    """
+    Manually trigger Mora Assists picks send immediately.
+    Use when scheduler misses a day.
+    POST to: morabets.com/api/send-picks-now
+    """
+    try:
+        from mora_assists import run_daily_assists as _run_assists
+        import threading
+
+        def _run_in_background():
+            logger.info("[MANUAL] Picks send triggered via /api/send-picks-now")
+            result = _run_assists()
+            logger.info(f"[MANUAL] Result: {result}")
+
+        t = threading.Thread(target=_run_in_background, daemon=True)
+        t.start()
+
+        return jsonify({
+            'status':      'triggered',
+            'message':     'Picks send started in background. Check Render logs for results.',
+            'check_logs':  True
+        })
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
