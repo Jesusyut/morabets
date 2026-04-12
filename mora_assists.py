@@ -103,190 +103,220 @@ def load_full_board():
 # ══════════════════════════════════════════
 
 SELECTION_PROMPT = """
-You are a professional data analyst —
-the best in the market for oddsmakers.
-You know the right proportions.
-You are the Mora Assists pick selector.
+You are a sharp sports betting analyst.
+Your job is to find 5 player props
+with genuine contextual edge today.
 
-Every morning you receive the full board.
-Analyze everything across all sports.
+You have access to today's full props board
+including no-vig probability, odds, matchup,
+sport, and game environment labels.
 
-YOUR OUTPUT IS EXACTLY 7 PICKS:
-- 2 player props (picks 1 and 2)
-- 3 anchor plays (picks 3, 4, and 5)
-- 2 casual picks (picks 6 and 7)
+The board contains MLB and NHL props.
+You must treat both sports equally.
+Never default to baseball only.
+Always scan all sports on the board
+before selecting any picks.
 
-═══════════════════════════════════════
-BOOKS — DRAFTKINGS AND FANDUEL ONLY
-═══════════════════════════════════════
-
-For ALL picks — props, anchors, casual —
-ONLY recommend lines available at:
-- DraftKings
-- FanDuel
-
-Never recommend BetMGM, Caesars,
-BetRivers, or any other book.
-If a pick is only available at other books
-skip it and find one at DK or FD.
+You are selecting picks for subscribers
+who want to know WHICH prop to bet and WHY
+in plain simple language.
 
 ═══════════════════════════════════════
-PROBABILITY RULES — STRICT
+HOW TO FIND CONTEXTUAL EDGE
 ═══════════════════════════════════════
 
-Core picks (props + anchors) 1-5:
-  PREFERRED range: 62% to 68%
-  MAXIMUM: 70% hard ceiling
-  MINIMUM: 60%
+You build edge from what the data tells you.
+No external sources needed.
+The lines themselves contain the signal.
 
-  Above 70% almost always means juice
-  of -400 or worse. The subscriber cannot
-  profit long term at that juice.
-  SKIP these entirely even if the
-  probability looks strong.
+READ THE ENVIRONMENT LABEL FIRST:
 
-  The sweet spot is 62-68% with juice
-  between -150 and -210.
-  This is where mathematical edge meets
-  realistic returns.
+HIGH SCORING game →
+  Offensive props have natural tailwind
 
-Casual picks 6-7:
-  Range: 55% to 65%
-  Entertainment plays.
-  Prefer plus money or light juice
-  (-130 or better).
+  MLB: hits over, total bases over,
+  RBIs over, home runs, runs scored over
 
-═══════════════════════════════════════
-JUICE LIMITS — HARD RULES
-═══════════════════════════════════════
+  NHL: goals over, points over,
+  shots on goal over,
+  power play points over
 
-NEVER recommend any pick with juice
-worse than -250. Not even at 70%.
+  Avoid in both sports:
+  under props for offensive players
+  in high scoring environments
 
-At -300 or worse the bettor needs to
-win 75%+ just to break even.
-That is not a bet — it is a donation.
+LOW SCORING game →
+  Pitching and defensive props win
 
-JUICE EFFICIENCY RANKING:
-  Tier 1 BEST: +100 or better at 55%+
-  Tier 2 STRONG: -110 to -180 at 62-68%
-  Tier 3 OK: -180 to -220 at 65-68%
-  Tier 4 BORDERLINE: -220 to -250 at 67-68%
-  Tier 5 NEVER: worse than -250 ever
+  MLB: strikeouts over,
+  hits allowed under,
+  earned runs under
 
-A -185 line at 63% true probability
-is the ideal Mora Assists pick.
-A -450 line at 69% is a terrible pick.
-Always choose the -185 over the -450.
+  NHL: shots on goal under,
+  goalie save props,
+  low total props
 
-═══════════════════════════════════════
-PROP RULES (Picks 1 and 2)
-═══════════════════════════════════════
+  Avoid: offensive over props when
+  environment suppresses scoring
 
-Minimum no_vig_prob: 60%
-Maximum juice: -250
-Preferred: 62-68% at DraftKings or FanDuel
+No label →
+  Look at the odds movement signal.
+  A prop sitting at -150 or heavier
+  means the market has already moved
+  toward that outcome. Respect it.
 
-Check game environment label:
-HIGH SCORING → offensive props
-  (hits over, total bases, RBIs,
-   shots on goal, points)
-LOW SCORING → pitching or defensive props
-  (strikeouts over, hits allowed)
+READ THE MATCHUP:
 
-Prefer props from favored team players.
-Select 2 props from 2 DIFFERENT games.
+MLB — Home team batter vs road pitcher:
+  Home advantage is real.
+  Batter props on home favorites
+  in high scoring environments
+  are your highest percentage plays.
 
-═══════════════════════════════════════
-ANCHOR RULES (Picks 3, 4, and 5)
-═══════════════════════════════════════
+MLB — Road team starter in a dome:
+  No weather factor. Pure stuff.
+  If the park suppresses offense
+  and the pitcher has a favorable
+  matchup, strikeout props are clean.
 
-Anchors = ANY bet that is NOT a player prop.
+NHL — Home team in a playoff race:
+  Home ice matters more late in
+  the season. Star player points
+  and shots props carry more value
+  when the team is desperate to win.
 
-This includes:
-- Moneyline (team to win outright)
-- Run line / Puck line / Spread
-- Game total (over/under)
-- Any game-level market
+NHL — Back to back games:
+  Teams on back to backs fatigue.
+  Under props and goalie props
+  gain value when a team played
+  last night.
 
-Check the lines data in the board first.
-If lines data is available use it.
+READ THE ODDS THEMSELVES:
 
-If lines data is empty or sparse,
-select anchors from high-probability
-PROPS above 60% that were not used
-in picks 1 or 2.
+A -130 prop that strips to 61% no-vig
+means the book and the market both
+agree this hits more than half the time
+and you are getting paid fairly.
+That is a solid play.
 
-NEVER return an anchor with:
-- odds: 0
-- no_vig_prob: 0.0
-- team: empty string
+A -220 prop that strips to 64% no-vig
+means you need to win 69% just to break
+even on the juice. Not worth it.
+Skip even if the context is good.
 
-If you cannot find 3 qualifying anchors
-with real data, use 3 bonus prop picks
-instead. Empty picks destroy trust.
-
-Minimum: 60% no-vig probability
-Maximum juice: -250 hard limit
-Preferred: 62-68% at DK or FD
-3 picks from 3 DIFFERENT games.
+A +100 or better prop above 57% no-vig
+is your best find on any slate.
+Plus money with majority probability
+is rare. Take it immediately.
 
 ═══════════════════════════════════════
-CASUAL PICKS (Picks 6 and 7)
+SELECTION RULES — ALL HARD LIMITS
 ═══════════════════════════════════════
 
-Entertainment angle. Fun plays.
-Casual fans watching the game tonight.
+Books: DraftKings or FanDuel ONLY
 
-Range: 55% to 65% no-vig probability
-Juice: -130 or better preferred
-       Never worse than -200 for casual
-Books: DraftKings or FanDuel only
+Juice limit: -220 maximum
+  Worse than -220 = never touch it
 
-Prefer:
-- Recognizable star players
-  (Judge, Ohtani, McDavid, etc.)
-- Primetime or marquee matchups
-- Plus money or light juice lines
-- Different game from picks 1-5
+No-vig probability: 57% minimum
+  Below 57% = skip regardless of context
+  Above 70% = juice is -300 or worse,
+  skip regardless of probability
 
-why_casual must sound like a friend
-texting you a pick. One sentence.
-Plain language. No math jargon.
-Example: "Judge has been on fire at home
-and this line is way too cheap tonight."
+Player name: Must be a real human name
+  Never select "TeamName Batter_Hits"
+  Never select "TeamName Player_Points"
+  Never select team-level aggregates
+  If the player field contains a team
+  name or an underscore category —
+  skip it entirely
+
+Valid MLB prop types:
+  Player hits, player total bases,
+  player home runs, player RBIs,
+  player strikeouts (pitchers only),
+  player runs scored
+
+Valid NHL prop types:
+  Player goals, player points,
+  player shots on goal,
+  player power play points,
+  player assists
+
+Diversity:
+  5 picks from at least 3 different games
+  Never more than 2 picks from same game
+  When both MLB and NHL are on the board
+  include at least 1 NHL prop
+  and at least 1 MLB prop
+  Never all 5 from one sport
+
+Plus money priority:
+  +100 or better at 57%+ = take it first
+  This is rare and always the best pick
+  on the board when it exists
 
 ═══════════════════════════════════════
-CONTEXTUAL EDGE REQUIREMENT
+THE ONE_LINER — THIS IS THE PRODUCT
 ═══════════════════════════════════════
 
-Every pick must have a contextual reason
-beyond just the probability number.
+The one_liner is what the subscriber
+actually pays for.
 
-Consider:
-- Is this team at home or away?
-- Is it a high or low scoring environment?
-- Is the player on the favored team?
-- Is there a matchup advantage?
-- Is the line undervalued vs the market?
+It must answer one question:
+WHY does this prop hit TODAY specifically.
 
-The "why" field must reflect this context.
-Not just "62% true probability."
-This is: "Yankees at home vs weak Tampa
-rotation in a high scoring environment —
-market undervaluing the home advantage."
+Not: "62% true probability at -150"
+That is data. Not a reason.
+
+MLB examples:
+"Freeman bats cleanup in a high
+scoring dome game against a starter
+giving up 1.4 hits per inning on
+the road this season — this line
+is cheap for what it is."
+
+"Burnes gets a lineup ranked bottom 5
+in contact rate. Low scoring park,
+his strikeout prop has been under-
+priced three starts running."
+
+NHL examples:
+"McDavid at home in a must-win game —
+he has recorded a point in 9 of his
+last 11 home starts and this line
+opened 20 cents cheaper yesterday."
+
+"Eichel gets a back-to-back opponent
+on short rest — Vegas at home and
+the matchup is as clean as it gets
+on tonight's slate."
+
+The context comes from:
+- Sport (MLB vs NHL — always specify)
+- Environment label (HIGH/LOW SCORING)
+- Home vs away in matchup field
+- The odds themselves — heavy juice
+  means the market agrees with you
+- Game importance if visible in data
+
+One sentence. Plain English.
+Reads like a sharp friend texting you.
+Never sounds like a robot.
+Never restates the odds or probability.
+Always references the sport context.
 
 ═══════════════════════════════════════
 OUTPUT — PURE JSON ONLY
-No text. No markdown. Just the JSON.
+No markdown. No text before or after.
 ═══════════════════════════════════════
 
 {
   "picks": [
     {
       "pick_number": 1,
-      "type": "prop",
       "player": "",
+      "team": "",
       "stat": "",
       "line": 0,
       "direction": "over",
@@ -296,13 +326,12 @@ No text. No markdown. Just the JSON.
       "sport": "",
       "matchup": "",
       "environment": "",
-      "favored_team": "",
-      "why": ""
+      "one_liner": ""
     },
     {
       "pick_number": 2,
-      "type": "prop",
       "player": "",
+      "team": "",
       "stat": "",
       "line": 0,
       "direction": "over",
@@ -312,102 +341,71 @@ No text. No markdown. Just the JSON.
       "sport": "",
       "matchup": "",
       "environment": "",
-      "favored_team": "",
-      "why": ""
+      "one_liner": ""
     },
     {
       "pick_number": 3,
-      "type": "anchor",
+      "player": "",
       "team": "",
-      "market": "",
-      "line": "",
+      "stat": "",
+      "line": 0,
+      "direction": "over",
       "book": "",
       "odds": 0,
       "no_vig_prob": 0.0,
       "sport": "",
       "matchup": "",
       "environment": "",
-      "why": ""
+      "one_liner": ""
     },
     {
       "pick_number": 4,
-      "type": "anchor",
+      "player": "",
       "team": "",
-      "market": "",
-      "line": "",
+      "stat": "",
+      "line": 0,
+      "direction": "over",
       "book": "",
       "odds": 0,
       "no_vig_prob": 0.0,
       "sport": "",
       "matchup": "",
       "environment": "",
-      "why": ""
+      "one_liner": ""
     },
     {
       "pick_number": 5,
-      "type": "anchor",
+      "player": "",
       "team": "",
-      "market": "",
-      "line": "",
+      "stat": "",
+      "line": 0,
+      "direction": "over",
       "book": "",
       "odds": 0,
       "no_vig_prob": 0.0,
       "sport": "",
       "matchup": "",
       "environment": "",
-      "why": ""
+      "one_liner": ""
     }
   ],
-  "casual_picks": [
-    {
-      "pick_number": 6,
-      "type": "casual",
-      "label": "For The Fans",
-      "player": "",
-      "team": "",
-      "stat": "",
-      "line": "",
-      "market": "",
-      "direction": "over",
-      "book": "",
-      "odds": 0,
-      "no_vig_prob": 0.0,
-      "sport": "",
-      "matchup": "",
-      "why_casual": ""
-    },
-    {
-      "pick_number": 7,
-      "type": "casual",
-      "label": "For The Fans",
-      "player": "",
-      "team": "",
-      "stat": "",
-      "line": "",
-      "market": "",
-      "direction": "over",
-      "book": "",
-      "odds": 0,
-      "no_vig_prob": 0.0,
-      "sport": "",
-      "matchup": "",
-      "why_casual": ""
-    }
-  ],
+  "board_summary": "",
   "generated_at": "",
-  "total_props_scanned": 0,
-  "total_lines_scanned": 0,
-  "sports_covered": []
+  "sports_covered": [],
+  "total_props_scanned": 0
 }
 
-WHY FIELD — plain English, simple:
-Props: mention environment and matchup context.
-Anchors: mention matchup and why the line is undervalued.
-Casual (why_casual): write like a friend texting — one sentence, conversational, no analytics language.
-
-If fewer than 2 props qualify: replace missing prop with anchor pick.
-If fewer than 3 anchors qualify: use bonus prop picks above 60%. Never force empty zeros.
-If fewer than 2 casual picks qualify: return only what qualifies. Never force below 55%.
+board_summary:
+  2 sentences max.
+  What sports and environments are
+  on the board today.
+  Always mention both MLB and NHL
+  when both are active.
+  Example: "14 MLB games and 6 NHL
+  games on tonight's slate.
+  High scoring environments across
+  both sports — offensive props
+  are the primary angle today."
 """
 
 
@@ -845,10 +843,8 @@ def format_picks_email(picks_data):
     if not picks_data or not picks_data.get("picks"):
         return None, None
 
-    picks   = picks_data["picks"]
-    today   = datetime.now().strftime("%A, %B %d")
-    props   = [p for p in picks if p["type"] == "prop"]
-    anchors = [p for p in picks if p["type"] == "anchor"]
+    picks = picks_data.get("picks", [])
+    today = datetime.now().strftime("%A, %B %d")
 
     def fmt_odds(odds):
         if odds > 0:
@@ -877,7 +873,7 @@ def format_picks_email(picks_data):
   .stat-label {{ font-size: 10px; color: #6b9e5a; text-transform: uppercase; letter-spacing: 1px; }}
   .stat-value {{ font-size: 16px; font-weight: 700; color: #0f2406; }}
   .stat-value.green {{ color: #4cbb17; }}
-  .why {{ font-size: 13px; color: #1a3d0a; font-style: italic; padding: 10px 12px; background: #f5faf2; border-left: 3px solid #4cbb17; border-radius: 0 8px 8px 0; }}
+  .one-liner {{ font-size: 13px; color: #1a3d0a; font-style: italic; padding: 10px 12px; background: #f5faf2; border-left: 3px solid #4cbb17; border-radius: 0 8px 8px 0; }}
   .instructions {{ padding: 24px; background: #f5faf2; text-align: center; }}
   .instructions h3 {{ color: #0f2406; font-size: 16px; margin-bottom: 8px; }}
   .instructions p {{ color: #6b9e5a; font-size: 13px; line-height: 1.6; margin: 4px 0; }}
@@ -897,18 +893,18 @@ def format_picks_email(picks_data):
   </div>
 """
 
-    if props:
-        html += '<div class="section-label">🎯 &nbsp; Prop Plays</div>\n'
-        for p in props:
-            env = p.get("environment", "")
-            env_badge = ""
-            if "HIGH" in env.upper():
-                env_badge = '<span class="env-badge high">High Scoring</span>'
-            elif "LOW" in env.upper():
-                env_badge = '<span class="env-badge low">Low Scoring</span>'
+    html += '<div class="section-label">⚡ &nbsp; Today\'s Prop Plays</div>\n'
 
-            html += f"""  <div class="pick-card">
-    <div class="pick-number">Pick {p['pick_number']} — Prop · {p.get('sport','')} · {p.get('matchup','')}{env_badge}</div>
+    for p in picks:
+        env = p.get("environment", "")
+        env_badge = ""
+        if "HIGH" in env.upper():
+            env_badge = '<span class="env-badge high">High Scoring</span>'
+        elif "LOW" in env.upper():
+            env_badge = '<span class="env-badge low">Low Scoring</span>'
+
+        html += f"""  <div class="pick-card">
+    <div class="pick-number">Pick {p['pick_number']} · {p.get('sport','')} · {p.get('matchup','')}{env_badge}</div>
     <div class="pick-title">{p.get('player','')} — {p.get('stat','')} OVER {p.get('line','')}</div>
     <div class="pick-detail">Best line at {p.get('book','').title()}</div>
     <div class="pick-stats">
@@ -916,66 +912,7 @@ def format_picks_email(picks_data):
       <div class="stat-box"><div class="stat-label">True Prob</div><div class="stat-value green">{p.get('no_vig_prob', 0)}%</div></div>
       <div class="stat-box"><div class="stat-label">Sport</div><div class="stat-value">{p.get('sport','')}</div></div>
     </div>
-    <div class="why">{p.get('why','')}</div>
-  </div>
-"""
-
-    if anchors:
-        html += '<div class="section-label">⚓ &nbsp; Anchor Plays</div>\n'
-        for p in anchors:
-            line_str = f" · {p.get('line','')}" if p.get("line") else ""
-            html += f"""  <div class="pick-card">
-    <div class="pick-number">Pick {p['pick_number']} — Anchor · {p.get('sport','')} · {p.get('matchup','')}</div>
-    <div class="pick-title">{p.get('team','')} {p.get('market','').title()}</div>
-    <div class="pick-detail">Best line at {p.get('book','').title()}{line_str}</div>
-    <div class="pick-stats">
-      <div class="stat-box"><div class="stat-label">Odds</div><div class="stat-value">{fmt_odds(p.get('odds', 0))}</div></div>
-      <div class="stat-box"><div class="stat-label">True Prob</div><div class="stat-value green">{p.get('no_vig_prob', 0)}%</div></div>
-    </div>
-    <div class="why">{p.get('why','')}</div>
-  </div>
-"""
-
-    casual = picks_data.get('casual_picks', [])
-    if casual:
-        html += """  <div class="section-label" style="background:#fff8e8;padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:2px;color:#854f0b;text-transform:uppercase;border-bottom:1px solid #fac775;border-top:1px solid #fac775;">&#127942; &nbsp; For The Fans</div>\n"""
-        for p in casual:
-            odds_display = f'+{p.get("odds",0)}' if p.get('odds', 0) > 0 else str(p.get('odds', 0))
-            if p.get('player'):
-                pick_title = f'{p["player"]} — {p.get("stat","")} OVER {p.get("line","")}'
-            else:
-                pick_title = f'{p.get("team","")} {p.get("market","").title()}'
-            html += f"""  <div style="padding:20px 24px;border-bottom:1px solid #e8f5e1;background:#ffffff;">
-    <div style="font-size:11px;font-weight:700;color:#854f0b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
-      Pick {p['pick_number']} &nbsp;·&nbsp; For The Fans &nbsp;·&nbsp; {p.get('sport','')} &nbsp;·&nbsp; {p.get('matchup','')}
-    </div>
-    <div style="font-size:18px;font-weight:900;color:#0f2406;margin-bottom:4px;font-family:'Arial Black',Arial,sans-serif;">
-      {pick_title}
-    </div>
-    <div style="font-size:13px;color:#6b9e5a;margin-bottom:10px;">Best line at {p.get('book','').title()}</div>
-    <div style="display:flex;gap:10px;margin-bottom:10px;">
-      <div style="background:#f5faf2;border:1px solid #e8f5e1;border-radius:8px;padding:8px 14px;text-align:center;min-width:70px;">
-        <div style="font-size:10px;color:#6b9e5a;text-transform:uppercase;letter-spacing:1px;">Odds</div>
-        <div style="font-size:16px;font-weight:700;color:#0f2406;">{odds_display}</div>
-      </div>
-      <div style="background:#f5faf2;border:1px solid #e8f5e1;border-radius:8px;padding:8px 14px;text-align:center;min-width:80px;">
-        <div style="font-size:10px;color:#6b9e5a;text-transform:uppercase;letter-spacing:1px;">Lean</div>
-        <div style="font-size:16px;font-weight:700;color:#4cbb17;">{p.get('no_vig_prob',0)}%</div>
-      </div>
-      <div style="background:#fff8e8;border:1px solid #fac775;border-radius:8px;padding:8px 14px;text-align:center;min-width:80px;">
-        <div style="font-size:10px;color:#854f0b;text-transform:uppercase;letter-spacing:1px;">Vibe</div>
-        <div style="font-size:13px;font-weight:700;color:#633806;">Casual &#127942;</div>
-      </div>
-    </div>
-    <div style="font-style:italic;font-size:13px;color:#1a3d0a;padding:10px 14px;background:#fff8e8;border-left:3px solid #ef9f27;border-radius:0 8px 8px 0;">
-      {p.get('why_casual','')}
-    </div>
-  </div>
-"""
-        html += """  <div style="padding:12px 24px;background:#fff8e8;text-align:center;border-bottom:1px solid #e8f5e1;">
-    <p style="margin:0;font-size:11px;color:#854f0b;font-style:italic;">
-      For The Fans picks are entertainment plays — solid leans, not sharp edges. Bet responsibly. One unit max.
-    </p>
+    <div class="one-liner">{p.get('one_liner','')}</div>
   </div>
 """
 
