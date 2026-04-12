@@ -455,6 +455,388 @@ def select_picks_with_llm(board):
 
 
 # ══════════════════════════════════════════
+# STEP 2B: TWO-STAGE LLM PIPELINE
+# ══════════════════════════════════════════
+
+def analyze_board_with_llm(board):
+    """
+    Stage 1 — Claude reads the full board
+    and builds a structured cheat sheet.
+    Returns a clean analysis dict that
+    Stage 2 uses to make picks.
+    """
+    client = anthropic.Anthropic(
+        api_key=os.environ.get('ANTHROPIC_API_KEY')
+    )
+
+    props = board.get('props', [])
+    lines = board.get('lines', [])
+
+    dk_fd_props = [
+        p for p in props
+        if p.get('bookmaker', '').lower() in ['draftkings', 'fanduel']
+        and p.get('no_vig_prob', 0) >= 55
+        and p.get('odds', 0) > -260
+    ]
+
+    dk_fd_lines = [
+        l for l in lines
+        if l.get('bookmaker', '').lower() in ['draftkings', 'fanduel']
+    ]
+
+    ANALYST_PROMPT = f"""
+You are a professional sports betting 
+data analyst — the best in the market.
+
+Your job RIGHT NOW is NOT to pick games.
+Your job is to READ the board and build
+a clean cheat sheet for the pick selector.
+
+TODAY'S BOARD DATA:
+
+PROPS (DraftKings + FanDuel only, 55%+):
+{json.dumps(dk_fd_props[:80], indent=2)}
+
+GAME LINES (DraftKings + FanDuel):
+{json.dumps(dk_fd_lines[:40], indent=2)}
+
+ANALYZE the board and return a JSON
+cheat sheet with this exact structure:
+
+{{
+  "top_props": [
+    {{
+      "player": "",
+      "team": "",
+      "stat": "",
+      "line": 0,
+      "direction": "over",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "book": "",
+      "matchup": "",
+      "sport": "",
+      "environment": "",
+      "edge_reason": ""
+    }}
+  ],
+  "top_game_lines": [
+    {{
+      "team": "",
+      "market": "",
+      "line": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "book": "",
+      "matchup": "",
+      "sport": "",
+      "environment": "",
+      "edge_reason": ""
+    }}
+  ],
+  "best_environments": [],
+  "avoid_games": [],
+  "board_summary": "",
+  "total_props_analyzed": 0,
+  "total_lines_analyzed": 0,
+  "sports_on_board": []
+}}
+
+RULES FOR YOUR ANALYSIS:
+
+top_props:
+- Only DraftKings or FanDuel
+- Only no_vig_prob between 60% and 70%
+- Only odds better than -250
+- Player name must be a real player name
+  NOT a team name like "Twins Batter_Hits"
+  If you see "TeamName Batter_Hits" that
+  is a prop category NOT a player — SKIP IT
+- List top 10 qualifying props ranked
+  by probability descending
+
+top_game_lines:
+- ONLY moneylines, spreads, or totals
+- NOT player props in this section
+- Only DraftKings or FanDuel
+- Only no_vig_prob between 60% and 70%
+- Only odds better than -250
+- If no qualifying game lines exist
+  return empty array — do not fake them
+
+best_environments:
+- List game matchups labeled HIGH SCORING
+  These are best for offensive props
+
+avoid_games:
+- Any game with fewer than 3 props
+  or no qualifying lines
+
+board_summary:
+- 2-3 sentence plain English summary
+  of what the board looks like today
+
+Return ONLY valid JSON. No markdown.
+No explanation. Pure JSON object.
+"""
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": ANALYST_PROMPT}]
+        )
+
+        raw = response.content[0].text.strip()
+        raw = raw.replace('```json', '').replace('```', '').strip()
+
+        analysis = json.loads(raw)
+
+        logger.info(
+            f"[ANALYST] Board analyzed: "
+            f"{len(analysis.get('top_props', []))} top props, "
+            f"{len(analysis.get('top_game_lines', []))} top lines"
+        )
+        logger.info(f"[ANALYST] Summary: {analysis.get('board_summary', '')}")
+
+        return analysis
+
+    except json.JSONDecodeError as e:
+        logger.error(f"[ANALYST] JSON parse error: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"[ANALYST] Analysis error: {e}")
+        return None
+
+
+def select_picks_from_analysis(analysis):
+    """
+    Stage 2 — Claude reads its own cheat
+    sheet from Stage 1 and picks the 7
+    best plays with full context.
+    """
+    if not analysis:
+        logger.error("[SELECTOR] No analysis to work from")
+        return None
+
+    client = anthropic.Anthropic(
+        api_key=os.environ.get('ANTHROPIC_API_KEY')
+    )
+
+    SELECTOR_PROMPT = f"""
+You are a professional data analyst —
+the best in the market for oddsmakers.
+You know the right proportions.
+You are the Mora Assists pick selector.
+
+A senior analyst has already reviewed 
+today's full board and built this 
+cheat sheet for you:
+
+CHEAT SHEET:
+{json.dumps(analysis, indent=2)}
+
+YOUR JOB: Select exactly 7 picks from
+the cheat sheet above.
+
+PICK STRUCTURE:
+- Picks 1-2: Player props from top_props
+- Picks 3-5: Anchor plays
+  USE top_game_lines first.
+  If top_game_lines is empty use
+  additional props from top_props
+  that were NOT used in picks 1-2.
+  NEVER use "TeamName Batter_Hits" 
+  as an anchor — that is a prop category
+  not a real game line.
+- Picks 6-7: Casual picks 55-65%
+  lighter juice preferred
+
+HARD RULES:
+- DraftKings or FanDuel ONLY
+- No odds worse than -250 on any pick
+- No probability above 70%
+- No probability below 60% for picks 1-5
+- No probability below 55% for picks 6-7
+- All 7 picks must have real data
+  odds cannot be 0
+  probability cannot be 0.0
+  player or team cannot be empty
+- Picks 1 and 2 must be PLAYER props
+  with a real human player name
+- Picks 3-5 prefer game lines
+  (moneyline/spread/total) over props
+- If no game lines available picks 3-5
+  can be bonus props — label them
+  type: "prop" not type: "anchor"
+- Each pick needs a contextual why
+  that references the cheat sheet data
+
+BOARD SUMMARY FROM ANALYST:
+{analysis.get('board_summary', '')}
+
+Return ONLY valid JSON matching this
+exact structure. No markdown. No text.
+
+{{
+  "picks": [
+    {{
+      "pick_number": 1,
+      "type": "prop",
+      "player": "",
+      "stat": "",
+      "line": 0,
+      "direction": "over",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "why": ""
+    }},
+    {{
+      "pick_number": 2,
+      "type": "prop",
+      "player": "",
+      "stat": "",
+      "line": 0,
+      "direction": "over",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "why": ""
+    }},
+    {{
+      "pick_number": 3,
+      "type": "anchor",
+      "team": "",
+      "market": "",
+      "line": "",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "why": ""
+    }},
+    {{
+      "pick_number": 4,
+      "type": "anchor",
+      "team": "",
+      "market": "",
+      "line": "",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "why": ""
+    }},
+    {{
+      "pick_number": 5,
+      "type": "anchor",
+      "team": "",
+      "market": "",
+      "line": "",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "environment": "",
+      "why": ""
+    }}
+  ],
+  "casual_picks": [
+    {{
+      "pick_number": 6,
+      "type": "casual",
+      "label": "For The Fans",
+      "player": "",
+      "team": "",
+      "stat": "",
+      "line": "",
+      "market": "",
+      "direction": "over",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "why_casual": ""
+    }},
+    {{
+      "pick_number": 7,
+      "type": "casual",
+      "label": "For The Fans",
+      "player": "",
+      "team": "",
+      "stat": "",
+      "line": "",
+      "market": "",
+      "direction": "over",
+      "book": "",
+      "odds": 0,
+      "no_vig_prob": 0.0,
+      "sport": "",
+      "matchup": "",
+      "why_casual": ""
+    }}
+  ],
+  "generated_at": "",
+  "board_summary": "",
+  "sports_covered": []
+}}
+"""
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": SELECTOR_PROMPT}]
+        )
+
+        raw = response.content[0].text.strip()
+        raw = raw.replace('```json', '').replace('```', '').strip()
+
+        picks = json.loads(raw)
+
+        logger.info(
+            f"[SELECTOR] Picks selected: "
+            f"{len(picks.get('picks', []))} core, "
+            f"{len(picks.get('casual_picks', []))} casual"
+        )
+
+        return picks
+
+    except json.JSONDecodeError as e:
+        logger.error(f"[SELECTOR] JSON error: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"[SELECTOR] Error: {e}")
+        return None
+
+
+def run_two_stage_selection(board):
+    """
+    Convenience function for testing.
+    Runs both stages and returns (picks, analysis).
+    """
+    analysis = analyze_board_with_llm(board)
+    if not analysis:
+        return None, None
+    picks = select_picks_from_analysis(analysis)
+    picks = validate_picks(picks)
+    return picks, analysis
+
+
+# ══════════════════════════════════════════
 # STEP 3: FORMAT EMAIL
 # ══════════════════════════════════════════
 
@@ -858,7 +1240,27 @@ def run_daily_assists():
         logger.warning("[ASSISTS] Board empty — no picks to send today")
         return
 
-    picks_data = select_picks_with_llm(board)
+    # Stage 1 — Analyst builds cheat sheet
+    logger.info("[ASSISTS] Stage 1: Analyzing board...")
+    analysis = analyze_board_with_llm(board)
+
+    if not analysis:
+        logger.error(
+            "[ASSISTS] Stage 1 failed — "
+            "no analysis returned"
+        )
+        return {"sent": 0, "failed": 0, "error": "analysis"}
+
+    logger.info(
+        f"[ASSISTS] Analyst summary: "
+        f"{analysis.get('board_summary', '')}"
+    )
+
+    # Stage 2 — Selector picks from cheat sheet
+    logger.info("[ASSISTS] Stage 2: Selecting picks...")
+    picks_data = select_picks_from_analysis(analysis)
+
+    # Validate picks
     picks_data = validate_picks(picks_data)
 
     if not picks_data:
