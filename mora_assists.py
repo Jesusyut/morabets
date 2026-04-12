@@ -33,11 +33,8 @@ def load_full_board():
 
     # ── PROPS ── check both /var/data/ and local ./
     prop_files = [
-        ('mlb_props_cache.json',      'MLB'),
         ('/var/data/mlb_props_cache.json', 'MLB'),
-        ('nhl_props_cache.json',      'NHL'),
         ('/var/data/nhl_props_cache.json', 'NHL'),
-        ('nfl_props_cache.json',      'NFL'),
         ('/var/data/nfl_props_cache.json', 'NFL'),
     ]
     seen_files = set()
