@@ -2898,11 +2898,11 @@ def scheduler_status():
             'total_jobs':          len(jobs),
             'mora_assists_daily': {
                 'registered':    mora_job is not None,
-                'next_run':      str(mora_job.next_run_time) if mora_job else 'NOT REGISTERED',
+                'next_run':      str(mora_job.next_fire_time) if mora_job else 'NOT REGISTERED',
                 'misfire_grace': mora_job.misfire_grace_time if mora_job else None,
             },
             'all_jobs': [
-                {'id': j.id, 'name': j.name, 'next_run': str(j.next_run_time)}
+                {'id': j.id, 'name': j.name, 'next_run': str(j.next_fire_time)}
                 for j in jobs
             ],
             'server_time_utc': str(_dt.utcnow()),
