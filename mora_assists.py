@@ -1157,6 +1157,11 @@ def validate_picks(picks_data):
     for p in picks_data.get('picks', []):
         odds  = p.get('odds', 0)
         prob  = p.get('no_vig_prob', 0)
+        # Handle decimal vs percentage format
+        # LLM sometimes returns 0.682 instead of 68.2
+        if prob < 1.0 and prob > 0:
+            prob = prob * 100
+            p['no_vig_prob'] = round(prob, 1)
         ptype = p.get('type', '')
 
         # Hard reject: no data at all
