@@ -567,10 +567,7 @@ def fetch_player_props():
         ["pitcher_strikeouts", "pitcher_hits_allowed", "batter_rbis"]
     ]
 
-    BOOKS = (
-        "draftkings,fanduel,betmgm,"
-        "caesars,pointsbetus,betrivers"
-    )
+    BOOKS = "draftkings,fanduel,betmgm,betrivers"
 
     all_props = []
 

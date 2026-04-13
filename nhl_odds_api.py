@@ -111,7 +111,7 @@ def fetch_player_props():
         ["player_shots_on_goal", "player_points"],
         ["player_goal_scorer",   "player_anytime_goalscorer"],
     ]
-    BOOKS = "draftkings,fanduel,betmgm,caesars,betrivers"
+    BOOKS = "draftkings,fanduel,betmgm,betrivers"
 
     all_props = []
 

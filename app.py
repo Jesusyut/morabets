@@ -2153,25 +2153,73 @@ def background_initializer():
         for j in all_jobs:
             logger.info(f"  {j.id} → {j.next_run_time}")
 
-        # ── PRIME CACHES ─────────────────────────────────────────
-        logger.info("🔄 Priming caches...")
-        try:
-            update_odds()
-            logger.info("✅ Odds cache primed")
-        except Exception as e:
-            logger.warning(f"Odds cache failed: {e}")
+        # ── PRIME CACHES (cache-age-aware) ───────────────────────
+        import os as _os
+        from datetime import datetime as _dt
 
-        try:
-            _fetch_and_process_mlb_props()
-            logger.info("✅ MLB props primed")
-        except Exception as e:
-            logger.warning(f"MLB props failed: {e}")
+        def _cache_is_fresh(filepath, max_hours=20):
+            if not _os.path.exists(filepath):
+                return False
+            age = (_dt.utcnow().timestamp() - _os.path.getmtime(filepath)) / 3600
+            return age < max_hours
 
-        try:
-            _fetch_and_process_nhl_props()
-            logger.info("✅ NHL props primed")
-        except Exception as e:
-            logger.warning(f"NHL props failed: {e}")
+        logger.info("🔄 Priming caches (age-aware)...")
+
+        # MLB props — skip if fetched within 20 hours
+        mlb_cache = '/var/data/mlb_props_cache.json'
+        if _cache_is_fresh(mlb_cache, max_hours=20):
+            logger.info("[CACHE] MLB props fresh — skipping fetch")
+        else:
+            try:
+                _fetch_and_process_mlb_props()
+                logger.info("✅ MLB props primed")
+            except Exception as e:
+                logger.warning(f"MLB props failed: {e}")
+
+        # NHL props — skip if fetched within 20 hours
+        nhl_cache = '/var/data/nhl_props_cache.json'
+        if _cache_is_fresh(nhl_cache, max_hours=20):
+            logger.info("[CACHE] NHL props fresh — skipping fetch")
+        else:
+            try:
+                _fetch_and_process_nhl_props()
+                logger.info("✅ NHL props primed")
+            except Exception as e:
+                logger.warning(f"NHL props failed: {e}")
+
+        # Odds — skip if fetched within 6 hours
+        odds_flag = '/var/data/odds_last_fetch.txt'
+        odds_fresh = False
+        if _os.path.exists(odds_flag):
+            try:
+                with open(odds_flag) as _f:
+                    _last = float(_f.read().strip())
+                if (_dt.utcnow().timestamp() - _last) < 21600:
+                    odds_fresh = True
+                    logger.info("[CACHE] Odds fresh — skipping")
+            except Exception:
+                pass
+        if not odds_fresh:
+            try:
+                update_odds()
+                _os.makedirs('/var/data', exist_ok=True)
+                with open(odds_flag, 'w') as _f:
+                    _f.write(str(_dt.utcnow().timestamp()))
+                logger.info("✅ Odds primed")
+            except Exception as e:
+                logger.warning(f"Odds failed: {e}")
+
+        # ── MISFIRE RECOVERY CHECK ───────────────────────────────
+        import threading as _threading
+        def _recovery_check():
+            import time
+            time.sleep(10)
+            try:
+                from mora_assists import check_missed_send_today
+                check_missed_send_today()
+            except Exception as e:
+                logger.error(f"Recovery check error: {e}")
+        _threading.Thread(target=_recovery_check, daemon=True).start()
 
         app_initialized = True
         logger.info("🎉 Background init complete")

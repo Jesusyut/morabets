@@ -960,8 +960,7 @@ def format_picks_email(picks_data):
 def load_active_subscribers():
     """
     Load active Mora Assists subscribers.
-    Auto-expires trials that have ended.
-    Auto-removes cancelled subscribers from the send list.
+    Deduplicates by email, auto-expires trials, skips cancelled.
     """
     import csv
     from datetime import datetime
@@ -976,72 +975,60 @@ def load_active_subscribers():
         'phone', 'sms_opt_in'
     ]
 
-    active   = []
-    updated  = False
-    all_rows = []
-    now      = datetime.utcnow()
-    expired  = []
-    skipped  = []
-
-    try:
-        if not os.path.exists(FILE):
-            logger.warning('[ASSISTS] No subscriber file')
-            return []
-
-        with open(FILE, 'r') as f:
-            rows = list(csv.DictReader(f))
-
-        for row in rows:
-            status = row.get('status', '')
-            email  = row.get('email', '')
-
-            # Skip cancelled entirely
-            if status == 'cancelled':
-                skipped.append(email)
-                all_rows.append(row)
-                continue
-
-            # Check if trial has expired
-            if status == 'trial':
-                trial_end_str = row.get('trial_ends_at', '')
-                if trial_end_str:
-                    try:
-                        trial_end = datetime.fromisoformat(trial_end_str[:19])
-                        if now > trial_end:
-                            row['status'] = 'expired'
-                            expired.append(email)
-                            updated = True
-                            all_rows.append(row)
-                            continue
-                    except Exception:
-                        pass
-
-            # Active or valid trial
-            if status in ['active', 'trial']:
-                active.append(row)
-
-            all_rows.append(row)
-
-        # Write back only if statuses actually changed
-        if updated:
-            with open(FILE, 'w', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=FIELDS)
-                writer.writeheader()
-                for row in all_rows:
-                    clean = {k: row.get(k, '') for k in FIELDS}
-                    writer.writerow(clean)
-
-        if expired:
-            logger.info(f'[ASSISTS] Expired trials: {expired}')
-        if skipped:
-            logger.info(f'[ASSISTS] Skipped cancelled: {skipped}')
-
-        logger.info(f'[ASSISTS] Active subscribers for today: {len(active)}')
-        return active
-
-    except Exception as e:
-        logger.error(f'[ASSISTS] load_active error: {e}')
+    if not os.path.exists(FILE):
+        logger.warning('[ASSISTS] No subscriber file')
         return []
+
+    with open(FILE, 'r') as f:
+        rows = list(csv.DictReader(f))
+
+    now         = datetime.utcnow()
+    seen_emails = {}
+    updated     = False
+
+    for row in rows:
+        email  = row.get('email', '').lower().strip()
+        status = row.get('status', '')
+
+        if not email:
+            continue
+
+        # Auto-expire trials past end date
+        if status == 'trial':
+            trial_end_str = row.get('trial_ends_at', '')
+            if trial_end_str:
+                try:
+                    trial_end = datetime.fromisoformat(trial_end_str[:19])
+                    if now > trial_end:
+                        row['status'] = 'expired'
+                        status = 'expired'
+                        updated = True
+                        logger.info(f'[ASSISTS] Trial expired: {email}')
+                except Exception:
+                    pass
+
+        # Deduplication — keep most recent active/trial per email
+        if email in seen_emails:
+            existing_status = seen_emails[email].get('status', '')
+            if status in ['active', 'trial'] and existing_status not in ['active', 'trial']:
+                seen_emails[email] = row
+        else:
+            seen_emails[email] = row
+
+    all_rows = list(seen_emails.values())
+
+    # Write back only if statuses changed
+    if updated:
+        with open(FILE, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=FIELDS)
+            writer.writeheader()
+            for row in all_rows:
+                clean = {k: row.get(k, '') for k in FIELDS}
+                writer.writerow(clean)
+
+    active = [r for r in all_rows if r.get('status') in ['active', 'trial']]
+    logger.info(f'[ASSISTS] Active subscribers: {len(active)}')
+    return active
 
 
 # ══════════════════════════════════════════
@@ -1188,6 +1175,36 @@ def validate_picks(picks_data):
 
 
 # ══════════════════════════════════════════
+# STEP 5.8: MISFIRE RECOVERY GUARD
+# ══════════════════════════════════════════
+
+def check_missed_send_today():
+    """
+    Called by background_initializer() on every startup.
+    If picks haven't been sent yet today (no flag file)
+    and it's after 10:31 AM ET, fire run_daily_assists() now.
+    """
+    from zoneinfo import ZoneInfo
+    from datetime import datetime as _dt
+
+    et  = ZoneInfo('America/New_York')
+    now = _dt.now(et)
+
+    # Only check between 10:31 AM and midnight
+    if now.hour < 10 or (now.hour == 10 and now.minute < 31):
+        return
+
+    flag = f'/var/data/picks_sent_{now.strftime("%Y-%m-%d")}.flag'
+
+    if os.path.exists(flag):
+        logger.info('[RECOVERY] Picks already sent today')
+        return
+
+    logger.warning('[RECOVERY] Picks not sent yet — running recovery send now')
+    run_daily_assists()
+
+
+# ══════════════════════════════════════════
 # STEP 6: MAIN DAILY JOB
 # ══════════════════════════════════════════
 
@@ -1264,4 +1281,18 @@ def run_daily_assists():
             failed += 1
 
     logger.info(f"[ASSISTS] Sent: {sent} Failed: {failed}")
+
+    # Write daily flag so recovery check knows picks were sent
+    try:
+        from zoneinfo import ZoneInfo
+        _et  = ZoneInfo('America/New_York')
+        _now = datetime.now(_et)
+        _flag = f'/var/data/picks_sent_{_now.strftime("%Y-%m-%d")}.flag'
+        os.makedirs('/var/data', exist_ok=True)
+        with open(_flag, 'w') as _f:
+            _f.write(_now.isoformat())
+        logger.info(f'[ASSISTS] Flag written: {_flag}')
+    except Exception as _e:
+        logger.warning(f'[ASSISTS] Flag write error: {_e}')
+
     return {"sent": sent, "failed": failed, "picks": len(picks_data.get("picks", []))}
