@@ -1,0 +1,116 @@
+Fix mora_assists.py only.
+Three targeted fixes. Nothing else.
+
+=== FIX 1: INCREASE max_tokens ===
+
+Find client.messages.create() in
+select_picks_with_llm().
+
+Change:
+max_tokens=2000
+
+To:
+max_tokens=4000
+
+The picks JSON with 5 entries and
+one_liners needs more room.
+2000 was cutting the response off
+mid-JSON causing parse failures.
+
+=== FIX 2: ROBUST JSON PARSING ===
+
+Find the JSON parse block in
+select_picks_with_llm() that does:
+
+raw = response.content[0].text.strip()
+picks = json.loads(raw)
+
+Replace with:
+
+raw = response.content[0].text.strip()
+
+# Strip markdown fences if present
+raw = raw.replace('```json','').replace(
+    '```',''
+).strip()
+
+# Find the JSON object boundaries
+# Handles truncated or extra text
+start = raw.find('{')
+end = raw.rfind('}')
+
+if start == -1 or end == -1:
+    logger.error(
+        f"[LLM] No JSON object found "
+        f"in response"
+    )
+    return None
+
+raw = raw[start:end+1]
+
+try:
+    picks = json.loads(raw)
+except json.JSONDecodeError as e:
+    logger.error(
+        f"[LLM] JSON parse error: {e}"
+    )
+    logger.error(
+        f"[LLM] Raw snippet: {raw[:200]}"
+    )
+    return None
+
+=== FIX 3: PRE-FILTER BOARD DATA
+BEFORE SENDING TO LLM ===
+
+The LLM keeps ignoring the book rule
+because it sees all books in the data.
+Filter BEFORE the LLM sees anything.
+
+Find where board props are assembled
+in select_picks_with_llm() or
+load_full_board().
+
+Add this filter before the prompt
+is built:
+
+# Hard filter — DK and FD only
+# LLM cannot select what it cannot see
+dk_fd = ['draftkings', 'fanduel']
+
+filtered = [
+    p for p in board.get('props', [])
+    if p.get(
+        'bookmaker',
+        p.get('book', '')
+    ).lower().replace(' ','').replace(
+        'draftkings','draftkings'
+    ) in ['draftkings','fanduel']
+    and p.get('odds', 0) > -220
+    and p.get('odds', 0) != 0
+]
+
+logger.info(
+    f"[FILTER] {len(board.get('props',[]))} "
+    f"props → {len(filtered)} after "
+    f"DK/FD and -220 filter"
+)
+
+# Replace board props with filtered
+board_filtered = dict(board)
+board_filtered['props'] = filtered
+
+# Use board_filtered when building
+# the prompt — not the original board
+
+=== CONSTRAINTS ===
+- Only touch mora_assists.py
+- max_tokens 2000 → 4000 only change
+- JSON parsing uses rfind to find
+  last closing brace — handles
+  truncated responses gracefully
+- Pre-filter removes betrivers and
+  any odds worse than -220 before
+  LLM ever sees the data
+- Do not touch app.py
+- Do not touch scheduler
+- Do not touch dashboard

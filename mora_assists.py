@@ -418,38 +418,69 @@ def select_picks_with_llm(board):
         max_retries=4
     )
 
+    # Fix 3: Pre-filter — DK/FD only, odds better than -220
+    # LLM cannot select what it cannot see
+    filtered = [
+        p for p in board.get('props', [])
+        if p.get('bookmaker', p.get('book', '')).lower() in ['draftkings', 'fanduel']
+        and p.get('odds', 0) > -220
+        and p.get('odds', 0) != 0
+    ]
+    logger.info(
+        f"[FILTER] {len(board.get('props', []))} props → "
+        f"{len(filtered)} after DK/FD and -220 filter"
+    )
+    board_filtered = dict(board)
+    board_filtered['props'] = filtered
+
     board_summary = {
-        "props":            board["props"][:100],
-        "lines":            board["lines"][:50],
-        "sports_available": board["sports_found"],
-        "total_props":      len(board["props"]),
-        "total_lines":      len(board["lines"]),
+        "props":            board_filtered["props"][:100],
+        "lines":            board_filtered["lines"][:50],
+        "sports_available": board_filtered["sports_found"],
+        "total_props":      len(board_filtered["props"]),
+        "total_lines":      len(board_filtered["lines"]),
         "generated_at":     datetime.utcnow().isoformat(),
     }
 
     user_message = f"Today's board data:\n{json.dumps(board_summary, indent=2)}"
     full_prompt  = SELECTION_PROMPT + "\n\n" + user_message
 
-    raw = ""
     try:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=2000,
+            max_tokens=4000,
             messages=[{
                 "role": "user",
                 "content": full_prompt
             }]
         )
+
         raw = response.content[0].text.strip()
-        raw = raw.replace("```json", "").replace("```", "").strip()
-        picks_data = json.loads(raw)
+
+        # Strip markdown fences if present
+        raw = raw.replace('```json', '').replace('```', '').strip()
+
+        # Find JSON object boundaries — handles truncated or extra text
+        start = raw.find('{')
+        end   = raw.rfind('}')
+
+        if start == -1 or end == -1:
+            logger.error("[LLM] No JSON object found in response")
+            logger.error(f"[LLM] Raw snippet: {raw[:200]}")
+            return None
+
+        raw = raw[start:end + 1]
+
+        try:
+            picks_data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            logger.error(f"[LLM] JSON parse error: {e}")
+            logger.error(f"[LLM] Raw snippet: {raw[:200]}")
+            return None
 
         logger.info(f"[ASSISTS] LLM selected {len(picks_data.get('picks', []))} picks")
         return picks_data
 
-    except json.JSONDecodeError as e:
-        logger.error(f"[ASSISTS] JSON parse error: {e}\nRaw: {raw[:500]}")
-        return None
     except Exception as e:
         logger.error(f"[ASSISTS] LLM error: {e}")
         return None
