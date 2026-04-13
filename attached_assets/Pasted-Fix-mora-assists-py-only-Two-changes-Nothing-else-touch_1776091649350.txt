@@ -1,0 +1,111 @@
+Fix mora_assists.py only.
+Two changes. Nothing else touched.
+
+=== FIX 1: REMOVE TWO-STAGE PIPELINE
+FROM run_daily_assists() ===
+
+Find in run_daily_assists():
+
+logger.info("[ASSISTS] Stage 1: Analyzing board...")
+analysis = analyze_board_with_llm(board)
+
+if not analysis:
+    logger.error(...)
+    return ...
+
+logger.info(...)
+picks_data = select_picks_from_analysis(analysis)
+
+Replace that entire block with:
+
+logger.info("[ASSISTS] Selecting picks...")
+picks_data = select_picks_with_llm(board)
+
+That is it. One function call.
+Keep analyze_board_with_llm() and
+select_picks_from_analysis() in the
+file — just don't call them from
+run_daily_assists() anymore.
+
+=== FIX 2: ADD RETRY LOGIC TO
+select_picks_with_llm() ===
+
+Find select_picks_with_llm() in
+mora_assists.py.
+
+Find the client.messages.create() call.
+
+Replace it with a retry wrapper:
+
+import time
+
+MAX_RETRIES = 3
+last_error = None
+
+for attempt in range(MAX_RETRIES):
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=[{
+                "role": "user",
+                "content": full_prompt
+            }]
+        )
+        # Success — break out of retry loop
+        break
+
+    except Exception as e:
+        last_error = e
+        error_str = str(e)
+
+        # 529 = overloaded — wait and retry
+        if '529' in error_str or 'overloaded' in error_str.lower():
+            wait = (attempt + 1) * 8
+            logger.warning(
+                f"[LLM] Overloaded — "
+                f"attempt {attempt + 1}/{MAX_RETRIES} "
+                f"waiting {wait}s..."
+            )
+            time.sleep(wait)
+            continue
+
+        # 529 rate limit — wait longer
+        if '529' in error_str or 'rate' in error_str.lower():
+            wait = (attempt + 1) * 15
+            logger.warning(
+                f"[LLM] Rate limited — "
+                f"waiting {wait}s..."
+            )
+            time.sleep(wait)
+            continue
+
+        # Other error — log and retry once
+        logger.error(
+            f"[LLM] Attempt {attempt + 1} "
+            f"failed: {e}"
+        )
+        time.sleep(5)
+        continue
+
+else:
+    # All retries exhausted
+    logger.error(
+        f"[LLM] All {MAX_RETRIES} attempts "
+        f"failed. Last error: {last_error}"
+    )
+    return None
+
+=== CONSTRAINTS ===
+- Only touch mora_assists.py
+- Do not remove analyze_board_with_llm
+  or select_picks_from_analysis functions
+  just stop calling them from
+  run_daily_assists
+- Do not touch app.py
+- Do not touch dashboard.html
+- Do not touch scheduler
+- Retry waits: 8s, 16s, 24s
+  giving Anthropic time to recover
+- If all 3 retries fail return None
+  and log clearly

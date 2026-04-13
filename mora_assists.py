@@ -424,16 +424,62 @@ def select_picks_with_llm(board):
     }
 
     user_message = f"Today's board data:\n{json.dumps(board_summary, indent=2)}"
+    full_prompt  = SELECTION_PROMPT + "\n\n" + user_message
+
+    import time
+
+    MAX_RETRIES = 3
+    last_error  = None
+    response    = None
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=2000,
+                messages=[{
+                    "role": "user",
+                    "content": full_prompt
+                }]
+            )
+            break
+
+        except Exception as e:
+            last_error = e
+            error_str  = str(e)
+
+            if '529' in error_str or 'overloaded' in error_str.lower():
+                wait = (attempt + 1) * 8
+                logger.warning(
+                    f"[LLM] Overloaded — "
+                    f"attempt {attempt + 1}/{MAX_RETRIES} "
+                    f"waiting {wait}s..."
+                )
+                time.sleep(wait)
+                continue
+
+            if 'rate' in error_str.lower():
+                wait = (attempt + 1) * 15
+                logger.warning(
+                    f"[LLM] Rate limited — "
+                    f"waiting {wait}s..."
+                )
+                time.sleep(wait)
+                continue
+
+            logger.error(f"[LLM] Attempt {attempt + 1} failed: {e}")
+            time.sleep(5)
+            continue
+
+    else:
+        logger.error(
+            f"[LLM] All {MAX_RETRIES} attempts "
+            f"failed. Last error: {last_error}"
+        )
+        return None
 
     raw = ""
     try:
-        response = client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=2000,
-            system=SELECTION_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
-        )
-
         raw = response.content[0].text.strip()
         raw = raw.replace("```json", "").replace("```", "").strip()
         picks_data = json.loads(raw)
@@ -1174,25 +1220,8 @@ def run_daily_assists():
         logger.warning("[ASSISTS] Board empty — no picks to send today")
         return
 
-    # Stage 1 — Analyst builds cheat sheet
-    logger.info("[ASSISTS] Stage 1: Analyzing board...")
-    analysis = analyze_board_with_llm(board)
-
-    if not analysis:
-        logger.error(
-            "[ASSISTS] Stage 1 failed — "
-            "no analysis returned"
-        )
-        return {"sent": 0, "failed": 0, "error": "analysis"}
-
-    logger.info(
-        f"[ASSISTS] Analyst summary: "
-        f"{analysis.get('board_summary', '')}"
-    )
-
-    # Stage 2 — Selector picks from cheat sheet
-    logger.info("[ASSISTS] Stage 2: Selecting picks...")
-    picks_data = select_picks_from_analysis(analysis)
+    logger.info("[ASSISTS] Selecting picks...")
+    picks_data = select_picks_with_llm(board)
 
     # Validate picks
     picks_data = validate_picks(picks_data)
