@@ -412,7 +412,11 @@ def select_picks_with_llm(board):
         logger.error("[ASSISTS] No ANTHROPIC_API_KEY")
         return None
 
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(
+        api_key=os.environ.get('ANTHROPIC_API_KEY'),
+        timeout=60.0,
+        max_retries=4
+    )
 
     board_summary = {
         "props":            board["props"][:100],
@@ -426,60 +430,16 @@ def select_picks_with_llm(board):
     user_message = f"Today's board data:\n{json.dumps(board_summary, indent=2)}"
     full_prompt  = SELECTION_PROMPT + "\n\n" + user_message
 
-    import time
-
-    MAX_RETRIES = 3
-    last_error  = None
-    response    = None
-
-    for attempt in range(MAX_RETRIES):
-        try:
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=2000,
-                messages=[{
-                    "role": "user",
-                    "content": full_prompt
-                }]
-            )
-            break
-
-        except Exception as e:
-            last_error = e
-            error_str  = str(e)
-
-            if '529' in error_str or 'overloaded' in error_str.lower():
-                wait = (attempt + 1) * 8
-                logger.warning(
-                    f"[LLM] Overloaded — "
-                    f"attempt {attempt + 1}/{MAX_RETRIES} "
-                    f"waiting {wait}s..."
-                )
-                time.sleep(wait)
-                continue
-
-            if 'rate' in error_str.lower():
-                wait = (attempt + 1) * 15
-                logger.warning(
-                    f"[LLM] Rate limited — "
-                    f"waiting {wait}s..."
-                )
-                time.sleep(wait)
-                continue
-
-            logger.error(f"[LLM] Attempt {attempt + 1} failed: {e}")
-            time.sleep(5)
-            continue
-
-    else:
-        logger.error(
-            f"[LLM] All {MAX_RETRIES} attempts "
-            f"failed. Last error: {last_error}"
-        )
-        return None
-
     raw = ""
     try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2000,
+            messages=[{
+                "role": "user",
+                "content": full_prompt
+            }]
+        )
         raw = response.content[0].text.strip()
         raw = raw.replace("```json", "").replace("```", "").strip()
         picks_data = json.loads(raw)
