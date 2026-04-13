@@ -418,27 +418,12 @@ def select_picks_with_llm(board):
         max_retries=4
     )
 
-    # Fix 3: Pre-filter — DK/FD only, odds better than -220
-    # LLM cannot select what it cannot see
-    filtered = [
-        p for p in board.get('props', [])
-        if p.get('bookmaker', p.get('book', '')).lower() in ['draftkings', 'fanduel']
-        and p.get('odds', 0) > -220
-        and p.get('odds', 0) != 0
-    ]
-    logger.info(
-        f"[FILTER] {len(board.get('props', []))} props → "
-        f"{len(filtered)} after DK/FD and -220 filter"
-    )
-    board_filtered = dict(board)
-    board_filtered['props'] = filtered
-
     board_summary = {
-        "props":            board_filtered["props"][:100],
-        "lines":            board_filtered["lines"][:50],
-        "sports_available": board_filtered["sports_found"],
-        "total_props":      len(board_filtered["props"]),
-        "total_lines":      len(board_filtered["lines"]),
+        "props":            board["props"][:100],
+        "lines":            board["lines"][:50],
+        "sports_available": board["sports_found"],
+        "total_props":      len(board["props"]),
+        "total_lines":      len(board["lines"]),
         "generated_at":     datetime.utcnow().isoformat(),
     }
 
