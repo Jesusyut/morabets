@@ -2931,6 +2931,53 @@ def zapier_new_assists_subscriber():
         return jsonify({'success': True, 'warning': str(e)})
 
 
+@app.route('/zapier/cancel-subscriber', methods=['POST'])
+def zapier_cancel_subscriber():
+    """
+    Called by Zapier when a Mora Assists subscription is cancelled in Stripe.
+    Marks the subscriber as cancelled in the CSV.
+    """
+    import csv as _csv
+    data   = request.json or {}
+    email  = data.get('email', '').lower().strip()
+    reason = data.get('reason', 'cancelled')
+
+    if not email:
+        return jsonify({'error': 'no email'}), 400
+
+    FILE = '/var/data/mora_assists_subscribers.csv'
+
+    if not os.path.exists(FILE):
+        return jsonify({'error': 'no file'}), 500
+
+    rows = []
+    with open(FILE, 'r') as f:
+        reader = _csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        rows = list(reader)
+
+    updated = False
+    for row in rows:
+        if row.get('email', '').lower() == email:
+            row['status']       = 'cancelled'
+            row['cancelled_at'] = datetime.utcnow().isoformat()
+            updated = True
+            logger.info(f'[CANCEL] {email} cancelled — reason: {reason}')
+
+    if updated:
+        with open(FILE, 'w', newline='') as f:
+            writer = _csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+
+    return jsonify({
+        'success': True,
+        'email':   email,
+        'status':  'cancelled',
+        'updated': updated
+    })
+
+
 @app.route('/api/scheduler-status')
 def scheduler_status():
     """
