@@ -1,0 +1,219 @@
+<!-- ══ STICKY AFFILIATE FOOTER ══════════════════════════════════════
+     Config: edit affiliateBanners below to swap images/URLs.
+     Tracking script: Revenue Network (prefix=zStj_F7LspAi81vKvXphfGNd7ZgqdRLk)
+     ════════════════════════════════════════════════════════════════ -->
+
+<script type="text/javascript"
+  src="https://js.revenuenetwork.com/javascript.php?prefix=zStj_F7LspAi81vKvXphfGNd7ZgqdRLk&media=1689&campaign=2"
+  async></script>
+
+<style>
+  #saf-root {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    background: #0a1a04;
+    border-top: 1px solid #2a4a1a;
+    height: 54px;
+    padding: 0 8px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.35);
+    transition: opacity 0.3s ease;
+  }
+  @media (max-width: 640px) {
+    #saf-root { height: 62px; }
+  }
+
+  #saf-banner-wrap {
+    flex: 1;
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .saf-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+    text-decoration: none;
+  }
+  .saf-slide.saf-active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .saf-slide img {
+    max-height: 100%;
+    max-width: 100%;
+    width: auto;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+  }
+
+  #saf-dismiss {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 8px;
+    color: #ccc;
+    font-size: 14px;
+    line-height: 1;
+    transition: background 0.15s;
+    user-select: none;
+  }
+  #saf-dismiss:hover { background: rgba(255,255,255,0.16); color: #fff; }
+
+  /* Push page content up while footer is visible */
+  body.saf-visible { padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px)); }
+  @media (max-width: 640px) {
+    body.saf-visible { padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
+  }
+</style>
+
+<div id="saf-root" style="display:none;" role="complementary" aria-label="Sponsored offer">
+
+  <div id="saf-banner-wrap"></div>
+
+  <button id="saf-dismiss" aria-label="Dismiss affiliate banner" title="Dismiss">&#x2715;</button>
+
+</div>
+
+<script>
+(function () {
+
+  /* ── Banner config — fill in your image URLs and affiliate click URLs ─── */
+  var affiliateBanners = [
+    {
+      id: "bovada-footer-1",
+      imageSrc: "REPLACE_WITH_BANNER_IMAGE_URL_1",
+      alt: "Bovada sportsbook bonus offer",
+      href: "REPLACE_WITH_TRACKED_AFFILIATE_URL_1",
+      ariaLabel: "Open Bovada sportsbook offer"
+    },
+    {
+      id: "bovada-footer-2",
+      imageSrc: "REPLACE_WITH_BANNER_IMAGE_URL_2",
+      alt: "Bovada sportsbook — join now",
+      href: "REPLACE_WITH_TRACKED_AFFILIATE_URL_2",
+      ariaLabel: "Open Bovada betting offer"
+    },
+    {
+      id: "bovada-footer-3",
+      imageSrc: "REPLACE_WITH_BANNER_IMAGE_URL_3",
+      alt: "Bovada sportsbook welcome bonus",
+      href: "REPLACE_WITH_TRACKED_AFFILIATE_URL_3",
+      ariaLabel: "Open Bovada welcome bonus"
+    }
+  ];
+
+  var STORAGE_KEY   = 'mora_saf_dismissed';
+  var ROTATE_MS     = 20000;
+
+  var root     = document.getElementById('saf-root');
+  var wrap     = document.getElementById('saf-banner-wrap');
+  var dismiss  = document.getElementById('saf-dismiss');
+
+  /* ── Bail immediately if already dismissed ─────────────────────────── */
+  if (localStorage.getItem(STORAGE_KEY) === '1') return;
+
+  /* ── Build slides ──────────────────────────────────────────────────── */
+  var slides   = [];
+  var validIdx = [];
+
+  affiliateBanners.forEach(function (b, i) {
+    var a = document.createElement('a');
+    a.className  = 'saf-slide';
+    a.id         = b.id;
+    a.href       = b.href;
+    a.target     = '_blank';
+    a.rel        = 'noopener noreferrer sponsored';
+    a.setAttribute('aria-label', b.ariaLabel);
+
+    var img = document.createElement('img');
+    img.alt = b.alt;
+    img.src = b.imageSrc;
+
+    /* skip slides whose image fails to load */
+    img.onerror = function () {
+      a.style.display = 'none';
+      validIdx = validIdx.filter(function (x) { return x !== i; });
+    };
+    img.onload = function () {
+      if (validIdx.indexOf(i) === -1) validIdx.push(i);
+    };
+
+    a.appendChild(img);
+    wrap.appendChild(a);
+    slides.push(a);
+    validIdx.push(i);  /* optimistically include; removed on error */
+  });
+
+  /* ── Show footer ───────────────────────────────────────────────────── */
+  root.style.display = 'flex';
+  document.body.classList.add('saf-visible');
+
+  /* ── Rotation logic ────────────────────────────────────────────────── */
+  var current  = 0;
+  var paused   = false;
+  var timer    = null;
+
+  function showSlide(idx) {
+    slides.forEach(function (s, i) {
+      s.classList.toggle('saf-active', i === idx);
+    });
+    current = idx;
+  }
+
+  function nextSlide() {
+    if (validIdx.length < 2) return;
+    var pos  = validIdx.indexOf(current);
+    var next = validIdx[(pos + 1) % validIdx.length];
+    showSlide(next);
+  }
+
+  function startTimer() {
+    clearInterval(timer);
+    timer = setInterval(function () {
+      if (!paused) nextSlide();
+    }, ROTATE_MS);
+  }
+
+  showSlide(validIdx[0] !== undefined ? validIdx[0] : 0);
+  startTimer();
+
+  /* ── Pause on hover (desktop) ──────────────────────────────────────── */
+  root.addEventListener('mouseenter', function () { paused = true; });
+  root.addEventListener('mouseleave', function () { paused = false; });
+
+  /* ── Dismiss ───────────────────────────────────────────────────────── */
+  dismiss.addEventListener('click', function (e) {
+    e.stopPropagation();
+    clearInterval(timer);
+    root.style.opacity = '0';
+    setTimeout(function () {
+      root.style.display = 'none';
+      document.body.classList.remove('saf-visible');
+    }, 300);
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch (_) {}
+  });
+
+})();
+</script>
