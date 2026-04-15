@@ -1,0 +1,833 @@
+Add a lightweight 4-digit login system 
+to morabets.com and sync the email gate 
+to Google Sheets Sheet3.
+
+DO NOT touch dashboard.html content,
+email gate logic, Meta pixel, TikTok 
+pixel, EV engine, odds fetching,
+or color scheme.
+
+=== STEP 1: ADD ENV VAR ===
+
+Add to Render environment variables:
+
+ZAPIER_USERS_WEBHOOK_URL = https://hooks.zapier.com/hooks/catch/22797974/uj2zhly/
+
+This is a NEW variable with a NEW name.
+Do not touch or rename ZAPIER_WEBHOOK_URL
+which already exists for the email gate.
+These are two separate variables.
+
+=== STEP 2: SYNC EMAIL GATE TO SHEET3 ===
+
+In app.py find /api/gate-signup route.
+
+After the existing Zapier webhook fires
+(the one using ZAPIER_WEBHOOK_URL)
+add this second POST immediately after:
+
+try:
+    users_webhook = os.environ.get(
+        'ZAPIER_USERS_WEBHOOK_URL', ''
+    )
+    if users_webhook:
+        requests.post(
+            users_webhook,
+            json={
+                'email':      email,
+                'name':       name,
+                'plan':       'free',
+                'created_at': datetime.utcnow(
+                ).isoformat(),
+                'source':     'gate_signup'
+            },
+            timeout=3
+        )
+        logger.info(
+            f'[USERS] Synced to Sheet3: {email}'
+        )
+except Exception as e:
+    logger.warning(
+        f'[USERS] Sheet3 sync failed: {e}'
+    )
+
+Never block the gate response for this.
+Always fail silently if webhook fails.
+
+
+=== STEP 3: ADD LOGIN ROUTES TO app.py ===
+
+Add these three routes:
+
+@app.route('/my-account')
+def my_account():
+    return render_template('my_account.html')
+
+
+@app.route('/api/send-code', methods=['POST'])
+def send_login_code():
+    import random
+    from datetime import datetime, timedelta
+
+    email = (
+        request.json.get('email', '')
+        .lower().strip()
+    )
+    if not email or '@' not in email:
+        return jsonify(
+            {'error': 'Invalid email'}
+        ), 400
+
+    code = str(random.randint(1000, 9999))
+    expiry = (
+        datetime.utcnow() + timedelta(minutes=10)
+    ).isoformat()
+
+    # Store code in memory cache
+    stored_value = f'{code}|{expiry}'
+    try:
+        cache_set(
+            f'code_{email}',
+            stored_value,
+            ex=600
+        )
+    except Exception:
+        if not hasattr(app, '_login_codes'):
+            app._login_codes = {}
+        app._login_codes[email] = stored_value
+
+    # Send via SendGrid
+    try:
+        import sendgrid
+        from sendgrid.helpers.mail import Mail
+        sg = sendgrid.SendGridAPIClient(
+            api_key=os.environ.get('SENDGRID_API_KEY')
+        )
+        msg = Mail(
+            from_email=os.environ.get(
+                'EMAIL_FROM',
+                'picks@morabets.com'
+            ),
+            to_emails=email,
+            subject=f'Your Mora Bets code: {code}',
+            plain_text_content=(
+                f'Your code: {code}\n\n'
+                f'Valid for 10 minutes.\n\n'
+                f'— Mora Bets\n'
+                f'morabets.com'
+            )
+        )
+        sg.send(msg)
+        logger.info(f'[LOGIN] Code sent: {email}')
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f'[LOGIN] Send failed: {e}')
+        return jsonify(
+            {'error': 'Could not send code'}
+        ), 500
+
+
+@app.route('/api/verify-code', methods=['POST'])
+def verify_login_code():
+    from datetime import datetime
+    import csv
+
+    email = (
+        request.json.get('email', '')
+        .lower().strip()
+    )
+    code = request.json.get('code', '').strip()
+
+    if not email or not code:
+        return jsonify(
+            {'error': 'Missing fields'}
+        ), 400
+
+    # Retrieve stored code
+    stored = None
+    try:
+        stored = cache_get(f'code_{email}')
+    except Exception:
+        pass
+
+    if not stored and hasattr(app, '_login_codes'):
+        stored = app._login_codes.get(email)
+
+    if not stored:
+        return jsonify(
+            {'error': 'Code expired — '
+                      'request a new one'}
+        ), 400
+
+    stored_code, expiry_str = stored.split('|')
+    expiry = datetime.fromisoformat(expiry_str)
+
+    if datetime.utcnow() > expiry:
+        return jsonify(
+            {'error': 'Code expired — '
+                      'request a new one'}
+        ), 400
+
+    if code != stored_code:
+        return jsonify(
+            {'error': 'Invalid code'}
+        ), 400
+
+    # Valid — determine plan from CSV sources
+    plan         = 'free'
+    name         = ''
+    mora_status  = 'none'
+    trial_ends   = ''
+
+    # Check Mora Assists subscribers first
+    SUB_FILE = (
+        '/var/data/mora_assists_subscribers.csv'
+    )
+    if os.path.exists(SUB_FILE):
+        with open(SUB_FILE) as f:
+            for row in csv.DictReader(f):
+                if row.get(
+                    'email', ''
+                ).lower() == email:
+                    mora_status = row.get(
+                        'status', 'none'
+                    )
+                    trial_ends = row.get(
+                        'trial_ends_at', ''
+                    )[:10]
+                    name = row.get('name', '')
+                    if mora_status in [
+                        'active', 'trial'
+                    ]:
+                        plan = mora_status
+                    break
+
+    # Check free email list for name
+    if not name:
+        FREE_FILE = (
+            '/var/data/email_subscribers.csv'
+        )
+        if os.path.exists(FREE_FILE):
+            with open(FREE_FILE) as f:
+                for row in csv.DictReader(f):
+                    if row.get(
+                        'email', ''
+                    ).lower() == email:
+                        name = row.get('name', '')
+                        break
+
+    # Clear used code
+    try:
+        cache_set(f'code_{email}', '', ex=1)
+        if hasattr(app, '_login_codes'):
+            app._login_codes.pop(email, None)
+    except Exception:
+        pass
+
+    logger.info(
+        f'[LOGIN] Verified: {email} '
+        f'plan={plan}'
+    )
+
+    return jsonify({
+        'success':     True,
+        'email':       email,
+        'name':        name,
+        'plan':        plan,
+        'mora_status': mora_status,
+        'trial_ends':  trial_ends
+    })
+
+
+=== STEP 4: CREATE templates/my_account.html ===
+
+Use exact Mora Bets color scheme:
+Kelly green: #4CBB17
+Dark: #0F2406
+Body text: #1A3D0A
+Muted: #6B9E5A
+Surface: #F5FAF2
+White: #FFFFFF
+
+Import from Google Fonts:
+Barlow Condensed (headings)
+Inter (body)
+Tailwind CDN
+
+Full page structure:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" 
+        content="width=device-width, 
+                 initial-scale=1.0">
+  <title>My Account — Mora Bets</title>
+  <script src="https://cdn.tailwindcss.com">
+  </script>
+  <link href="https://fonts.googleapis.com/css2?
+    family=Barlow+Condensed:wght@700;900&
+    family=Inter:wght@400;500;600&display=swap" 
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            kelly:      '#4CBB17',
+            'kelly-dk': '#3A9012',
+            dark:       '#0F2406',
+            muted:      '#6B9E5A',
+            surface:    '#F5FAF2',
+            body:       '#1A3D0A'
+          },
+          fontFamily: {
+            display: ['Barlow Condensed','sans-serif'],
+            ui:      ['Inter','sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-surface font-ui">
+
+  <!-- NAV — same structure as dashboard -->
+  <nav class="bg-white border-b-2 
+              border-kelly px-6 py-4 
+              flex items-center 
+              justify-between">
+    <a href="/dashboard" 
+       class="flex items-center gap-2">
+      <div class="bg-kelly rounded-lg 
+                  p-1.5 text-dark 
+                  font-display font-black 
+                  text-sm">M</div>
+      <span class="font-display font-black 
+                   text-dark text-lg 
+                   tracking-wider uppercase">
+        Mora Bets
+      </span>
+    </a>
+    <div class="flex items-center gap-4">
+      <a href="/dashboard" 
+         class="text-sm font-medium 
+                text-muted hover:text-kelly 
+                transition-colors">
+        Dashboard
+      </a>
+      <a href="/my-account" 
+         class="text-sm font-medium 
+                text-kelly">
+        My Account
+      </a>
+    </div>
+  </nav>
+
+  <!-- STEP 1: EMAIL INPUT -->
+  <div id="step-email" 
+       class="min-h-screen bg-dark 
+              flex items-center 
+              justify-center px-6 py-20">
+    <div class="text-center max-w-md w-full">
+      <h1 class="font-display font-black 
+                 text-white text-4xl 
+                 uppercase tracking-wide 
+                 mb-4">
+        Your Mora Bets Account
+      </h1>
+      <p class="text-muted text-base mb-10">
+        Enter your email to access your 
+        account, picks, and subscription.
+      </p>
+      <input id="email-input"
+             type="email"
+             placeholder="your@email.com"
+             class="w-full bg-white/10 
+                    border border-kelly/30 
+                    rounded-xl px-4 py-3 
+                    text-white placeholder-muted 
+                    text-base mb-4 
+                    focus:outline-none 
+                    focus:border-kelly">
+      <button id="send-btn"
+              onclick="sendCode()"
+              class="w-full bg-kelly 
+                     text-dark font-display 
+                     font-black text-lg 
+                     uppercase tracking-wide 
+                     py-4 rounded-xl 
+                     hover:bg-kelly-dk 
+                     transition-colors">
+        Send my code →
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 2: CODE INPUT -->
+  <div id="step-code" 
+       class="hidden min-h-screen bg-dark 
+              flex items-center 
+              justify-center px-6 py-20">
+    <div class="text-center max-w-md w-full">
+      <h2 class="font-display font-black 
+                 text-white text-3xl 
+                 uppercase tracking-wide mb-3">
+        Enter your code
+      </h2>
+      <p id="sent-to" 
+         class="text-muted text-sm mb-8">
+        Code sent to your email
+      </p>
+      <input id="code-input"
+             type="number"
+             maxlength="4"
+             placeholder="_ _ _ _"
+             class="w-full bg-white/10 
+                    border border-kelly/30 
+                    rounded-xl px-4 py-4 
+                    text-white text-center 
+                    text-3xl tracking-widest 
+                    placeholder-muted mb-4 
+                    focus:outline-none 
+                    focus:border-kelly">
+      <p id="code-error" 
+         class="text-red-400 text-sm 
+                mb-4 min-h-5"></p>
+      <button id="verify-btn"
+              onclick="verifyCode()"
+              class="w-full bg-kelly 
+                     text-dark font-display 
+                     font-black text-lg 
+                     uppercase tracking-wide 
+                     py-4 rounded-xl 
+                     hover:bg-kelly-dk 
+                     transition-colors mb-4">
+        Verify →
+      </button>
+      <button onclick="sendCode()" 
+              class="text-muted text-sm 
+                     underline">
+        Resend code
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 3: ACCOUNT DASHBOARD -->
+  <div id="step-dashboard" 
+       class="hidden min-h-screen 
+              bg-surface py-12 px-6">
+    <div class="max-w-xl mx-auto">
+
+      <!-- Status Card -->
+      <div class="bg-dark rounded-2xl 
+                  border-2 border-kelly 
+                  p-8 mb-6">
+        <p class="text-muted text-sm mb-1">
+          Welcome back
+        </p>
+        <h2 class="font-display font-black 
+                   text-white text-3xl 
+                   uppercase tracking-wide mb-4">
+          Hey <span id="user-name">there</span>
+        </h2>
+        <div id="badge-free" 
+             class="hidden inline-block 
+                    bg-gray-600 text-white 
+                    text-xs font-bold 
+                    px-3 py-1 rounded-full 
+                    uppercase tracking-wider">
+          Free Member
+        </div>
+        <div id="badge-trial" 
+             class="hidden inline-block 
+                    bg-amber-500 text-dark 
+                    text-xs font-bold 
+                    px-3 py-1 rounded-full 
+                    uppercase tracking-wider">
+          Trial Active — ends 
+          <span id="trial-ends-date"></span>
+        </div>
+        <div id="badge-active" 
+             class="hidden inline-block 
+                    bg-kelly text-dark 
+                    text-xs font-bold 
+                    px-3 py-1 rounded-full 
+                    uppercase tracking-wider">
+          Subscriber ✓
+        </div>
+        <div id="badge-expired" 
+             class="hidden inline-block 
+                    bg-red-600 text-white 
+                    text-xs font-bold 
+                    px-3 py-1 rounded-full 
+                    uppercase tracking-wider">
+          Trial Ended
+        </div>
+      </div>
+
+      <!-- PLAN SECTIONS -->
+
+      <!-- FREE -->
+      <div id="plan-free" class="hidden mb-6">
+        <div class="bg-white rounded-2xl 
+                    border border-kelly/20 
+                    p-6 mb-4">
+          <h3 class="font-display font-bold 
+                     text-dark text-xl 
+                     uppercase tracking-wide mb-4">
+            What you have access to
+          </h3>
+          <div class="space-y-3 mb-6">
+            <p class="text-body text-sm flex gap-2">
+              <span class="text-kelly">✅</span>
+              No-vig probability board
+            </p>
+            <p class="text-body text-sm flex gap-2">
+              <span class="text-kelly">✅</span>
+              MLB + NHL daily props
+            </p>
+            <p class="text-body text-sm flex gap-2">
+              <span class="text-kelly">✅</span>
+              Game environment labels
+            </p>
+            <p class="text-body text-sm flex gap-2">
+              <span>🔒</span>
+              Daily curated picks 
+              (Mora Assists — upgrade)
+            </p>
+          </div>
+          <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+             class="block w-full text-center 
+                    bg-kelly text-dark 
+                    font-display font-black 
+                    text-base uppercase 
+                    tracking-wide py-4 
+                    rounded-xl 
+                    hover:bg-kelly-dk 
+                    transition-colors">
+            Start Free Trial — 3 Days Free →
+          </a>
+        </div>
+      </div>
+
+      <!-- TRIAL -->
+      <div id="plan-trial" class="hidden mb-6">
+        <div class="bg-white rounded-2xl 
+                    border border-kelly/20 
+                    p-6 mb-4">
+          <h3 class="font-display font-bold 
+                     text-dark text-xl 
+                     uppercase tracking-wide mb-4">
+            Your trial is active
+          </h3>
+          <div class="space-y-3 mb-4">
+            <p class="text-body text-sm flex gap-2">
+              <span class="text-kelly">✅</span>
+              No-vig board — full access
+            </p>
+            <p class="text-body text-sm flex gap-2">
+              <span class="text-kelly">✅</span>
+              Daily 5 power plays in your inbox
+            </p>
+            <p class="text-body text-sm flex gap-2">
+              <span class="text-kelly">✅</span>
+              Trial active — ends 
+              <span id="trial-ends-date-2"></span>
+            </p>
+          </div>
+          <div class="bg-surface rounded-xl 
+                      p-4 mb-4 text-sm 
+                      text-body space-y-1">
+            <p>
+              Picks arrive every morning 
+              at <strong>10:30 AM ET</strong>
+            </p>
+            <p class="text-muted">
+              Add picks@morabets.com 
+              to your contacts
+            </p>
+          </div>
+          <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+             class="block w-full text-center 
+                    bg-amber-500 text-dark 
+                    font-display font-black 
+                    text-base uppercase 
+                    tracking-wide py-4 
+                    rounded-xl 
+                    hover:bg-amber-400 
+                    transition-colors">
+            Continue After Trial — $28.99/mo →
+          </a>
+        </div>
+      </div>
+
+      <!-- ACTIVE -->
+      <div id="plan-active" class="hidden mb-6">
+        <div class="bg-white rounded-2xl 
+                    border border-kelly/20 
+                    p-6 mb-4">
+          <h3 class="font-display font-bold 
+                     text-dark text-xl 
+                     uppercase tracking-wide mb-4">
+            Active subscriber
+          </h3>
+          <div class="space-y-3 mb-4">
+            <p class="text-body text-sm flex gap-2">
+              <span class="text-kelly">✅</span>
+              Full board access
+            </p>
+            <p class="text-body text-sm flex gap-2">
+              <span class="text-kelly">✅</span>
+              Daily picks — active
+            </p>
+            <p class="text-body text-sm flex gap-2">
+              <span class="text-kelly">✅</span>
+              10:30 AM ET every morning
+            </p>
+          </div>
+          <a href="/dashboard"
+             class="block w-full text-center 
+                    bg-kelly text-dark 
+                    font-display font-black 
+                    text-base uppercase 
+                    tracking-wide py-4 
+                    rounded-xl 
+                    hover:bg-kelly-dk 
+                    transition-colors">
+            View Today's Board →
+          </a>
+        </div>
+      </div>
+
+      <!-- SMS OPT-IN -->
+      <div class="bg-white rounded-2xl 
+                  border border-kelly/20 
+                  p-6 mb-4">
+        <label class="flex items-start 
+                      gap-3 cursor-pointer">
+          <input type="checkbox" 
+                 id="sms-opt-in"
+                 class="mt-1 accent-kelly"
+                 onchange="saveSmsOpt()">
+          <span class="text-body text-sm 
+                       leading-relaxed">
+            Text me picks when SMS launches
+            <span class="block text-muted 
+                         text-xs mt-0.5">
+              Standard rates apply. 
+              Text STOP to cancel anytime.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <!-- QUICK LINKS -->
+      <div class="bg-white rounded-2xl 
+                  border border-kelly/20 
+                  p-6">
+        <h3 class="font-display font-bold 
+                   text-dark text-base 
+                   uppercase tracking-wide 
+                   mb-4">
+          Quick links
+        </h3>
+        <div class="space-y-3">
+          <a href="/dashboard" 
+             class="flex items-center gap-2 
+                    text-body text-sm 
+                    hover:text-kelly 
+                    transition-colors">
+            → View today's board
+          </a>
+          <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+             target="_blank"
+             class="flex items-center gap-2 
+                    text-body text-sm 
+                    hover:text-kelly 
+                    transition-colors">
+            → Manage subscription
+          </a>
+          <a href="mailto:picks@morabets.com" 
+             class="flex items-center gap-2 
+                    text-body text-sm 
+                    hover:text-kelly 
+                    transition-colors">
+            → Contact support
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+  let userEmail = ''
+
+  async function sendCode() {
+    const emailInput = document.getElementById(
+      'email-input'
+    )
+    userEmail = emailInput.value.trim()
+    if (!userEmail) return
+    const btn = document.getElementById('send-btn')
+    btn.textContent = 'Sending...'
+    btn.disabled = true
+    try {
+      const res = await fetch('/api/send-code', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({email: userEmail})
+      })
+      const data = await res.json()
+      if (data.success) {
+        document.getElementById(
+          'step-email'
+        ).classList.add('hidden')
+        document.getElementById(
+          'step-code'
+        ).classList.remove('hidden')
+        document.getElementById(
+          'sent-to'
+        ).textContent = `Code sent to ${userEmail}`
+      } else {
+        btn.textContent = 'Send my code →'
+        btn.disabled = false
+        alert(data.error || 'Could not send code')
+      }
+    } catch(e) {
+      btn.textContent = 'Send my code →'
+      btn.disabled = false
+    }
+  }
+
+  async function verifyCode() {
+    const code = document.getElementById(
+      'code-input'
+    ).value.toString().trim()
+    if (code.length < 4) return
+    const btn = document.getElementById('verify-btn')
+    btn.textContent = 'Verifying...'
+    btn.disabled = true
+    try {
+      const res = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          email: userEmail, code: code
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        document.getElementById(
+          'step-code'
+        ).classList.add('hidden')
+        document.getElementById(
+          'step-dashboard'
+        ).classList.remove('hidden')
+        localStorage.setItem('mora_email', data.email)
+        localStorage.setItem('mora_plan', data.plan)
+        localStorage.setItem('mora_name', data.name)
+        document.getElementById(
+          'user-name'
+        ).textContent = data.name || 'there'
+        const planId = 'plan-' + (
+          data.plan === 'active' ? 'active' :
+          data.plan === 'trial'  ? 'trial'  : 'free'
+        )
+        document.getElementById(
+          planId
+        )?.classList.remove('hidden')
+        const badgeId = 'badge-' + (
+          data.plan === 'active'  ? 'active' :
+          data.plan === 'trial'   ? 'trial'  :
+          data.mora_status === 'expired' 
+            ? 'expired' : 'free'
+        )
+        document.getElementById(
+          badgeId
+        )?.classList.remove('hidden')
+        if (data.trial_ends) {
+          ['trial-ends-date',
+           'trial-ends-date-2'].forEach(id => {
+            const el = document.getElementById(id)
+            if (el) el.textContent = data.trial_ends
+          })
+        }
+      } else {
+        document.getElementById(
+          'code-error'
+        ).textContent = data.error
+        btn.textContent = 'Verify →'
+        btn.disabled = false
+      }
+    } catch(e) {
+      btn.textContent = 'Verify →'
+      btn.disabled = false
+    }
+  }
+
+  function saveSmsOpt() {
+    const checked = document.getElementById(
+      'sms-opt-in'
+    ).checked
+    localStorage.setItem(
+      'mora_sms_opt', checked ? 'yes' : 'no'
+    )
+  }
+
+  window.addEventListener('load', () => {
+    const saved = localStorage.getItem('mora_email')
+    if (saved) {
+      document.getElementById(
+        'email-input'
+      ).value = saved
+    }
+    const smsOpt = localStorage.getItem('mora_sms_opt')
+    if (smsOpt === 'yes') {
+      document.getElementById(
+        'sms-opt-in'
+      ).checked = true
+    }
+  })
+  </script>
+
+</body>
+</html>
+
+
+=== STEP 5: ADD MY ACCOUNT TO NAV 
+IN dashboard.html ===
+
+In dashboard.html find the right side 
+of the navbar where other nav links live.
+
+Add this one link:
+
+<a href="/my-account"
+   style="font-size:13px;font-weight:600;
+          color:#6B9E5A;text-decoration:none;
+          transition:color 0.2s;"
+   onmouseover="this.style.color='#4CBB17'"
+   onmouseout="this.style.color='#6B9E5A'">
+  My Account
+</a>
+
+
+=== CONSTRAINTS ===
+- ZAPIER_USERS_WEBHOOK_URL is a NEW env var
+  Do NOT rename or replace ZAPIER_WEBHOOK_URL
+  Both must exist simultaneously
+- Only add new routes and new template
+- Do not modify existing routes
+- Do not touch existing dashboard.html 
+  beyond adding the single nav link
+- Do not touch email gate popup logic
+- Do not touch Meta or TikTok pixel
+- Do not touch EV engine or odds fetching
+- Code expires in 10 minutes always
+- localStorage for convenience only
+- No passwords stored anywhere ever
+- All 4 plan sections exist in HTML
+  only the matching one becomes visible

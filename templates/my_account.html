@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Account — Mora Bets</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            kelly:      '#4CBB17',
+            'kelly-dk': '#3A9012',
+            dark:       '#0F2406',
+            muted:      '#6B9E5A',
+            surface:    '#F5FAF2',
+            body:       '#1A3D0A'
+          },
+          fontFamily: {
+            display: ['Barlow Condensed', 'sans-serif'],
+            ui:      ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-surface font-ui">
+
+  <!-- NAV -->
+  <nav class="bg-white border-b-2 border-kelly px-6 py-4 flex items-center justify-between">
+    <a href="/dashboard" class="flex items-center gap-2">
+      <div class="bg-kelly rounded-lg p-1.5 text-white font-display font-black text-sm flex items-center justify-center w-8 h-8">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+          <path d="M3 14 L8 7 L12 10 L17 3" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="17" cy="3" r="2" fill="white"/>
+        </svg>
+      </div>
+      <div class="flex flex-col leading-none">
+        <span class="font-display font-black text-dark text-lg tracking-wider uppercase">MORA</span>
+        <span class="font-display font-black text-kelly text-lg tracking-wider uppercase" style="margin-top:-3px;">BETS</span>
+      </div>
+    </a>
+    <div class="flex items-center gap-4">
+      <a href="/dashboard" class="text-sm font-medium text-muted hover:text-kelly transition-colors">Dashboard</a>
+      <a href="/my-account" class="text-sm font-medium text-kelly">My Account</a>
+    </div>
+  </nav>
+
+  <!-- STEP 1: EMAIL INPUT -->
+  <div id="step-email" class="min-h-screen bg-dark flex items-center justify-center px-6 py-20">
+    <div class="text-center max-w-md w-full">
+      <h1 class="font-display font-black text-white text-4xl uppercase tracking-wide mb-4">
+        Your Mora Bets Account
+      </h1>
+      <p class="text-muted text-base mb-10">
+        Enter your email to access your account, picks, and subscription.
+      </p>
+      <input id="email-input"
+             type="email"
+             placeholder="your@email.com"
+             class="w-full bg-white/10 border border-kelly/30 rounded-xl px-4 py-3 text-white placeholder-muted text-base mb-4 focus:outline-none focus:border-kelly">
+      <button id="send-btn"
+              onclick="sendCode()"
+              class="w-full bg-kelly text-dark font-display font-black text-lg uppercase tracking-wide py-4 rounded-xl hover:bg-kelly-dk transition-colors">
+        Send my code →
+      </button>
+      <p id="send-error" class="text-red-400 text-sm mt-4 min-h-5"></p>
+    </div>
+  </div>
+
+  <!-- STEP 2: CODE INPUT -->
+  <div id="step-code" class="hidden min-h-screen bg-dark flex items-center justify-center px-6 py-20">
+    <div class="text-center max-w-md w-full">
+      <h2 class="font-display font-black text-white text-3xl uppercase tracking-wide mb-3">
+        Enter your code
+      </h2>
+      <p id="sent-to" class="text-muted text-sm mb-8">Code sent to your email</p>
+      <input id="code-input"
+             type="number"
+             maxlength="4"
+             placeholder="_ _ _ _"
+             class="w-full bg-white/10 border border-kelly/30 rounded-xl px-4 py-4 text-white text-center text-3xl tracking-widest placeholder-muted mb-4 focus:outline-none focus:border-kelly">
+      <p id="code-error" class="text-red-400 text-sm mb-4 min-h-5"></p>
+      <button id="verify-btn"
+              onclick="verifyCode()"
+              class="w-full bg-kelly text-dark font-display font-black text-lg uppercase tracking-wide py-4 rounded-xl hover:bg-kelly-dk transition-colors mb-4">
+        Verify →
+      </button>
+      <button onclick="sendCode()" class="text-muted text-sm underline">Resend code</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: ACCOUNT DASHBOARD -->
+  <div id="step-dashboard" class="hidden min-h-screen bg-surface py-12 px-6">
+    <div class="max-w-xl mx-auto">
+
+      <!-- Status Card -->
+      <div class="bg-dark rounded-2xl border-2 border-kelly p-8 mb-6">
+        <p class="text-muted text-sm mb-1">Welcome back</p>
+        <h2 class="font-display font-black text-white text-3xl uppercase tracking-wide mb-4">
+          Hey <span id="user-name">there</span>
+        </h2>
+        <div id="badge-free"
+             class="hidden inline-block bg-gray-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+          Free Member
+        </div>
+        <div id="badge-trial"
+             class="hidden inline-block bg-amber-500 text-dark text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+          Trial Active — ends <span id="trial-ends-date"></span>
+        </div>
+        <div id="badge-active"
+             class="hidden inline-block bg-kelly text-dark text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+          Subscriber ✓
+        </div>
+        <div id="badge-expired"
+             class="hidden inline-block bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+          Trial Ended
+        </div>
+      </div>
+
+      <!-- FREE -->
+      <div id="plan-free" class="hidden mb-6">
+        <div class="bg-white rounded-2xl border border-kelly/20 p-6 mb-4">
+          <h3 class="font-display font-bold text-dark text-xl uppercase tracking-wide mb-4">What you have access to</h3>
+          <div class="space-y-3 mb-6">
+            <p class="text-body text-sm flex gap-2"><span class="text-kelly">✅</span> No-vig probability board</p>
+            <p class="text-body text-sm flex gap-2"><span class="text-kelly">✅</span> MLB + NHL daily props</p>
+            <p class="text-body text-sm flex gap-2"><span class="text-kelly">✅</span> Game environment labels</p>
+            <p class="text-body text-sm flex gap-2"><span>🔒</span> Daily curated picks (Mora Assists — upgrade)</p>
+          </div>
+          <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+             class="block w-full text-center bg-kelly text-dark font-display font-black text-base uppercase tracking-wide py-4 rounded-xl hover:bg-kelly-dk transition-colors">
+            Start Free Trial — 3 Days Free →
+          </a>
+        </div>
+      </div>
+
+      <!-- TRIAL -->
+      <div id="plan-trial" class="hidden mb-6">
+        <div class="bg-white rounded-2xl border border-kelly/20 p-6 mb-4">
+          <h3 class="font-display font-bold text-dark text-xl uppercase tracking-wide mb-4">Your trial is active</h3>
+          <div class="space-y-3 mb-4">
+            <p class="text-body text-sm flex gap-2"><span class="text-kelly">✅</span> No-vig board — full access</p>
+            <p class="text-body text-sm flex gap-2"><span class="text-kelly">✅</span> Daily 5 power plays in your inbox</p>
+            <p class="text-body text-sm flex gap-2"><span class="text-kelly">✅</span> Trial active — ends <span id="trial-ends-date-2"></span></p>
+          </div>
+          <div class="bg-surface rounded-xl p-4 mb-4 text-sm text-body space-y-1">
+            <p>Picks arrive every morning at <strong>10:30 AM ET</strong></p>
+            <p class="text-muted">Add picks@morabets.com to your contacts</p>
+          </div>
+          <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+             class="block w-full text-center bg-amber-500 text-dark font-display font-black text-base uppercase tracking-wide py-4 rounded-xl hover:bg-amber-400 transition-colors">
+            Continue After Trial — $28.99/mo →
+          </a>
+        </div>
+      </div>
+
+      <!-- ACTIVE -->
+      <div id="plan-active" class="hidden mb-6">
+        <div class="bg-white rounded-2xl border border-kelly/20 p-6 mb-4">
+          <h3 class="font-display font-bold text-dark text-xl uppercase tracking-wide mb-4">Active subscriber</h3>
+          <div class="space-y-3 mb-4">
+            <p class="text-body text-sm flex gap-2"><span class="text-kelly">✅</span> Full board access</p>
+            <p class="text-body text-sm flex gap-2"><span class="text-kelly">✅</span> Daily picks — active</p>
+            <p class="text-body text-sm flex gap-2"><span class="text-kelly">✅</span> 10:30 AM ET every morning</p>
+          </div>
+          <a href="/dashboard"
+             class="block w-full text-center bg-kelly text-dark font-display font-black text-base uppercase tracking-wide py-4 rounded-xl hover:bg-kelly-dk transition-colors">
+            View Today's Board →
+          </a>
+        </div>
+      </div>
+
+      <!-- SMS OPT-IN -->
+      <div class="bg-white rounded-2xl border border-kelly/20 p-6 mb-4">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" id="sms-opt-in" class="mt-1 accent-kelly" onchange="saveSmsOpt()">
+          <span class="text-body text-sm leading-relaxed">
+            Text me picks when SMS launches
+            <span class="block text-muted text-xs mt-0.5">Standard rates apply. Text STOP to cancel anytime.</span>
+          </span>
+        </label>
+      </div>
+
+      <!-- QUICK LINKS -->
+      <div class="bg-white rounded-2xl border border-kelly/20 p-6">
+        <h3 class="font-display font-bold text-dark text-base uppercase tracking-wide mb-4">Quick links</h3>
+        <div class="space-y-3">
+          <a href="/dashboard" class="flex items-center gap-2 text-body text-sm hover:text-kelly transition-colors">→ View today's board</a>
+          <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05" target="_blank" class="flex items-center gap-2 text-body text-sm hover:text-kelly transition-colors">→ Manage subscription</a>
+          <a href="mailto:picks@morabets.com" class="flex items-center gap-2 text-body text-sm hover:text-kelly transition-colors">→ Contact support</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+  let userEmail = ''
+
+  async function sendCode() {
+    const emailInput = document.getElementById('email-input')
+    userEmail = emailInput.value.trim()
+    if (!userEmail) return
+    const btn = document.getElementById('send-btn')
+    document.getElementById('send-error').textContent = ''
+    btn.textContent = 'Sending...'
+    btn.disabled = true
+    try {
+      const res  = await fetch('/api/send-code', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email: userEmail})
+      })
+      const data = await res.json()
+      if (data.success) {
+        document.getElementById('step-email').classList.add('hidden')
+        document.getElementById('step-code').classList.remove('hidden')
+        document.getElementById('sent-to').textContent = `Code sent to ${userEmail}`
+      } else {
+        document.getElementById('send-error').textContent = data.error || 'Could not send code'
+        btn.textContent = 'Send my code →'
+        btn.disabled = false
+      }
+    } catch(e) {
+      document.getElementById('send-error').textContent = 'Something went wrong — try again'
+      btn.textContent = 'Send my code →'
+      btn.disabled = false
+    }
+  }
+
+  async function verifyCode() {
+    const code = document.getElementById('code-input').value.toString().trim()
+    if (code.length < 4) return
+    const btn = document.getElementById('verify-btn')
+    document.getElementById('code-error').textContent = ''
+    btn.textContent = 'Verifying...'
+    btn.disabled = true
+    try {
+      const res  = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email: userEmail, code: code})
+      })
+      const data = await res.json()
+      if (data.success) {
+        document.getElementById('step-code').classList.add('hidden')
+        document.getElementById('step-dashboard').classList.remove('hidden')
+        localStorage.setItem('mora_email', data.email)
+        localStorage.setItem('mora_plan',  data.plan)
+        localStorage.setItem('mora_name',  data.name)
+        document.getElementById('user-name').textContent = data.name || 'there'
+        const planId = 'plan-' + (
+          data.plan === 'active' ? 'active' :
+          data.plan === 'trial'  ? 'trial'  : 'free'
+        )
+        document.getElementById(planId)?.classList.remove('hidden')
+        const badgeId = 'badge-' + (
+          data.plan === 'active'               ? 'active'  :
+          data.plan === 'trial'                ? 'trial'   :
+          data.mora_status === 'expired'       ? 'expired' : 'free'
+        )
+        document.getElementById(badgeId)?.classList.remove('hidden')
+        if (data.trial_ends) {
+          ['trial-ends-date', 'trial-ends-date-2'].forEach(id => {
+            const el = document.getElementById(id)
+            if (el) el.textContent = data.trial_ends
+          })
+        }
+      } else {
+        document.getElementById('code-error').textContent = data.error
+        btn.textContent = 'Verify →'
+        btn.disabled = false
+      }
+    } catch(e) {
+      btn.textContent = 'Verify →'
+      btn.disabled = false
+    }
+  }
+
+  function saveSmsOpt() {
+    const checked = document.getElementById('sms-opt-in').checked
+    localStorage.setItem('mora_sms_opt', checked ? 'yes' : 'no')
+  }
+
+  window.addEventListener('load', () => {
+    const saved = localStorage.getItem('mora_email')
+    if (saved) document.getElementById('email-input').value = saved
+    if (localStorage.getItem('mora_sms_opt') === 'yes') {
+      document.getElementById('sms-opt-in').checked = true
+    }
+  })
+  </script>
+
+</body>
+</html>
