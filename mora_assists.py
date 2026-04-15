@@ -1210,6 +1210,15 @@ def check_missed_send_today():
 
 def run_daily_assists():
     """Main job called by scheduler at 10:30 AM ET. Loads board, selects picks, sends emails."""
+    import os
+    if os.environ.get('MORA_ASSISTS_MANUAL_MODE', '').lower() == 'true':
+        logger.info(
+            '[ASSISTS] Manual mode active — '
+            'automated send disabled. '
+            'Use shell command to send manually.'
+        )
+        return {'sent': 0, 'failed': 0, 'reason': 'manual_mode'}
+
     logger.info("[ASSISTS] Starting daily run...")
 
     board = load_full_board()
