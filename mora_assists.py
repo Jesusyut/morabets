@@ -993,8 +993,8 @@ def load_active_subscribers():
         if not email:
             continue
 
-        # Auto-expire trials past end date
-        if status == 'trial':
+        # Auto-expire trials and day passes past end date
+        if status in ['trial', 'day_pass']:
             trial_end_str = row.get('trial_ends_at', '')
             if trial_end_str:
                 try:
@@ -1003,14 +1003,14 @@ def load_active_subscribers():
                         row['status'] = 'expired'
                         status = 'expired'
                         updated = True
-                        logger.info(f'[ASSISTS] Trial expired: {email}')
+                        logger.info(f'[ASSISTS] Expired ({row.get("status","?")}): {email}')
                 except Exception:
                     pass
 
-        # Deduplication — keep most recent active/trial per email
+        # Deduplication — keep most recent active/trial/day_pass per email
         if email in seen_emails:
             existing_status = seen_emails[email].get('status', '')
-            if status in ['active', 'trial'] and existing_status not in ['active', 'trial']:
+            if status in ['active', 'trial', 'day_pass'] and existing_status not in ['active', 'trial', 'day_pass']:
                 seen_emails[email] = row
         else:
             seen_emails[email] = row
@@ -1026,7 +1026,7 @@ def load_active_subscribers():
                 clean = {k: row.get(k, '') for k in FIELDS}
                 writer.writerow(clean)
 
-    active = [r for r in all_rows if r.get('status') in ['active', 'trial']]
+    active = [r for r in all_rows if r.get('status') in ['active', 'trial', 'day_pass']]
     logger.info(f'[ASSISTS] Active subscribers: {len(active)}')
     return active
 

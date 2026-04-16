@@ -2836,8 +2836,16 @@ def zapier_new_assists_subscriber():
     """
     Called by Zapier when a new Mora Assists subscription is created in Stripe.
     Saves the subscriber and sends the welcome email via SendGrid.
-    This replaces the broken Stripe webhook.
+    Supports plan=day_pass (one-time, expires end of day ET) and plan=trial (monthly).
     """
+    from zoneinfo import ZoneInfo as _ZI
+
+    def _get_day_pass_expiry():
+        _et  = _ZI('America/New_York')
+        _now = datetime.now(_et)
+        _eod = _now.replace(hour=23, minute=59, second=59, microsecond=0)
+        return _eod.isoformat()
+
     try:
         data = request.json or {}
         logger.info(f"[ZAPIER] New subscriber payload received: {data}")
@@ -2866,40 +2874,48 @@ def zapier_new_assists_subscriber():
             data.get('Subscription ID') or ''
         )
 
+        plan = data.get('plan', 'trial').lower().strip()
+
         if not email or '@' not in email:
             logger.error(f"[ZAPIER] Invalid email in payload: {data}")
             return jsonify({'success': False, 'error': 'No valid email in payload'}), 400
 
-        # Check if already subscribed
         FILE = '/var/data/mora_assists_subscribers.csv'
-        existing_emails = set()
-        if os.path.exists(FILE):
-            with open(FILE) as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    existing_emails.add(row.get('email', '').lower())
 
-        if email in existing_emails:
-            logger.info(f"[ZAPIER] Already exists: {email}")
-            return jsonify({'success': True, 'existing': True, 'email': email})
+        if plan == 'day_pass':
+            # Day pass — always allowed, no duplicate check
+            logger.info(f"[ZAPIER] Day pass purchase: {email}")
+            sub_status   = 'day_pass'
+            trial_ends   = _get_day_pass_expiry()
+        else:
+            # Monthly trial — block if already active or on trial
+            if os.path.exists(FILE):
+                with open(FILE) as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if row.get('email', '').lower() == email:
+                            if row.get('status', '') in ('active', 'trial'):
+                                logger.info(f"[ZAPIER] Already active/trial: {email}")
+                                return jsonify({'success': True, 'existing': True, 'email': email})
+            sub_status = 'trial'
+            trial_ends = (datetime.utcnow() + timedelta(days=3)).isoformat()
 
-        # Save to subscriber CSV — ensure dir exists first
+        # Save to subscriber CSV
         saved = False
         try:
             os.makedirs('/var/data', exist_ok=True)
-            trial_ends = (datetime.utcnow() + timedelta(days=3)).isoformat()
             _save_subscriber({
                 'email':                  email,
                 'name':                   name,
                 'stripe_customer_id':     stripe_customer_id,
                 'stripe_subscription_id': stripe_subscription_id,
-                'status':                 'trial',
+                'status':                 sub_status,
                 'subscribed_at':          datetime.utcnow().isoformat(),
                 'trial_ends_at':          trial_ends,
                 'cancelled_at':           ''
             })
             saved = True
-            logger.info(f"[ZAPIER] ✅ Subscriber saved: {email}")
+            logger.info(f"[ZAPIER] ✅ Subscriber saved: {email} ({sub_status})")
         except Exception as se:
             logger.error(f"[ZAPIER] ❌ CSV write failed for {email}: {se}")
 
@@ -2920,7 +2936,8 @@ def zapier_new_assists_subscriber():
             'success': True,
             'email':   email,
             'name':    name,
-            'status':  'trial',
+            'plan':    plan,
+            'status':  sub_status,
             'saved':   saved,
             'message': 'Subscriber processed'
         })
