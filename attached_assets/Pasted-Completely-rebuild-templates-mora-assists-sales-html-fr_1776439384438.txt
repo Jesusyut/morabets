@@ -1,0 +1,597 @@
+Completely rebuild templates/mora_assists_sales.html
+from scratch.
+
+The current version has critical conversion problems:
+- Navigation gives visitors exit ramps before buying
+- Dark CTA buttons on dark backgrounds are invisible
+- No social proof
+- Outcome is missing from the headline
+- Page lacks a logical conversion flow
+
+Read the current mora_assists_sales.html first
+then replace it entirely with the version below.
+
+DO NOT touch any other file.
+DO NOT touch dashboard.html, app.py,
+email gate, pixels, or odds fetching.
+
+=== THE REBUILT PAGE ===
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" 
+      content="width=device-width,
+               initial-scale=1.0">
+<title>Mora Assists — 5 Daily Power Plays 
+       Delivered Before First Pitch</title>
+<script src="https://cdn.tailwindcss.com">
+</script>
+<link href="https://fonts.googleapis.com/css2?
+  family=Barlow+Condensed:wght@700;900&
+  family=Inter:wght@400;500;600;700&
+  display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          kelly: '#4CBB17',
+          'kelly-dk': '#3A9012',
+          dark: '#0F2406',
+          muted: '#6B9E5A',
+          surface: '#F5FAF2',
+          body: '#1A3D0A'
+        },
+        fontFamily: {
+          display: ['Barlow Condensed',
+                    'sans-serif'],
+          ui: ['Inter', 'sans-serif']
+        }
+      }
+    }
+  }
+</script>
+</head>
+
+<body class="font-ui bg-white">
+
+<!-- ════════════════════════════════
+     MINIMAL NAV — Logo only
+     No links. No exit ramps.
+     ════════════════════════════════ -->
+<nav class="bg-white border-b border-gray-100
+            px-6 py-4 flex items-center
+            justify-between">
+  <a href="/dashboard"
+     class="flex items-center gap-2">
+    <div class="bg-kelly rounded-lg p-1.5
+                text-dark font-display
+                font-black text-sm">M</div>
+    <span class="font-display font-black
+                 text-dark text-lg
+                 tracking-wider uppercase">
+      Mora <span class="text-kelly">Bets</span>
+    </span>
+  </a>
+  <!-- No other nav links — intentional -->
+</nav>
+
+
+<!-- ════════════════════════════════
+     HERO — Outcome focused
+     White bg with dark card
+     ════════════════════════════════ -->
+<section class="bg-white pt-16 pb-12 px-6">
+  <div class="max-w-2xl mx-auto text-center">
+
+    <div class="inline-block bg-kelly/10
+                text-kelly font-display
+                font-bold text-sm uppercase
+                tracking-widest px-4 py-2
+                rounded-full mb-6">
+      Mora Assists — Daily Power Plays
+    </div>
+
+    <h1 class="font-display font-black
+               text-dark text-5xl md:text-6xl
+               leading-tight uppercase
+               tracking-wide mb-6">
+      5 Picks.<br>
+      Every Morning.<br>
+      <span class="text-kelly">
+        Before The Lines Move.
+      </span>
+    </h1>
+
+    <p class="text-body text-lg
+              leading-relaxed mb-8
+              max-w-xl mx-auto">
+      We scan 300+ MLB and NHL props daily,
+      strip the sportsbook's margin, and
+      deliver the 5 plays where the math
+      and the matchup point the same direction.
+      In your inbox at 10:30 AM ET.
+    </p>
+
+    <!-- PRIMARY CTA — HIGH CONTRAST -->
+    <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+       class="block w-full max-w-sm mx-auto
+              bg-kelly text-white
+              font-display font-black text-xl
+              uppercase tracking-wide
+              py-5 rounded-2xl mb-3
+              hover:bg-kelly-dk
+              transition-all duration-200
+              shadow-lg shadow-kelly/30">
+      Subscribe — $28.99 / month
+    </a>
+
+    <a href="https://buy.stripe.com/8x2eV6e9p4Pn6cO8CV4Vy06"
+       class="block text-center text-muted
+              text-sm font-medium
+              underline underline-offset-2
+              hover:text-kelly
+              transition-colors mb-4">
+      Just today's slate — $9.99
+    </a>
+
+    <p class="text-xs text-muted">
+      3-day trials sent by invite via email.
+      Keep an eye on your inbox.
+    </p>
+
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════
+     SOCIAL PROOF BAR
+     ════════════════════════════════ -->
+<section class="bg-dark py-8 px-6">
+  <div class="max-w-3xl mx-auto
+              grid grid-cols-3 gap-6
+              text-center">
+    <div>
+      <div class="font-display font-black
+                  text-kelly text-4xl">
+        300+
+      </div>
+      <div class="text-muted text-sm mt-1">
+        Props analyzed daily
+      </div>
+    </div>
+    <div>
+      <div class="font-display font-black
+                  text-kelly text-4xl">
+        10:30
+      </div>
+      <div class="text-muted text-sm mt-1">
+        AM ET delivery
+      </div>
+    </div>
+    <div>
+      <div class="font-display font-black
+                  text-kelly text-4xl">
+        MLB+NHL
+      </div>
+      <div class="text-muted text-sm mt-1">
+        Both sports daily
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════
+     THE PROBLEM — White bg
+     ════════════════════════════════ -->
+<section class="bg-white py-16 px-6">
+  <div class="max-w-2xl mx-auto">
+
+    <h2 class="font-display font-black
+               text-dark text-4xl uppercase
+               tracking-wide mb-6">
+      The Sportsbook Is Charging You
+      A Hidden Tax On Every Bet.
+    </h2>
+
+    <div class="space-y-4 text-body
+                text-base leading-relaxed">
+      <p>
+        When DraftKings shows you -150 on
+        a prop, they are not showing you
+        the true probability.
+      </p>
+      <p>
+        They are showing you an inflated
+        number — the vig — so they profit
+        on every single bet regardless of
+        who wins.
+      </p>
+      <p>
+        A prop at -150 implies 60%
+        probability. The true no-vig
+        probability might be 57%.
+        You are paying for certainty
+        you are not getting.
+      </p>
+    </div>
+
+    <!-- VISUAL EXAMPLE BOX -->
+    <div class="mt-8 bg-surface rounded-2xl
+                border-l-4 border-kelly p-6">
+      <p class="font-display font-bold
+                text-dark text-lg uppercase
+                tracking-wide mb-4">
+        Real example — today's board
+      </p>
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between
+                    items-center py-2
+                    border-b border-kelly/10">
+          <span class="text-body">
+            DraftKings shows
+          </span>
+          <span class="font-bold text-dark">
+            -150 (implied 60%)
+          </span>
+        </div>
+        <div class="flex justify-between
+                    items-center py-2
+                    border-b border-kelly/10">
+          <span class="text-body">
+            True no-vig probability
+          </span>
+          <span class="font-bold text-kelly">
+            57%
+          </span>
+        </div>
+        <div class="flex justify-between
+                    items-center py-2">
+          <span class="text-body">
+            The gap (the hidden tax)
+          </span>
+          <span class="font-bold text-red-500">
+            3% per bet
+          </span>
+        </div>
+      </div>
+      <p class="text-muted text-xs mt-4">
+        Over 500 bets at $100 each that gap
+        costs you thousands even at a 50%
+        win rate.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════
+     THE SOLUTION — Surface bg
+     ════════════════════════════════ -->
+<section class="bg-surface py-16 px-6">
+  <div class="max-w-2xl mx-auto">
+
+    <h2 class="font-display font-black
+               text-dark text-4xl uppercase
+               tracking-wide mb-4">
+      Why Analyzing Every Prop Changes
+      Everything.
+    </h2>
+    <p class="text-body text-base
+              leading-relaxed mb-10">
+      Most bettors look at 3 or 4 props
+      based on names they recognize.
+      The edge is in the other 296.
+    </p>
+
+    <div class="space-y-4">
+
+      <div class="bg-white rounded-2xl p-6
+                  border border-kelly/10
+                  flex gap-4">
+        <div class="text-2xl shrink-0">📊</div>
+        <div>
+          <p class="font-display font-bold
+                    text-dark text-lg
+                    uppercase tracking-wide mb-1">
+            True No-Vig Probability
+          </p>
+          <p class="text-body text-sm
+                    leading-relaxed">
+            Every pick shows the real
+            market probability after the
+            sportsbook margin is stripped.
+            You see the actual edge,
+            not the inflated number.
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6
+                  border border-kelly/10
+                  flex gap-4">
+        <div class="text-2xl shrink-0">🎯</div>
+        <div>
+          <p class="font-display font-bold
+                    text-dark text-lg
+                    uppercase tracking-wide mb-1">
+            Matchup + Environment Context
+          </p>
+          <p class="text-body text-sm
+                    leading-relaxed">
+            Home team advantage. Park factors.
+            Road pitcher ERA. Each pick is
+            backed by the specific reason it
+            hits today — not yesterday.
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6
+                  border border-kelly/10
+                  flex gap-4">
+        <div class="text-2xl shrink-0">⚡</div>
+        <div>
+          <p class="font-display font-bold
+                    text-dark text-lg
+                    uppercase tracking-wide mb-1">
+            Value Gap Analysis
+          </p>
+          <p class="text-body text-sm
+                    leading-relaxed">
+            We show how far below fair value
+            each line is priced. The larger
+            the gap, the stronger the
+            mathematical edge in your favor.
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6
+                  border border-kelly/10
+                  flex gap-4">
+        <div class="text-2xl shrink-0">🕙</div>
+        <div>
+          <p class="font-display font-bold
+                    text-dark text-lg
+                    uppercase tracking-wide mb-1">
+            Morning Delivery
+          </p>
+          <p class="text-body text-sm
+                    leading-relaxed">
+            Lines are freshest before noon.
+            Sharp money moves them by
+            afternoon. 10:30 AM ET means
+            you always get the best number.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════
+     THE MATH — Dark bg
+     ════════════════════════════════ -->
+<section class="bg-dark py-16 px-6">
+  <div class="max-w-2xl mx-auto">
+
+    <h2 class="font-display font-black
+               text-white text-4xl uppercase
+               tracking-wide mb-4">
+      What 15 Cents Of Edge Does
+      To Your Bankroll Over 162 Games.
+    </h2>
+    <p class="text-muted text-base
+              leading-relaxed mb-10">
+      This is the difference between
+      a losing bettor and a profitable one.
+    </p>
+
+    <div class="grid md:grid-cols-2 gap-4">
+
+      <div class="bg-white/5 rounded-2xl
+                  border border-white/10 p-6">
+        <p class="text-muted text-xs uppercase
+                  tracking-widest mb-3">
+          Without the edge
+        </p>
+        <p class="text-white text-sm
+                  leading-relaxed mb-4">
+          100 bets × $25 flat<br>
+          60% win rate<br>
+          Odds: -155 (fair value)
+        </p>
+        <div class="border-t border-white/10
+                    pt-4">
+          <p class="text-white text-sm">
+            60 wins: +$967
+          </p>
+          <p class="text-white text-sm">
+            40 losses: -$1,000
+          </p>
+          <p class="text-red-400 font-bold
+                    text-lg mt-2">
+            Net: -$33
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-kelly/10 rounded-2xl
+                  border border-kelly/30 p-6">
+        <p class="text-kelly text-xs uppercase
+                  tracking-widest mb-3">
+          With the edge (Mora Assists)
+        </p>
+        <p class="text-white text-sm
+                  leading-relaxed mb-4">
+          100 bets × $25 flat<br>
+          60% win rate<br>
+          Odds: -140 (15¢ below fair value)
+        </p>
+        <div class="border-t border-kelly/20
+                    pt-4">
+          <p class="text-white text-sm">
+            60 wins: +$1,071
+          </p>
+          <p class="text-white text-sm">
+            40 losses: -$1,000
+          </p>
+          <p class="text-kelly font-bold
+                    text-lg mt-2">
+            Net: +$71
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="text-muted text-sm
+              text-center mt-8">
+      That 15-cent edge compounded over
+      162 games is the entire system.
+      One flat unit per play. Every morning.
+    </p>
+
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════
+     FINAL BUY SECTION — White bg
+     High contrast. One primary CTA.
+     ════════════════════════════════ -->
+<section class="bg-white py-20 px-6">
+  <div class="max-w-md mx-auto text-center">
+
+    <h2 class="font-display font-black
+               text-dark text-4xl uppercase
+               tracking-wide mb-3">
+      Start Receiving
+      The Picks.
+    </h2>
+    <p class="text-muted text-base mb-10">
+      5 power plays. Every morning.
+      10:30 AM ET. Cancel anytime.
+    </p>
+
+    <!-- PRICING CARDS -->
+    <div class="space-y-4 mb-8">
+
+      <!-- MONTHLY — PRIMARY -->
+      <div class="bg-dark rounded-2xl
+                  border-2 border-kelly p-8
+                  relative overflow-hidden">
+        <div class="absolute top-0 right-0
+                    bg-kelly text-dark
+                    text-xs font-bold
+                    uppercase tracking-wider
+                    px-3 py-1 rounded-bl-xl">
+          Best Value
+        </div>
+        <p class="text-muted text-sm
+                  uppercase tracking-widest mb-2">
+          Monthly Subscription
+        </p>
+        <p class="font-display font-black
+                  text-white text-5xl mb-2">
+          $28.99
+          <span class="text-muted text-xl
+                        font-ui font-normal">
+            /mo
+          </span>
+        </p>
+        <p class="text-muted text-sm mb-6">
+          5 picks every morning.
+          Cancel anytime.
+        </p>
+        <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+           class="block w-full bg-kelly
+                  text-white font-display
+                  font-black text-xl uppercase
+                  tracking-wide py-4
+                  rounded-xl hover:bg-kelly-dk
+                  transition-colors">
+          Subscribe Now →
+        </a>
+      </div>
+
+      <!-- DAY PASS — SECONDARY -->
+      <div class="bg-surface rounded-2xl
+                  border border-kelly/20 p-6">
+        <p class="text-muted text-sm
+                  uppercase tracking-widest mb-2">
+          Day Pass
+        </p>
+        <p class="font-display font-black
+                  text-dark text-3xl mb-1">
+          $9.99
+          <span class="text-muted text-base
+                        font-ui font-normal">
+            one time
+          </span>
+        </p>
+        <p class="text-muted text-sm mb-4">
+          Today's 5 picks only.
+          No commitment.
+        </p>
+        <a href="https://buy.stripe.com/8x2eV6e9p4Pn6cO8CV4Vy06"
+           class="block w-full bg-dark
+                  text-white font-display
+                  font-black text-base
+                  uppercase tracking-wide
+                  py-3 rounded-xl
+                  hover:bg-body
+                  transition-colors">
+          Get Today's Slate →
+        </a>
+      </div>
+
+    </div>
+
+    <p class="text-muted text-xs">
+      3-day trials are sent by invite via
+      email. Keep an eye on your inbox.
+      <br>For entertainment purposes only.
+      Please bet responsibly.
+    </p>
+
+  </div>
+</section>
+
+
+<!-- MINIMAL FOOTER -->
+<footer class="bg-dark py-8 px-6
+               text-center">
+  <a href="/dashboard"
+     class="text-muted text-sm
+            hover:text-kelly
+            transition-colors">
+    ← Back to morabets.com
+  </a>
+  <p class="text-muted/50 text-xs mt-2">
+    © 2026 Mora Bets
+  </p>
+</footer>
+
+</body>
+</html>
+
+=== CONSTRAINTS ===
+- Replace mora_assists_sales.html entirely
+- Do not touch any other file
+- No navigation links in nav —
+  logo only is intentional
+- White background is intentional —
+  this is a conversion page not a
+  dashboard page
+- The dark pricing card with kelly border
+  is the primary option visually
+- Day pass is secondary — smaller card
+- Do not add nav links back
