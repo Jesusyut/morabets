@@ -240,6 +240,12 @@ def home():
     """Permanent redirect to dashboard — 301 passes SEO value to /dashboard."""
     return redirect(url_for("dashboard"), code=301)
 
+@app.route('/mora-assists')
+def mora_assists_page():
+    """Mora Assists sales and information page."""
+    return render_template('mora_assists_sales.html')
+
+
 @app.route('/mora-assists-welcome')
 def mora_assists_welcome():
     """Thank you page — shown after Stripe trial signup. Fires StartTrial pixel."""

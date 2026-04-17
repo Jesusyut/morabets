@@ -1,0 +1,303 @@
+Create a standalone sales and information 
+page at /mora-assists on morabets.com.
+
+This page does two jobs:
+1. Educates — explains no-vig math and 
+   why analyzing all props is the 
+   smartest way to bet in 2026
+2. Converts — sells Mora Assists at 
+   the bottom with both CTAs
+
+DO NOT touch dashboard.html, email gate,
+Meta pixel, TikTok pixel, or odds fetching.
+Create new route and new template only.
+
+=== ROUTE IN app.py ===
+
+@app.route('/mora-assists')
+def mora_assists_page():
+    return render_template('mora_assists_sales.html')
+
+
+=== CREATE templates/mora_assists_sales.html ===
+
+Full page. SEO title:
+"Mora Assists — Daily Power Plays | Mora Bets"
+
+Use exact Mora Bets color scheme.
+Barlow Condensed + Inter from Google Fonts.
+Tailwind CDN. Mobile-first.
+
+=== PAGE CONTENT — WRITE EXACTLY THIS ===
+
+--- NAV ---
+Same structure as dashboard nav.
+Logo left. Dashboard link + My Account right.
+
+--- HERO SECTION ---
+Background: #0F2406
+Padding: py-24
+
+Eyebrow text (kelly green, small caps):
+"MORA ASSISTS"
+
+Headline (white, font-black, large):
+"The Smartest Way To Bet
+In 2026 Is Not A Gut Feel.
+It Is Math."
+
+Subtext (muted green, 18px):
+"Every morning we analyze 300+ MLB and
+NHL props, strip the sportsbook's margin,
+and deliver the 5 plays where the math
+and the matchup point the same direction."
+
+Two buttons side by side:
+Primary green: "Subscribe — $28.99/month"
+Secondary outline: "Get Today's Slate — $9.99"
+
+--- SECTION 1: THE PROBLEM ---
+White background. Max-width 800px centered.
+
+Heading (dark, font-black):
+"The Sportsbook Is Charging You A Hidden Tax
+On Every Single Bet."
+
+Body copy:
+
+"When DraftKings shows you a line at -150,
+they are not showing you the true probability
+of that outcome.
+
+They are showing you a probability that
+has been inflated by their margin — the vig —
+so that they profit on every single bet
+regardless of who wins.
+
+A prop priced at -150 implies a 60%
+probability. But the true no-vig probability
+might be 57%. You are paying for a 60%
+certainty and only getting 57% of an edge.
+
+Over 500 bets at $100 each, that hidden tax
+costs you thousands of dollars even if you
+win at a perfectly average rate.
+
+Most bettors never see this number.
+It is buried inside the juice on every line
+on every sportsbook every single day."
+
+--- SECTION 2: THE SOLUTION ---
+Surface background #F5FAF2.
+
+Heading (dark, font-black):
+"Mora Bets Strips The Margin.
+Mora Assists Finds The Edge."
+
+Two column layout (stacks on mobile):
+
+LEFT COLUMN — How No-Vig Works:
+Subheading: "The Math Behind True Probability"
+
+"Every prop market has two sides —
+the over and the under.
+
+Each side has an implied probability
+baked into the odds.
+
+When you add those two implied
+probabilities together they always
+exceed 100%. The excess is the vig —
+the house's cut.
+
+No-vig probability removes that excess
+and redistributes it equally, giving you
+the true market consensus on the outcome.
+
+Example:
+Over -150 → implied 60.0%
+Under +120 → implied 45.5%
+Total: 105.5% (the 5.5% is the vig)
+
+No-vig over: 60.0 / 105.5 = 56.9%
+No-vig under: 45.5 / 105.5 = 43.1%
+
+Now you know what the market actually
+thinks. Not what the sportsbook wants
+you to think."
+
+RIGHT COLUMN — Why 300+ Props:
+Subheading: "Why Analyzing Every Prop
+Changes Everything"
+
+"On any given MLB day there are 200
+to 400 player props available.
+
+Most bettors look at 3 or 4.
+They pick based on name recognition,
+recent performance, or gut feel.
+
+The edge is not in those 3 or 4 props.
+The edge is in the 300 others that
+almost no one looks at —
+where the books have mispriced a line,
+where a matchup creates a structural
+advantage, where the environment
+confirms what the math is already saying.
+
+Mora Bets scans all of them.
+Every morning. Every sport.
+Mora Assists delivers the 5 where
+the math, the matchup, and the
+context all point the same way."
+
+--- SECTION 3: WHAT YOU GET ---
+Dark #0F2406 background.
+
+Heading (white):
+"What Lands In Your Inbox
+Every Morning At 10:30 AM ET"
+
+5 feature cards in a grid:
+
+Card 1:
+Icon: 📊
+Title: "True No-Vig Probability"
+Body: "Every pick shows the real market
+probability after the sportsbook margin
+is stripped. You see the actual number,
+not the inflated one."
+
+Card 2:
+Icon: 🎯
+Title: "Matchup Context"
+Body: "Home team advantage. Park factors.
+Road pitcher ERA. Lineup position.
+Every pick is backed by the specific
+reason it hits today — not yesterday."
+
+Card 3:
+Icon: ⚡
+Title: "Value Gap Analysis"
+Body: "We show you how far below fair value
+each line is priced. The larger the gap,
+the stronger the mathematical edge
+in your favor."
+
+Card 4:
+Icon: 📅
+Title: "Five Different Games"
+Body: "Never two picks from the same matchup.
+Five independent edges across five
+different games. Diversified like a
+portfolio, not a parlay."
+
+Card 5:
+Icon: 🕙
+Title: "Morning Delivery"
+Body: "Lines are freshest before noon.
+Sharp money moves them by afternoon.
+10:30 AM ET means you always get
+the best available number."
+
+--- SECTION 4: THE MATH ---
+White background.
+
+Heading (dark):
+"What 57% True Probability
+Means For Your Bankroll Over 162 Games"
+
+Simple math breakdown:
+
+"If you find props with a true 60% 
+no-vig probability and place them 
+at fair odds:
+
+100 bets × $25 flat stake
+Win rate: 60%
+Average odds: -155
+
+Gross profit at 60 wins:
+60 × ($25 × 100/155) = $967
+
+Gross loss at 40 losses:
+40 × $25 = $1,000
+
+Net result: -$33
+
+Now add the edge — betting props
+priced 10-15 cents BELOW fair value:
+
+Same 100 bets × $25
+Same 60% true probability
+But odds: -140 instead of -155
+
+60 × ($25 × 100/140) = $1,071
+40 × $25 = $1,000
+
+Net result: +$71
+
+That 15-cent edge is the difference
+between a losing bettor and a
+profitable one. Over 162 games
+it compounds into a meaningful return
+on a consistent flat-stake bankroll."
+
+--- SECTION 5: BUY NOW ---
+Kelly green background.
+
+Heading (dark, font-black):
+"Start Receiving The Picks."
+
+Two pricing cards side by side
+(stack on mobile):
+
+CARD 1 — DAY PASS:
+Badge: "Try Today"
+Price: $9.99
+Description: "Today's 5 power plays
+delivered to your inbox once.
+No commitment. No subscription."
+CTA button (dark): "Get Today's Picks →"
+href: https://buy.stripe.com/8x2eV6e9p4Pn6cO8CV4Vy06
+
+CARD 2 — MONTHLY (highlighted):
+Badge: "Best Value" (kelly green pill)
+Price: $28.99/month
+Description: "5 picks every morning
+at 10:30 AM ET. Cancel anytime.
+3-day trials sent via email invite."
+CTA button (dark bg, green text):
+"Subscribe Now →"
+href: https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05
+
+Small text below both cards:
+"Picks cover MLB and NHL daily.
+For entertainment purposes only.
+Please bet responsibly."
+
+--- FOOTER ---
+Same dark footer as dashboard.
+morabets.com link.
+© 2026 Mora Bets
+
+=== ADD TO NAV IN dashboard.html ===
+
+Add one link to the existing dashboard nav:
+
+<a href="/mora-assists"
+   style="font-size:13px;font-weight:600;
+   color:#6B9E5A;text-decoration:none;">
+  Mora Assists
+</a>
+
+=== CONSTRAINTS ===
+- Only add new route and new template
+- Only add one nav link to dashboard.html
+- Do not touch email gate
+- Do not touch Meta or TikTok pixel  
+- Do not touch odds fetching
+- Do not touch EV engine
+- All copy above is final — use it exactly
+- Both Stripe links must be exact as written
+- Page must be fully mobile responsive
