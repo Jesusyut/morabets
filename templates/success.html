@@ -201,12 +201,21 @@ function copyToken() {
 {% if not pending %}
 <!-- Meta Pixel Purchase Event — fires only on successful payment -->
 <script>
-  fbq('track', 'Purchase', {
-    value: 24.99,
-    currency: 'USD',
-    content_name: 'Mora Bets Monthly Subscription',
-    content_type: 'product'
-  });
+// Read product type from URL param
+// Stripe can pass ?product=daypass or ?product=monthly
+const params = new URLSearchParams(window.location.search);
+const product = params.get('product') || 'monthly';
+const value = product === 'daypass' ? 9.99 : 28.99;
+const name = product === 'daypass'
+  ? 'Mora Assists Day Pass'
+  : 'Mora Assists Monthly';
+
+fbq('track', 'Purchase', {
+  value: value,
+  currency: 'USD',
+  content_name: name,
+  content_type: 'product'
+});
 </script>
 <!-- End Purchase Event -->
 {% endif %}
