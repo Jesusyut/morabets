@@ -2100,6 +2100,100 @@ scheduler.add_job(
 
 
 
+def send_board_email():
+    """
+    Runs every morning at 8:30 AM CST.
+    Exports today's qualifying props
+    and emails them to Jesus for
+    manual pick selection.
+    """
+    import json, os
+    from datetime import datetime
+
+    logger.info('[BOARD EMAIL] Starting...')
+
+    try:
+        def load_json(path):
+            if os.path.exists(path):
+                with open(path) as f:
+                    return json.load(f)
+            return []
+
+        mlb = load_json('/var/data/mlb_props_cache.json')
+        nhl = load_json('/var/data/nhl_props_cache.json')
+        all_props = mlb + nhl
+
+        quality = [
+            p for p in all_props
+            if p.get('no_vig_prob', 0) >= 52
+            and p.get('best_over_price', 0) != 0
+            and p.get('best_over_price', 0) > -205
+            and p.get('player', '')
+            and not any(
+                x in p.get('player', '')
+                for x in ['Batter', 'Pitcher', '_']
+            )
+        ]
+
+        quality.sort(
+            key=lambda x: x.get('no_vig_prob', 0),
+            reverse=True
+        )
+
+        today = datetime.utcnow().strftime('%A %B %d')
+
+        lines = []
+        lines.append(f'MORA BETS BOARD — {today}')
+        lines.append(f'Qualifying props: {len(quality)}')
+        lines.append('')
+
+        for p in quality[:50]:
+            over = p.get('best_over_price', 0)
+            under = next((
+                b.get('under_price')
+                for b in p.get('all_books', [])
+                if b.get('under_price')
+            ), None)
+            books = [b.get('book', '') for b in p.get('all_books', [])]
+            stat = p.get('stat_label', p.get('stat', '')).replace('player_', '').replace('_', ' ').title()
+            env = p.get('environment', 'no label')
+
+            lines.append(
+                f"{p.get('player', '')} | "
+                f"{stat} OVER {p.get('line', '')} | "
+                f"Over: {over} | "
+                f"Under: {under} | "
+                f"No-vig: {p.get('no_vig_prob', '')}% | "
+                f"{p.get('away_team', '')} @ {p.get('home_team', '')} | "
+                f"{env} | "
+                f"{p.get('sport', '')} | "
+                f"Books: {', '.join(books[:2])}"
+            )
+
+        board_text = '\n'.join(lines)
+
+        import sendgrid
+        from sendgrid.helpers.mail import Mail
+
+        sg = sendgrid.SendGridAPIClient(
+            api_key=os.environ.get('SENDGRID_API_KEY')
+        )
+
+        message = Mail(
+            from_email=os.environ.get('EMAIL_FROM', 'picks@morabets.com'),
+            to_emails='acdc5671@gmail.com',
+            subject=f'⚡ Mora Bets Board — {today}',
+            plain_text_content=board_text
+        )
+
+        sg.send(message)
+
+        logger.info(f'[BOARD EMAIL] Sent. {len(quality)} props.')
+
+    except Exception as e:
+        logger.error(f'[BOARD EMAIL] Failed: {e}')
+
+
 # Global flag to track initialization
 app_initialized = False
 
@@ -2184,6 +2278,24 @@ def background_initializer():
             logger.info("✅ NHL props job registered")
         except Exception as e:
             logger.warning(f"NHL props job error: {e}")
+
+        # ── REGISTER BOARD EMAIL JOB ──────────────────────────────
+        try:
+            scheduler.add_job(
+                func=send_board_email,
+                trigger='cron',
+                hour=14,
+                minute=30,
+                timezone='UTC',
+                id='board_email_daily',
+                name='Board Email 8:30AM CST',
+                replace_existing=True,
+                misfire_grace_time=3600,
+                coalesce=True
+            )
+            logger.info('✅ Board email job registered')
+        except Exception as e:
+            logger.warning(f"Board email job error: {e}")
 
         # ── REGISTER GAME ODDS REFRESH ───────────────────────────
         try:
