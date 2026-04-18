@@ -2085,15 +2085,15 @@ scheduler.add_job(
     replace_existing=True
 )
 
-# Mora Assists — send daily picks at 10:30 AM ET
+# Mora Assists — send daily picks at 9:00 AM CST
 scheduler.add_job(
     func=lambda: run_daily_assists(),
     trigger="cron",
-    hour=10,
-    minute=30,
-    timezone="America/New_York",
+    hour=9,
+    minute=0,
+    timezone="America/Chicago",
     id="mora_assists_daily",
-    name="Mora Assists Daily Picks 10:30AM ET",
+    name="Mora Assists Daily Picks 9:00AM CST",
     replace_existing=True,
     misfire_grace_time=3600
 )
@@ -2132,11 +2132,11 @@ def background_initializer():
             scheduler.add_job(
                 func=_run_assists,
                 trigger='cron',
-                hour=10,
-                minute=30,
-                timezone='America/New_York',
+                hour=9,
+                minute=0,
+                timezone='America/Chicago',
                 id='mora_assists_daily',
-                name='Mora Assists 10:30AM ET',
+                name='Mora Assists 9:00AM CST',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
