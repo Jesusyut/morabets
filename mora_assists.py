@@ -908,7 +908,7 @@ def format_picks_email(picks_data):
 <div class="container">
   <div class="header">
     <div class="logo">MORA <span>ASSISTS</span></div>
-    <div class="date">{today} · Picks locked at 10:30 AM ET</div>
+    <div class="date">{today} · Picks locked at 9:00 AM CST</div>
   </div>
 """
 

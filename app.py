@@ -2774,7 +2774,7 @@ def _send_welcome_email(email, name=""):
   </div>
   <div class="body">
     <h1>You're in, {first_name}. ⚡</h1>
-    <p>Your 3-day free trial starts today. Your <span class="highlight">first picks arrive tomorrow morning</span> — 5 plays in your inbox by 10:30 AM ET.</p>
+    <p>Your 3-day free trial starts today. Your <span class="highlight">first picks arrive tomorrow morning</span> — 5 plays in your inbox by 9:00 AM CST.</p>
     <div style="background:#fff8e1;border:1px solid #f59e0b;border-radius:10px;padding:14px 18px;margin:16px 0;">
       <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#92400e;">⚠️ Important — do this right now:</p>
       <p style="margin:0 0 6px;font-size:13px;color:#92400e;">1. Check your spam or junk folder for this email if you don't see it in your inbox.</p>
@@ -2784,7 +2784,7 @@ def _send_welcome_email(email, name=""):
       <h3>Here's what happens next</h3>
       <div class="step"><div class="step-num">1</div><p class="step-text"><strong>Every morning at 10 AM</strong> — our system scans every MLB and NHL line on the board</p></div>
       <div class="step"><div class="step-num">2</div><p class="step-text"><strong>AI selects 5 picks</strong> — 2 player props based on game environment, 3 anchor lines with real mathematical edge</p></div>
-      <div class="step"><div class="step-num">3</div><p class="step-text"><strong>Email lands by 10:30 AM</strong> — open it, place the bets, done before lunch</p></div>
+      <div class="step"><div class="step-num">3</div><p class="step-text"><strong>Email lands by 9:00 AM CST</strong> — open it, place the bets, done before lunch</p></div>
       <div class="step"><div class="step-num">4</div><p class="step-text"><strong>Same unit every play</strong> — flat stakes, no chasing. The math compounds across the season.</p></div>
     </div>
     <div class="trial-notice"><p>🔒 &nbsp; 3-day free trial — cancel anytime before day 3 and you pay nothing. $28.99/month after your trial ends.</p></div>
