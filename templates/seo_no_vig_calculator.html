@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No Vig Calculator — Free MLB &amp; NHL True Probability Tool | Mora Bets</title>
+  <meta name="description" content="Free no-vig calculator for MLB and NHL. Strip the sportsbook margin and see the true probability on every player prop. 300+ props analyzed daily. No signup.">
+  <meta name="keywords" content="no vig calculator, no vig calculator MLB, remove vig from odds, fair odds calculator, true probability sports betting">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background:#FFFFFF; color:#0F2406; font-family:'Inter',sans-serif; }
+    .kelly { color:#4CBB17; }
+    .bg-dark { background:#0F2406; }
+    .bg-surface { background:#F5FAF2; }
+    h1,h2,h3 { font-family:'Barlow Condensed',sans-serif; font-weight:900; }
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; }
+    input[type=number] { -moz-appearance:textfield; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="bg-dark border-b border-green-900 px-5 py-4">
+  <div class="max-w-4xl mx-auto flex items-center justify-between">
+    <a href="/" class="text-white font-bold text-xl" style="font-family:'Barlow Condensed',sans-serif;">MORA<span style="color:#4CBB17;">BETS</span></a>
+    <div class="flex gap-5 text-sm">
+      <a href="/dashboard" class="text-gray-300 hover:text-white transition-colors">Dashboard</a>
+      <a href="/mora-assists" class="font-bold" style="color:#4CBB17;">Mora Assists ⚡</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="bg-dark py-14 px-5">
+  <div class="max-w-3xl mx-auto text-center">
+    <p class="text-xs font-bold tracking-widest mb-3" style="color:#4CBB17;">FREE TOOL</p>
+    <h1 class="text-white text-4xl md:text-5xl leading-tight mb-4">No-Vig Calculator —<br>See The True Probability On Any Bet</h1>
+    <p class="text-gray-400 text-base max-w-xl mx-auto">Strip the sportsbook's margin and find out what a prop is actually worth. Works for any sport, any market.</p>
+  </div>
+</section>
+
+<!-- SECTION 1 — WHAT IS NO-VIG -->
+<section class="bg-surface py-12 px-5">
+  <div class="max-w-3xl mx-auto">
+    <h2 class="text-2xl md:text-3xl mb-6" style="color:#0F2406;">What Is No-Vig Probability?</h2>
+    <div class="prose max-w-none text-gray-700 space-y-4 text-base leading-relaxed">
+      <p>The vig — also called juice or hold — is the sportsbook's built-in profit margin on every bet you place.</p>
+      <p>When DraftKings lists a player prop at -110 on both sides, the implied probability of each side is 52.4%. Add those together and you get 104.8%. The extra 4.8% is the vig — money the sportsbook collects regardless of who wins.</p>
+      <p>No-vig probability removes that margin and shows you the true market consensus.</p>
+      <p class="font-semibold text-gray-800">The formula is simple:</p>
+      <div class="bg-white border border-gray-200 rounded-xl p-5 font-mono text-sm space-y-2 text-gray-700">
+        <p>Over implied prob = |Over odds| / (|Over odds| + 100)  <span class="text-gray-400">[if negative odds]</span></p>
+        <p>Under implied prob = |Under odds| / (|Under odds| + 100)  <span class="text-gray-400">[if negative odds]</span></p>
+        <p>No-vig over = Over implied / (Over implied + Under implied)</p>
+      </div>
+      <p class="font-semibold text-gray-800">Example:</p>
+      <div class="bg-white border border-gray-200 rounded-xl p-5 text-sm space-y-1 text-gray-700">
+        <p>Over -150 → implied 60.0%</p>
+        <p>Under +125 → implied 44.4%</p>
+        <p>Total: 104.4% <span class="text-gray-400">(the 4.4% is the vig)</span></p>
+        <p class="font-bold mt-2" style="color:#4CBB17;">No-vig over: 60.0 / 104.4 = 57.5%</p>
+      </div>
+      <p>That 57.5% is the true probability. Not 60%.</p>
+      <p>Why does this matter? Because a bet is only profitable long-term if your edge exceeds the vig. Knowing the true probability tells you whether you actually have an edge or whether you are just paying the house.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 2 — CALCULATOR -->
+<section class="py-12 px-5" style="background:#fff;">
+  <div class="max-w-3xl mx-auto">
+    <h2 class="text-2xl md:text-3xl mb-2" style="color:#0F2406;">No-Vig Calculator</h2>
+    <p class="text-gray-500 text-sm mb-8">Enter American odds for both sides. Results update instantly.</p>
+
+    <div class="bg-dark rounded-2xl p-6 md:p-8">
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <div>
+          <label class="block text-xs font-semibold mb-2 tracking-widest uppercase" style="color:#6B9E5A;">Over Odds</label>
+          <input id="calc-over" type="number" placeholder="-150" value="-150"
+            class="w-full rounded-xl px-4 py-3 text-white text-lg font-mono border outline-none focus:border-green-400"
+            style="background:#1a3d0a;border-color:rgba(76,187,23,0.3);">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-2 tracking-widest uppercase" style="color:#6B9E5A;">Under Odds</label>
+          <input id="calc-under" type="number" placeholder="+125" value="+125"
+            class="w-full rounded-xl px-4 py-3 text-white text-lg font-mono border outline-none focus:border-green-400"
+            style="background:#1a3d0a;border-color:rgba(76,187,23,0.3);">
+        </div>
+      </div>
+
+      <div id="calc-results" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="rounded-xl p-4" style="background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);">
+          <p class="text-xs uppercase tracking-widest mb-1" style="color:#6B9E5A;">No-Vig Over</p>
+          <p id="r-over" class="text-3xl font-bold" style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;">—</p>
+        </div>
+        <div class="rounded-xl p-4" style="background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);">
+          <p class="text-xs uppercase tracking-widest mb-1" style="color:#6B9E5A;">No-Vig Under</p>
+          <p id="r-under" class="text-3xl font-bold" style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;">—</p>
+        </div>
+        <div class="rounded-xl p-4" style="background:rgba(255,60,60,0.06);border:1px solid rgba(255,60,60,0.2);">
+          <p class="text-xs uppercase tracking-widest mb-1 text-red-400">Vig</p>
+          <p id="r-vig" class="text-3xl font-bold text-red-400" style="font-family:'Barlow Condensed',sans-serif;">—</p>
+        </div>
+        <div class="rounded-xl p-4 col-span-2 md:col-span-3" style="background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);">
+          <p class="text-xs uppercase tracking-widest mb-1" style="color:#6B9E5A;">Fair Over Odds (no margin)</p>
+          <p id="r-fair" class="text-3xl font-bold text-white" style="font-family:'Barlow Condensed',sans-serif;">—</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3 — DASHBOARD CTA -->
+<section class="bg-surface py-12 px-5">
+  <div class="max-w-3xl mx-auto text-center">
+    <h2 class="text-2xl md:text-3xl mb-3">We Do This For 300+ Props Daily</h2>
+    <p class="text-gray-600 text-base max-w-xl mx-auto mb-7">Mora Bets automatically calculates the no-vig probability for every MLB and NHL player prop every morning. Free. No signup required.</p>
+    <a href="/dashboard" class="inline-block text-white font-bold text-base px-8 py-4 rounded-xl transition-opacity hover:opacity-90"
+       style="background:#4CBB17;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px;">
+      See Today's No-Vig Props →
+    </a>
+  </div>
+</section>
+
+<!-- SECTION 4 — FAQ -->
+<section class="py-12 px-5" style="background:#fff;">
+  <div class="max-w-3xl mx-auto">
+    <h2 class="text-2xl md:text-3xl mb-8">Frequently Asked Questions</h2>
+    <div class="space-y-6">
+
+      <div class="border-b border-gray-100 pb-6">
+        <h3 class="text-lg mb-2" style="color:#0F2406;">What is a good no-vig probability for a player prop?</h3>
+        <p class="text-gray-600 text-sm leading-relaxed">Generally 57% or higher indicates a prop where the math is in your favor. The higher the no-vig probability, the stronger the market consensus that this outcome is likely.</p>
+      </div>
+
+      <div class="border-b border-gray-100 pb-6">
+        <h3 class="text-lg mb-2" style="color:#0F2406;">How is no-vig different from implied probability?</h3>
+        <p class="text-gray-600 text-sm leading-relaxed">Implied probability includes the sportsbook's margin. No-vig removes it. A -150 line implies 60% but the true no-vig probability might be 57%. That 3% difference compounds over hundreds of bets.</p>
+      </div>
+
+      <div class="border-b border-gray-100 pb-6">
+        <h3 class="text-lg mb-2" style="color:#0F2406;">Which sportsbooks have the lowest vig?</h3>
+        <p class="text-gray-600 text-sm leading-relaxed">Pinnacle and BetRivers typically have the lowest vig at around 2–4%. DraftKings and FanDuel average 5–8%. Shopping for the best line across multiple books is how sharp bettors minimize the vig impact.</p>
+      </div>
+
+      <div class="pb-2">
+        <h3 class="text-lg mb-2" style="color:#0F2406;">Does Mora Bets show no-vig probability for all props?</h3>
+        <p class="text-gray-600 text-sm leading-relaxed">Yes. Every MLB and NHL player prop on the Mora Bets dashboard shows the no-vig true probability automatically. Free to use. Updated every morning.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- MORA ASSISTS CTA -->
+<section class="py-12 px-5 bg-dark">
+  <div class="max-w-3xl mx-auto text-center">
+    <p class="text-xs font-bold tracking-widest mb-3" style="color:#4CBB17;">MORA ASSISTS</p>
+    <h2 class="text-white text-3xl md:text-4xl mb-3">Want the 5 best props analyzed and delivered every morning?</h2>
+    <p class="mb-7 text-sm" style="color:#6B9E5A;">No-vig math done. Props ranked. In your inbox by 10:30 AM ET.</p>
+    <a href="/mora-assists" class="inline-block text-white font-bold text-base px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
+       style="background:#4CBB17;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px;">
+      Mora Assists — $28.99/month
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="py-8 px-5 text-center text-xs text-gray-400 border-t border-gray-100">
+  <a href="/dashboard" class="hover:underline mr-4">Dashboard</a>
+  <a href="/mora-assists" class="hover:underline mr-4">Mora Assists</a>
+  <a href="/no-vig-calculator" class="hover:underline mr-4">No-Vig Calculator</a>
+  <a href="/what-is-vig-sports-betting" class="hover:underline mr-4">What Is Vig</a>
+  <a href="/mlb-player-props-explained" class="hover:underline mr-4">MLB Props</a>
+  <a href="/how-to-find-value-bets-mlb" class="hover:underline">Value Bets</a>
+  <p class="mt-4">© 2026 Mora Bets. For entertainment purposes.</p>
+</footer>
+
+<script>
+(function() {
+  function toImpl(odds) {
+    odds = parseFloat(odds);
+    if (isNaN(odds)) return null;
+    if (odds < 0) return Math.abs(odds) / (Math.abs(odds) + 100);
+    return 100 / (odds + 100);
+  }
+
+  function toAmericanOdds(prob) {
+    if (prob >= 0.5) return '-' + (prob / (1 - prob) * 100).toFixed(0);
+    return '+' + ((1 - prob) / prob * 100).toFixed(0);
+  }
+
+  function calc() {
+    var overOdds  = document.getElementById('calc-over').value;
+    var underOdds = document.getElementById('calc-under').value;
+
+    var overImpl  = toImpl(overOdds);
+    var underImpl = toImpl(underOdds);
+
+    if (overImpl === null || underImpl === null) return;
+
+    var total     = overImpl + underImpl;
+    var vigPct    = ((total - 1) * 100).toFixed(2);
+    var noVigOver = overImpl / total;
+    var noVigUnder = underImpl / total;
+
+    document.getElementById('r-over').textContent  = (noVigOver  * 100).toFixed(1) + '%';
+    document.getElementById('r-under').textContent = (noVigUnder * 100).toFixed(1) + '%';
+    document.getElementById('r-vig').textContent   = vigPct + '%';
+    document.getElementById('r-fair').textContent  = toAmericanOdds(noVigOver);
+  }
+
+  document.getElementById('calc-over').addEventListener('input', calc);
+  document.getElementById('calc-under').addEventListener('input', calc);
+  calc();
+})();
+</script>
+
+</body>
+</html>

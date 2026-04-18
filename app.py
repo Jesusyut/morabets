@@ -258,6 +258,26 @@ def mora_assists_setup():
     return render_template('mora_assists_setup.html')
 
 
+@app.route('/no-vig-calculator')
+def no_vig_calculator():
+    return render_template('seo_no_vig_calculator.html')
+
+
+@app.route('/what-is-vig-sports-betting')
+def what_is_vig():
+    return render_template('seo_what_is_vig.html')
+
+
+@app.route('/mlb-player-props-explained')
+def mlb_props_explained():
+    return render_template('seo_mlb_props.html')
+
+
+@app.route('/how-to-find-value-bets-mlb')
+def value_bets():
+    return render_template('seo_value_bets.html')
+
+
 @app.route('/manifest.json')
 def pwa_manifest():
     """PWA web app manifest for home screen install."""
@@ -339,6 +359,36 @@ def sitemap():
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/mora-assists</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/no-vig-calculator</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/what-is-vig-sports-betting</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/mlb-player-props-explained</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/how-to-find-value-bets-mlb</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 </urlset>"""
     return _Response(sitemap_xml, mimetype="application/xml")

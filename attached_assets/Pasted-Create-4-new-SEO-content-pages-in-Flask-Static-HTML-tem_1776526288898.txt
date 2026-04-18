@@ -1,0 +1,369 @@
+Create 4 new SEO content pages in Flask.
+Static HTML templates. No gate. 
+Public to everyone.
+
+These pages target high-intent sports
+betting search queries and funnel traffic
+to the free dashboard and Mora Assists.
+
+DO NOT touch dashboard.html, app.py routes
+beyond adding 4 new ones, email gate,
+pixels, or odds fetching.
+
+=== ADD 4 ROUTES TO app.py ===
+
+@app.route('/no-vig-calculator')
+def no_vig_calculator():
+    return render_template(
+        'seo_no_vig_calculator.html'
+    )
+
+@app.route('/what-is-vig-sports-betting')
+def what_is_vig():
+    return render_template(
+        'seo_what_is_vig.html'
+    )
+
+@app.route('/mlb-player-props-explained')
+def mlb_props_explained():
+    return render_template(
+        'seo_mlb_props.html'
+    )
+
+@app.route('/how-to-find-value-bets-mlb')
+def value_bets():
+    return render_template(
+        'seo_value_bets.html'
+    )
+
+
+=== PAGE 1: seo_no_vig_calculator.html ===
+
+SEO title: 
+"No Vig Calculator — Free MLB & NHL 
+True Probability Tool | Mora Bets"
+
+Meta description:
+"Free no-vig calculator for MLB and NHL.
+Strip the sportsbook margin and see the
+true probability on every player prop.
+300+ props analyzed daily. No signup."
+
+Meta keywords:
+"no vig calculator, no vig calculator MLB,
+remove vig from odds, fair odds calculator,
+true probability sports betting"
+
+Page H1:
+"No-Vig Calculator — 
+See The True Probability On Any Bet"
+
+CONTENT SECTIONS:
+
+Section 1 — What Is No-Vig? (300 words)
+Write this content exactly:
+
+"The vig — also called juice or hold — is
+the sportsbook's built-in profit margin
+on every bet you place.
+
+When DraftKings lists a player prop at -110
+on both sides, the implied probability of
+each side is 52.4%. Add those together
+and you get 104.8%. The extra 4.8% is
+the vig — money the sportsbook collects
+regardless of who wins.
+
+No-vig probability removes that margin
+and shows you the true market consensus.
+
+The formula is simple:
+
+Over implied prob = 
+  Over odds / (Over odds + 100)
+  [if negative odds]
+
+Under implied prob = 
+  Under odds / (Under odds + 100)
+  [if negative odds]
+
+No-vig over = 
+  Over implied / (Over implied + Under implied)
+
+Example:
+Over -150 → implied 60.0%
+Under +125 → implied 44.4%
+Total: 104.4% (the 4.4% is the vig)
+
+No-vig over: 60.0 / 104.4 = 57.5%
+
+That 57.5% is the true probability.
+Not 60%.
+
+Why does this matter?
+Because a bet is only profitable long-term
+if your edge exceeds the vig.
+Knowing the true probability tells you
+whether you actually have an edge
+or whether you are just paying the house."
+
+Section 2 — Interactive Calculator (embed)
+Add a working JavaScript no-vig calculator:
+
+Two inputs: Over odds, Under odds
+Output: 
+  No-vig over %
+  No-vig under %  
+  Vig amount %
+  Fair over odds
+  Fair under odds
+
+JavaScript formula:
+function calcNoVig(overOdds, underOdds) {
+  let overImpl, underImpl;
+  
+  if (overOdds < 0) {
+    overImpl = Math.abs(overOdds) / 
+      (Math.abs(overOdds) + 100);
+  } else {
+    overImpl = 100 / (overOdds + 100);
+  }
+  
+  if (underOdds < 0) {
+    underImpl = Math.abs(underOdds) / 
+      (Math.abs(underOdds) + 100);
+  } else {
+    underImpl = 100 / (underOdds + 100);
+  }
+  
+  const total = overImpl + underImpl;
+  const vigPct = ((total - 1) * 100)
+    .toFixed(2);
+  const noVigOver = 
+    ((overImpl / total) * 100).toFixed(1);
+  const noVigUnder = 
+    ((underImpl / total) * 100).toFixed(1);
+  
+  // Fair odds from no-vig probability
+  const fairOverOdds = noVigOver >= 50
+    ? -(noVigOver / (100 - noVigOver) * 100)
+      .toFixed(0)
+    : ((100 - noVigOver) / noVigOver * 100)
+      .toFixed(0);
+  
+  return {
+    vigPct,
+    noVigOver,
+    noVigUnder,
+    fairOverOdds
+  };
+}
+
+Style the calculator:
+Dark #0F2406 background card
+Kelly green result numbers
+Clean labels
+Works on mobile
+Auto-calculates on input change
+
+Section 3 — CTA to free dashboard
+Heading: "We Do This For 300+ Props Daily"
+Body: "Mora Bets automatically calculates
+the no-vig probability for every MLB and
+NHL player prop every morning. Free.
+No signup required."
+Button: "See Today's No-Vig Props →"
+Link: /dashboard
+
+Section 4 — FAQ (for SEO long-tail)
+4 questions with answers (50 words each):
+
+Q: What is a good no-vig probability
+   for a player prop?
+A: Generally 57% or higher indicates
+   a prop where the math is in your favor.
+   The higher the no-vig probability,
+   the stronger the market consensus
+   that this outcome is likely.
+
+Q: How is no-vig different from
+   implied probability?
+A: Implied probability includes the
+   sportsbook's margin. No-vig removes
+   it. A -150 line implies 60% but the
+   true no-vig probability might be 57%.
+   That 3% difference compounds over
+   hundreds of bets.
+
+Q: Which sportsbooks have the lowest vig?
+A: Pinnacle and BetRivers typically have
+   the lowest vig at around 2-4%.
+   DraftKings and FanDuel average 5-8%.
+   Shopping for the best line across
+   multiple books is how sharp bettors
+   minimize the vig impact.
+
+Q: Does Mora Bets show no-vig 
+   probability for all props?
+A: Yes. Every MLB and NHL player prop
+   on the Mora Bets dashboard shows the
+   no-vig true probability automatically.
+   Free to use. Updated every morning.
+
+
+=== PAGE 2: seo_what_is_vig.html ===
+
+SEO title:
+"What Is Vig In Sports Betting? 
+The Hidden Tax Explained | Mora Bets"
+
+Meta description:
+"The vig is the hidden tax on every
+sports bet. Learn exactly how sportsbooks
+charge you, how much it costs long-term,
+and how to find bets where the math
+is actually in your favor."
+
+H1: "What Is Vig In Sports Betting?
+The Hidden Tax On Every Bet You Place."
+
+CONTENT (400 words):
+
+Write 5 short sections:
+1. Definition of vig (juice / hold)
+2. How -110/-110 generates profit
+   for the sportsbook
+3. How vig affects long-term profitability
+   (the $10,000 simulation example)
+4. How to calculate vig yourself
+5. Why no-vig probability changes
+   how you evaluate bets
+
+End with CTA:
+"Mora Bets shows you the no-vig
+probability on every prop — free."
+Button → /dashboard
+
+
+=== PAGE 3: seo_mlb_props.html ===
+
+SEO title:
+"MLB Player Props Explained — 
+True Odds and No-Vig Analysis | Mora Bets"
+
+Meta description:
+"How MLB player props work, what the
+odds actually mean, and how to use
+no-vig probability to find value in
+hits, strikeouts, and total bases props."
+
+H1: "MLB Player Props Explained —
+What The Odds Actually Mean"
+
+CONTENT (400 words):
+5 sections:
+1. What are MLB player props
+2. The most common prop types
+   (hits, total bases, strikeouts, RBIs)
+3. How prop lines are set and why
+   they move
+4. What no-vig probability tells you
+   about a prop
+5. Park factors and environment labels
+   and why they matter
+
+End with CTA:
+"See today's MLB props with
+no-vig probability already calculated."
+Button → /dashboard
+
+
+=== PAGE 4: seo_value_bets.html ===
+
+SEO title:
+"How To Find Value Bets In MLB —
+No-Vig Math Guide 2026 | Mora Bets"
+
+Meta description:
+"A practical guide to finding value in
+MLB player props using no-vig probability.
+Learn the math, understand line shopping,
+and see how Mora Bets automates the
+entire process."
+
+H1: "How To Find Value Bets In MLB
+Using No-Vig Probability"
+
+CONTENT (400 words):
+5 sections:
+1. What makes a bet valuable
+   (edge = true prob > implied prob)
+2. The three-step no-vig method
+3. Line shopping across books
+4. Park factors and timing
+5. Why analyzing all props beats
+   picking favorites by gut
+
+End with CTA:
+"Mora Bets does this analysis for
+300+ props every morning. Free."
+Button → /dashboard
+
+
+=== SHARED DESIGN FOR ALL 4 PAGES ===
+
+Use exact Mora Bets color scheme.
+Barlow Condensed + Inter.
+Tailwind CDN.
+Mobile-first.
+
+Include on every page:
+- Minimal nav (logo + Dashboard link
+  + Mora Assists link)
+- Mora Assists CTA section near bottom
+  before footer:
+  Dark card. 
+  "Want the 5 best props analyzed and 
+   delivered every morning?"
+  Button: "Mora Assists — $28.99/month"
+  Link: /mora-assists
+- Footer with link back to /dashboard
+
+
+=== ADD SITEMAP ROUTE ===
+
+@app.route('/sitemap.xml')
+def sitemap():
+    pages = [
+        'https://morabets.com/',
+        'https://morabets.com/dashboard',
+        'https://morabets.com/mora-assists',
+        'https://morabets.com/no-vig-calculator',
+        'https://morabets.com/what-is-vig-sports-betting',
+        'https://morabets.com/mlb-player-props-explained',
+        'https://morabets.com/how-to-find-value-bets-mlb',
+    ]
+    xml = '<?xml version="1.0" encoding="UTF-8"?>'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    for page in pages:
+        xml += f'<url><loc>{page}</loc></url>'
+    xml += '</urlset>'
+    return xml, 200, {
+        'Content-Type': 'application/xml'
+    }
+
+
+=== CONSTRAINTS ===
+- 4 new templates only
+- 4 new routes + sitemap route in app.py
+- Do not touch dashboard.html
+- Do not touch email gate
+- Do not touch Meta or TikTok pixel
+- Do not touch odds fetching
+- Calculator on page 1 must work
+  with live JavaScript — no server calls
+- All pages load for everyone
+  no gate no redirect
+- Each page links back to /dashboard
+  and /mora-assists
+- Sitemap includes all public pages
