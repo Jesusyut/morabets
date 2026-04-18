@@ -26,6 +26,30 @@
     }
   }
 </script>
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1688269505510635');
+fbq('track', 'PageView');
+fbq('track', 'ViewContent', {
+  content_name: 'Mora Assists Sales Page',
+  content_type: 'product',
+  value: 28.99,
+  currency: 'USD'
+});
+</script>
+<noscript>
+<img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1688269505510635&ev=PageView&noscript=1"/>
+</noscript>
+<!-- End Meta Pixel Code -->
 </head>
 
 <body class="font-ui bg-white">
@@ -68,11 +92,13 @@
 
     <!-- PRIMARY CTA — HIGH CONTRAST -->
     <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+       onclick="fbq('track','InitiateCheckout',{value:28.99,currency:'USD',content_name:'Mora Assists Monthly',num_items:1});"
        class="block w-full max-w-sm mx-auto bg-kelly text-white font-display font-black text-xl uppercase tracking-wide py-5 rounded-2xl mb-3 hover:bg-kelly-dk transition-all duration-200 shadow-lg shadow-kelly/30">
       Subscribe — $28.99 / month
     </a>
 
     <a href="https://buy.stripe.com/8x2eV6e9p4Pn6cO8CV4Vy06"
+       onclick="fbq('track','InitiateCheckout',{value:9.99,currency:'USD',content_name:'Mora Assists Day Pass',num_items:1});"
        class="block text-center text-muted text-sm font-medium underline underline-offset-2 hover:text-kelly transition-colors mb-4">
       Just 1 day's slate — $9.99
     </a>
@@ -283,6 +309,7 @@
         </p>
         <p class="text-muted text-sm mb-6">5 picks every morning. Cancel anytime.</p>
         <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
+           onclick="fbq('track','InitiateCheckout',{value:28.99,currency:'USD',content_name:'Mora Assists Monthly',num_items:1});"
            class="block w-full bg-kelly text-white font-display font-black text-xl uppercase tracking-wide py-4 rounded-xl hover:bg-kelly-dk transition-colors">
           Subscribe Now →
         </a>
@@ -296,6 +323,7 @@
         </p>
         <p class="text-muted text-sm mb-4">Get 1 day's Slate 5 picks only. No commitment.</p>
         <a href="https://buy.stripe.com/8x2eV6e9p4Pn6cO8CV4Vy06"
+           onclick="fbq('track','InitiateCheckout',{value:9.99,currency:'USD',content_name:'Mora Assists Day Pass',num_items:1});"
            class="block w-full bg-dark text-white font-display font-black text-base uppercase tracking-wide py-3 rounded-xl hover:bg-body transition-colors">
           Get 1 day's Slate →
         </a>
