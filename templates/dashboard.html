@@ -1758,7 +1758,9 @@
   var assistsLast       = localStorage.getItem('mora_assists_popup_last');
   var today             = new Date().getDay(); // 5 = Friday
 
-  var isFriday             = today === 5;
+  // Show Wednesday through Friday
+  // Wednesday = 3, Thursday = 4, Friday = 5
+  var isFriday             = today >= 3 && today <= 5;
   var fridayAlreadyHandled = fridayCaptured || fridayDismissed;
   var oneDayAgo            = Date.now() - 86400000;
   var assistsRecent        = assistsLast && parseInt(assistsLast) > oneDayAgo;
