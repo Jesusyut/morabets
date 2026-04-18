@@ -315,7 +315,7 @@
 
 <!-- ── Email Gate ── -->
 <div id="email-gate"
-     style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
+     style="position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
   <div style="width:100%;max-width:448px;margin:0 1rem;text-align:center;padding:2.5rem 2rem;">
 
     <!-- Logo -->
@@ -428,6 +428,47 @@
   <span style="color:white;font-size:14px;font-weight:700;">⚡ Welcome to Mora Assists! Your first picks arrive tomorrow at 10:30 AM ET.</span>
   <button onclick="document.getElementById('assists-success-banner').style.display='none'"
           style="background:none;border:none;color:#4CBB17;font-size:18px;margin-left:16px;cursor:pointer;vertical-align:middle;">×</button>
+</div>
+
+<!-- ── Friday Picks Modal ── -->
+<div id="friday-modal"
+     style="display:none;position:fixed;inset:0;z-index:10002;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
+  <div style="width:100%;max-width:420px;margin:0 1rem;background:#0F2406;border-radius:20px;overflow:hidden;border:2px solid #4CBB17;box-shadow:0 24px 64px rgba(0,0,0,0.3);position:relative;">
+    <button id="friday-modal-close"
+            style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:#6b9e5a;cursor:pointer;line-height:1;z-index:1;">×</button>
+    <div style="padding:32px 28px 28px;">
+      <div style="color:#4CBB17;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;">FREE — EVERY FRIDAY</div>
+      <h2 style="color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:28px;line-height:1.2;margin-bottom:10px;">Get This Week's<br>Best Play Free.</h2>
+      <p style="color:#6B9E5A;font-size:13px;line-height:1.65;margin-bottom:20px;">Every Friday we send one curated power play from the week's board — no subscription required. Drop your email and it lands in your inbox before first pitch.</p>
+      <form id="friday-form" style="display:flex;flex-direction:column;gap:10px;">
+        <input type="email" id="friday-email" placeholder="your@email.com" autocomplete="email" required
+               style="width:100%;box-sizing:border-box;background:#1a3d0a;border:1px solid rgba(76,187,23,0.3);border-radius:10px;padding:12px 14px;font-family:'Inter',sans-serif;font-size:14px;color:#fff;outline:none;">
+        <button type="submit" id="friday-submit"
+                style="width:100%;background:#4CBB17;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:0.5px;padding:13px;border:none;border-radius:10px;cursor:pointer;">
+          Send Me Friday's Pick →
+        </button>
+      </form>
+      <div id="friday-success" style="display:none;text-align:center;padding:16px 0 6px;">
+        <div style="font-size:36px;margin-bottom:8px;">✅</div>
+        <p style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:19px;margin:0;">You're in. Check your inbox Friday.</p>
+      </div>
+      <div style="text-align:center;margin-top:14px;">
+        <button id="friday-dismiss-btn" style="background:none;border:none;color:#6B9E5A;font-size:12px;cursor:pointer;text-decoration:underline;">No thanks</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── App Install Toast ── -->
+<div id="app-install-toast"
+     style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9998;max-width:380px;width:calc(100% - 2rem);background:#0F2406;border:1.5px solid #4CBB17;border-radius:14px;padding:14px 16px 12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);">
+  <button id="toast-close" style="position:absolute;top:10px;right:12px;background:none;border:none;color:#6B9E5A;font-size:18px;cursor:pointer;line-height:1;">×</button>
+  <p style="font-size:13px;color:#fff;font-family:'Inter',sans-serif;margin:0 20px 4px 0;line-height:1.4;">📱 Add Mora Bets to your home screen for instant morning access.</p>
+  <button id="toast-how" style="background:none;border:none;color:#4CBB17;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;margin-top:4px;">How?</button>
+  <div id="toast-instructions" style="display:none;margin-top:8px;font-size:12px;color:#6B9E5A;line-height:1.6;">
+    <strong style="color:#fff;">iPhone:</strong> Tap Share → "Add to Home Screen"<br>
+    <strong style="color:#fff;">Android:</strong> Tap ⋮ → "Add to Home Screen"
+  </div>
 </div>
 
 <!-- ── Sticky Back Header (shown when inside a matchup) ── -->
@@ -1654,52 +1695,32 @@
 </section>
 
 <script>
+// ── Email Gate — hidden by default, never shown automatically ──
 (function() {
-  var hasAccess = localStorage.getItem('mora_access');
   var gate = document.getElementById('email-gate');
+  if (gate) gate.style.display = 'none';
 
-  if (hasAccess) {
-    if (gate) gate.style.display = 'none';
-    return;
+  // Grant access immediately for everyone — dashboard is fully public
+  if (!localStorage.getItem('mora_access')) {
+    localStorage.setItem('mora_access', '1');
   }
 
-  // Focus email input after brief delay
-  setTimeout(function() {
-    var emailInput = document.getElementById('gate-email');
-    if (emailInput) emailInput.focus();
-  }, 300);
-
+  // Form handler still works if gate is ever shown manually
   var form = document.getElementById('gate-form');
   var errorEl = document.getElementById('gate-error');
-  var submitBtn = document.getElementById('gate-submit');
-
   if (form) {
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
-
-      var email = (document.getElementById('gate-email') || {}).value || '';
-      var name  = (document.getElementById('gate-name')  || {}).value || '';
-      email = email.trim();
-      name  = name.trim();
-
+      var email = (document.getElementById('gate-email') || {}).value.trim();
+      var name  = (document.getElementById('gate-name')  || {}).value.trim();
       if (!email || !email.includes('@')) {
-        errorEl.textContent = 'Please enter a valid email address.';
-        errorEl.style.display = 'block';
+        if (errorEl) { errorEl.textContent = 'Please enter a valid email address.'; errorEl.style.display = 'block'; }
         return;
       }
-
-      errorEl.style.display = 'none';
-      submitBtn.textContent = 'Getting your access...';
-      submitBtn.disabled = true;
-
-      function grantAccess() {
-        localStorage.setItem('mora_access', '1');
-        localStorage.setItem('mora_email', email);
-        gate.style.transition = 'opacity 0.4s ease';
-        gate.style.opacity = '0';
-        setTimeout(function() { gate.style.display = 'none'; }, 400);
-      }
-
+      if (errorEl) errorEl.style.display = 'none';
+      localStorage.setItem('mora_access', '1');
+      localStorage.setItem('mora_email', email);
+      if (gate) { gate.style.transition = 'opacity 0.4s'; gate.style.opacity = '0'; setTimeout(function() { gate.style.display = 'none'; }, 400); }
       try {
         var res = await fetch('/api/gate-signup', {
           method: 'POST',
@@ -1707,99 +1728,153 @@
           body: JSON.stringify({ email: email, name: name })
         });
         var data = await res.json();
-
-        // ── META PIXEL LEAD EVENT ──────────────────────────────────
-        // Only fires when server confirms a NEW email (event_id present).
-        // Returning users get no event_id — pixel never fires for them.
-        // event_id matches server-side Conversions API call exactly,
-        // so Meta deduplicates both into a single lead count.
-        if (data.event_id) {
-          try {
-            if (typeof fbq !== 'undefined') {
-              fbq('track', 'Lead', {
-                content_name:     'Mora Bets Free Access',
-                content_category: 'Sports Betting Tool',
-                value:            14.99,
-                currency:         'USD'
-              }, { eventID: data.event_id });
-              console.log('[META] Lead fired ✅ eventID:', data.event_id);
-            }
-          } catch(pixelErr) {
-            console.warn('[META] Lead pixel error:', pixelErr);
-          }
+        if (data.event_id && typeof fbq !== 'undefined') {
+          fbq('track', 'Lead', { content_name: 'Mora Bets Free Access', content_category: 'Sports Betting Tool', value: 14.99, currency: 'USD' }, { eventID: data.event_id });
         }
-        // ── END META PIXEL ─────────────────────────────────────────
-
-        grantAccess();
-      } catch(err) {
-        // Network error — still grant access, never block the user
-        grantAccess();
-      }
+      } catch(err) {}
     });
   }
 })();
 </script>
 
 <script>
-// ── Mora Assists Popup ──────────────────────────────────────────
+// ── Modals & Toasts Orchestrator ───────────────────────────────
 (function() {
-  // Handle ?assists=success redirect from Stripe
+
+  // ── Stripe success banner ──────────────────────────────────
   var params = new URLSearchParams(window.location.search);
   if (params.get('assists') === 'success') {
     var banner = document.getElementById('assists-success-banner');
     if (banner) banner.style.display = 'block';
-    // Clean URL without reload
     var url = new URL(window.location.href);
     url.searchParams.delete('assists');
     window.history.replaceState({}, '', url.toString());
   }
 
-  // Show popup 15s after load, once per SESSION (not per browser visit)
-  // Only after email gate is cleared
-  function maybeShowAssistsPopup() {
-    var hasAccess   = localStorage.getItem('mora_access');
-    var seenThisSession = sessionStorage.getItem('assists_popup_seen');
-    if (!hasAccess || seenThisSession) return;
+  // ── State ──────────────────────────────────────────────────
+  var visited           = localStorage.getItem('mora_visited');
+  var fridayCaptured    = localStorage.getItem('mora_friday_captured');
+  var fridayDismissed   = localStorage.getItem('mora_friday_dismissed');
+  var assistsLast       = localStorage.getItem('mora_assists_popup_last');
+  var today             = new Date().getDay(); // 5 = Friday
 
-    sessionStorage.setItem('assists_popup_seen', '1');
-    setTimeout(function() {
-      var popup = document.getElementById('assists-popup');
-      if (popup) {
-        popup.style.display = 'flex';
-      }
-    }, 15000);
+  var isFriday             = today === 5;
+  var fridayAlreadyHandled = fridayCaptured || fridayDismissed;
+  var oneDayAgo            = Date.now() - 86400000;
+  var assistsRecent        = assistsLast && parseInt(assistsLast) > oneDayAgo;
+
+  var fridayShownThisSession = false;
+
+  // ── Mora Assists popup ─────────────────────────────────────
+  function showMoraAssistsPopup() {
+    if (fridayShownThisSession) return;
+    var popup = document.getElementById('assists-popup');
+    if (!popup) return;
+    popup.style.display = 'flex';
+    localStorage.setItem('mora_assists_popup_last', Date.now().toString());
   }
 
-  // Wait for gate to clear, then start the timer
-  var gateDiv = document.getElementById('email-gate');
-  if (gateDiv) {
-    var observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(m) {
-        if (m.type === 'attributes' && m.attributeName === 'style') {
-          if (gateDiv.style.display === 'none' || gateDiv.style.visibility === 'hidden') {
-            observer.disconnect();
-            maybeShowAssistsPopup();
-          }
-        }
-      });
-    });
-    observer.observe(gateDiv, { attributes: true, attributeFilter: ['style'] });
-  }
-
-  // Also check immediately in case gate was already cleared
-  maybeShowAssistsPopup();
-
-  // Close popup on overlay click
   var popup = document.getElementById('assists-popup');
   if (popup) {
     popup.addEventListener('click', function(e) {
-      if (e.target === popup) {
-        popup.style.display = 'none';
-      }
+      if (e.target === popup) popup.style.display = 'none';
     });
   }
+
+  // ── Friday modal ───────────────────────────────────────────
+  function showFridayModal() {
+    var modal = document.getElementById('friday-modal');
+    if (!modal) return;
+    fridayShownThisSession = true;
+    modal.style.display = 'flex';
+  }
+
+  function dismissFridayModal() {
+    var modal = document.getElementById('friday-modal');
+    if (modal) modal.style.display = 'none';
+    localStorage.setItem('mora_friday_dismissed', 'true');
+    // Let Mora Assists show after 30s gap
+    if (!assistsRecent) setTimeout(showMoraAssistsPopup, 30000);
+  }
+
+  var fridayCloseBtn   = document.getElementById('friday-modal-close');
+  var fridayDismissBtn = document.getElementById('friday-dismiss-btn');
+  if (fridayCloseBtn)   fridayCloseBtn.addEventListener('click', dismissFridayModal);
+  if (fridayDismissBtn) fridayDismissBtn.addEventListener('click', dismissFridayModal);
+
+  var fridayForm = document.getElementById('friday-form');
+  if (fridayForm) {
+    fridayForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var email = (document.getElementById('friday-email') || {}).value.trim();
+      if (!email || !email.includes('@')) return;
+      var btn = document.getElementById('friday-submit');
+      if (btn) { btn.textContent = 'Sending...'; btn.disabled = true; }
+      try {
+        await fetch('/api/gate-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, name: '', source: 'friday_picks_capture' })
+        });
+      } catch(err) {}
+      localStorage.setItem('mora_friday_captured', 'true');
+      localStorage.setItem('mora_friday_dismissed', 'true');
+      var formEl    = document.getElementById('friday-form');
+      var successEl = document.getElementById('friday-success');
+      if (formEl)    formEl.style.display   = 'none';
+      if (successEl) successEl.style.display = 'block';
+      // Close after 3s; warmer lead → Mora Assists after 60s
+      setTimeout(function() {
+        var modal = document.getElementById('friday-modal');
+        if (modal) modal.style.display = 'none';
+        if (!assistsRecent) setTimeout(showMoraAssistsPopup, 60000);
+      }, 3000);
+    });
+  }
+
+  // ── App install toast ──────────────────────────────────────
+  function showAppInstallToast() {
+    var toast = document.getElementById('app-install-toast');
+    if (!toast) return;
+    toast.style.display = 'block';
+    setTimeout(function() { toast.style.display = 'none'; }, 12000);
+  }
+
+  var toastClose = document.getElementById('toast-close');
+  if (toastClose) toastClose.addEventListener('click', function() {
+    var toast = document.getElementById('app-install-toast');
+    if (toast) toast.style.display = 'none';
+  });
+
+  var toastHow = document.getElementById('toast-how');
+  if (toastHow) toastHow.addEventListener('click', function() {
+    var instr = document.getElementById('toast-instructions');
+    if (instr) instr.style.display = instr.style.display === 'none' ? 'block' : 'none';
+  });
+
+  // ── Orchestration ──────────────────────────────────────────
+  // App install toast — first visit only, after 10s
+  if (!visited) {
+    setTimeout(showAppInstallToast, 10000);
+    localStorage.setItem('mora_visited', 'true');
+  }
+
+  // Friday modal — Fridays only, once per browser
+  if (isFriday && !fridayAlreadyHandled) {
+    setTimeout(showFridayModal, 45000);
+  }
+
+  // Mora Assists popup — 24hr throttle, never conflicts with Friday modal
+  if (!assistsRecent) {
+    var assistsDelay = fridayCaptured ? 60000 : 90000;
+    if (!isFriday || fridayAlreadyHandled) {
+      setTimeout(showMoraAssistsPopup, assistsDelay);
+    }
+    // If Friday modal will show this session → do nothing, wait for next session
+  }
+
 })();
-// ── END Mora Assists Popup ─────────────────────────────────────
+// ── END Orchestrator ───────────────────────────────────────────
 </script>
 
 {% include '_sticky_affiliate_footer.html' %}
