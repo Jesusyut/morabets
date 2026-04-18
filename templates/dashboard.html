@@ -367,58 +367,61 @@
 </div>
 
 <!-- ── Mora Assists Popup ── -->
+<style>
+@keyframes maScaleIn {
+  from { opacity:0; transform:scale(0.92); }
+  to   { opacity:1; transform:scale(1); }
+}
+#assists-popup .ma-card { animation: maScaleIn 0.28s cubic-bezier(0.34,1.56,0.64,1) both; }
+</style>
 <div id="assists-popup"
-     style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
-  <div style="width:100%;max-width:620px;margin:0 1rem;background:#fff;border-radius:20px;overflow:hidden;border:2.5px solid #4CBB17;box-shadow:0 24px 64px rgba(0,0,0,0.18);position:relative;">
+     style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
+  <div class="ma-card" style="width:100%;max-width:380px;margin:0 1rem;background:#0F2406;border-radius:24px;border:2px solid #4CBB17;box-shadow:0 24px 64px rgba(0,0,0,0.35);position:relative;padding:28px 24px 24px;">
     <!-- Close -->
-    <button onclick="document.getElementById('assists-popup').style.display='none'"
-            style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:#6b9e5a;cursor:pointer;line-height:1;z-index:1;">×</button>
-    <!-- Header -->
-    <div style="background:#0f2406;padding:30px 28px 24px;text-align:center;">
-      <div style="color:#4CBB17;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;">MORA ASSISTS</div>
-      <div style="color:white;font-size:24px;font-weight:900;line-height:1.25;margin-bottom:10px;">5 Daily Power Plays.<br>Analyzed. Ranked. Delivered.</div>
-      <div style="color:#6b9e5a;font-size:13px;line-height:1.5;">Every morning at 10:30 AM ET.<br>Before the lines move.</div>
+    <button onclick="closeMoraModal()"
+            style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;color:rgba(255,255,255,0.4);cursor:pointer;line-height:1;z-index:1;">×</button>
+    <!-- Badge row -->
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;">
+      <span style="background:#4CBB17;color:#0F2406;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border-radius:20px;">⚡ LIVE TODAY</span>
+      <span style="background:rgba(255,255,255,0.1);color:#6B9E5A;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border-radius:20px;">10:30 AM ET</span>
     </div>
-    <!-- Body -->
-    <div style="padding:28px 28px 26px;">
-      <!-- Checkmarks -->
-      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:22px;">
-        <div style="display:flex;align-items:flex-start;gap:12px;">
-          <div style="width:26px;height:26px;background:#4CBB17;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
-            <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <span style="font-size:13px;color:#1a3d0a;font-weight:600;line-height:1.5;">Every prop on today's board analyzed for true no-vig probability</span>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:12px;">
-          <div style="width:26px;height:26px;background:#4CBB17;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
-            <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <span style="font-size:13px;color:#1a3d0a;font-weight:600;line-height:1.5;">5 best matchup + value plays selected — with one sentence explaining why each one hits today specifically</span>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:12px;">
-          <div style="width:26px;height:26px;background:#4CBB17;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
-            <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <span style="font-size:13px;color:#1a3d0a;font-weight:600;line-height:1.5;">Flat stakes. No parlay traps. The math compounds over 162 games.</span>
-        </div>
+    <!-- Headline -->
+    <div style="text-align:center;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:32px;line-height:1.1;margin-bottom:8px;">
+      Best probability.<br>Best payout.<br>5 picks. Every morning.
+    </div>
+    <!-- Subtext -->
+    <p style="text-align:center;color:#6B9E5A;font-family:'Inter',sans-serif;font-size:14px;line-height:1.55;margin:0 0 14px;">
+      We do the math so you don't have to.<br>The best plays land in your inbox before lines move.
+    </p>
+    <!-- Social proof -->
+    <div style="display:flex;gap:8px;background:rgba(255,255,255,0.05);border-radius:12px;padding:12px;margin-bottom:18px;">
+      <div style="flex:1;text-align:center;">
+        <div style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;line-height:1;">300+</div>
+        <div style="color:#6B9E5A;font-family:'Inter',sans-serif;font-size:10px;margin-top:2px;">props scanned</div>
       </div>
-      <!-- Trial note -->
-      <p style="font-size:11px;color:#a0bf96;text-align:center;margin:0 0 18px;line-height:1.5;">3-day trials are sent by invite via email.<br>Keep an eye on your inbox.</p>
-      <!-- Primary CTA -->
+      <div style="flex:1;text-align:center;border-left:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.08);">
+        <div style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;line-height:1;">MLB+NHL</div>
+        <div style="color:#6B9E5A;font-family:'Inter',sans-serif;font-size:10px;margin-top:2px;">daily</div>
+      </div>
+      <div style="flex:1;text-align:center;">
+        <div style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;line-height:1;">$9.99</div>
+        <div style="color:#6B9E5A;font-family:'Inter',sans-serif;font-size:10px;margin-top:2px;">to start</div>
+      </div>
+    </div>
+    <!-- Primary CTA -->
+    <a href="https://buy.stripe.com/8x2eV6e9p4Pn6cO8CV4Vy06"
+       target="_blank" rel="noopener"
+       style="display:block;width:100%;box-sizing:border-box;background:#4CBB17;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;text-transform:uppercase;letter-spacing:1px;text-decoration:none;text-align:center;padding:16px;border-radius:14px;box-shadow:0 4px 20px rgba(76,187,23,0.4);margin-bottom:14px;">
+      Get Today's Picks — $9.99 →
+    </a>
+    <!-- Secondary link -->
+    <p style="text-align:center;margin:0;">
       <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
          target="_blank" rel="noopener"
-         style="display:block;width:100%;background:#4CBB17;color:#fff;font-size:15px;font-weight:800;text-decoration:none;padding:14px 0;border-radius:10px;text-align:center;letter-spacing:.3px;margin-bottom:14px;">
-        Subscribe — $28.99/month →
+         style="font-family:'Inter',sans-serif;font-size:12px;color:#6B9E5A;text-decoration:underline;">
+        Subscribe for daily picks — $28.99/mo
       </a>
-      <!-- Secondary link -->
-      <p style="text-align:center;margin:0;">
-        <a href="https://buy.stripe.com/8x2eV6e9p4Pn6cO8CV4Vy06"
-           target="_blank" rel="noopener"
-           style="font-size:12px;color:#6b9e5a;text-decoration:underline;">
-          Get 1 day's slate only — $9.99
-        </a>
-      </p>
-    </div>
+    </p>
   </div>
 </div>
 
@@ -431,30 +434,49 @@
 </div>
 
 <!-- ── Friday Picks Modal ── -->
+<style>
+@keyframes fpScaleIn {
+  from { opacity:0; transform:scale(0.92); }
+  to   { opacity:1; transform:scale(1); }
+}
+#friday-modal .fp-card { animation: fpScaleIn 0.28s cubic-bezier(0.34,1.56,0.64,1) both; }
+</style>
 <div id="friday-modal"
      style="display:none;position:fixed;inset:0;z-index:10002;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
-  <div style="width:100%;max-width:420px;margin:0 1rem;background:#0F2406;border-radius:20px;overflow:hidden;border:2px solid #4CBB17;box-shadow:0 24px 64px rgba(0,0,0,0.3);position:relative;">
+  <div class="fp-card" style="width:100%;max-width:360px;margin:0 1rem;background:#fff;border-radius:24px;border:2px solid #4CBB17;box-shadow:0 24px 64px rgba(0,0,0,0.2);position:relative;padding:28px 24px 24px;">
+    <!-- Close -->
     <button id="friday-modal-close"
-            style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:#6b9e5a;cursor:pointer;line-height:1;z-index:1;">×</button>
-    <div style="padding:32px 28px 28px;">
-      <div style="color:#4CBB17;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;">FREE — EVERY FRIDAY</div>
-      <h2 style="color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:28px;line-height:1.2;margin-bottom:10px;">Get This Week's<br>Best Play Free.</h2>
-      <p style="color:#6B9E5A;font-size:13px;line-height:1.65;margin-bottom:20px;">Every Friday we send one curated power play from the week's board — no subscription required. Drop your email and it lands in your inbox before first pitch.</p>
-      <form id="friday-form" style="display:flex;flex-direction:column;gap:10px;">
-        <input type="email" id="friday-email" placeholder="your@email.com" autocomplete="email" required
-               style="width:100%;box-sizing:border-box;background:#1a3d0a;border:1px solid rgba(76,187,23,0.3);border-radius:10px;padding:12px 14px;font-family:'Inter',sans-serif;font-size:14px;color:#fff;outline:none;">
-        <button type="submit" id="friday-submit"
-                style="width:100%;background:#4CBB17;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:0.5px;padding:13px;border:none;border-radius:10px;cursor:pointer;">
-          Send Me Friday's Pick →
-        </button>
-      </form>
-      <div id="friday-success" style="display:none;text-align:center;padding:16px 0 6px;">
-        <div style="font-size:36px;margin-bottom:8px;">✅</div>
-        <p style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:19px;margin:0;">You're in. Check your inbox Friday.</p>
-      </div>
-      <div style="text-align:center;margin-top:14px;">
-        <button id="friday-dismiss-btn" style="background:none;border:none;color:#6B9E5A;font-size:12px;cursor:pointer;text-decoration:underline;">No thanks</button>
-      </div>
+            style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;color:rgba(255,255,255,0.4);cursor:pointer;line-height:1;z-index:1;">×</button>
+    <!-- Badge -->
+    <div style="text-align:center;margin-bottom:10px;">
+      <span style="background:#4CBB17;color:#fff;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:20px;">🎁 FREE THIS WEEK</span>
+    </div>
+    <!-- Headline -->
+    <div style="text-align:center;color:#0F2406;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:28px;line-height:1.1;margin-bottom:8px;">
+      Get This Week's<br>Best Play Free.
+    </div>
+    <!-- Body -->
+    <p style="text-align:center;color:#1A3D0A;font-family:'Inter',sans-serif;font-size:13px;line-height:1.6;margin:0 0 18px;">
+      One pick. The best one from<br>this week's board. Free.<br>Drop your email. That's it.
+    </p>
+    <!-- Form -->
+    <form id="friday-form" style="display:flex;flex-direction:column;gap:8px;">
+      <input type="email" id="friday-email" placeholder="your@email.com" autocomplete="email" required
+             style="width:100%;box-sizing:border-box;background:#F5FAF2;border:1.5px solid #4CBB17;border-radius:12px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:15px;color:#0F2406;outline:none;">
+      <button type="submit" id="friday-submit"
+              style="width:100%;background:#0F2406;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:17px;text-transform:uppercase;letter-spacing:1px;padding:15px;border:none;border-radius:12px;cursor:pointer;margin-top:8px;">
+        Send Me The Pick →
+      </button>
+    </form>
+    <!-- Success state -->
+    <div id="friday-success" style="display:none;text-align:center;padding:16px 0 6px;">
+      <div style="font-size:40px;margin-bottom:10px;color:#4CBB17;">✓</div>
+      <p style="color:#0F2406;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;margin:0 0 6px;">You're in. Check your inbox.</p>
+      <p style="color:#6B9E5A;font-family:'Inter',sans-serif;font-size:12px;margin:0;">We pick the best one from this week's board.</p>
+    </div>
+    <!-- Dismiss -->
+    <div style="text-align:center;margin-top:14px;">
+      <button id="friday-dismiss-btn" style="background:none;border:none;color:#6B9E5A;font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;text-decoration:none;">No thanks</button>
     </div>
   </div>
 </div>
@@ -1739,9 +1761,9 @@
 
 <script>
 // ── Modals & Toasts Orchestrator ───────────────────────────────
-(function() {
 
-  // ── Stripe success banner ──────────────────────────────────
+// ── Stripe success banner ──────────────────────────────────────
+(function() {
   var params = new URLSearchParams(window.location.search);
   if (params.get('assists') === 'success') {
     var banner = document.getElementById('assists-success-banner');
@@ -1750,59 +1772,63 @@
     url.searchParams.delete('assists');
     window.history.replaceState({}, '', url.toString());
   }
+})();
 
-  // ── State ──────────────────────────────────────────────────
-  var visited           = localStorage.getItem('mora_visited');
-  var fridayCaptured    = localStorage.getItem('mora_friday_captured');
-  var fridayDismissed   = localStorage.getItem('mora_friday_dismissed');
-  var assistsLast       = localStorage.getItem('mora_assists_popup_last');
-  var today             = new Date().getDay(); // 5 = Friday
+// ── Mora Assists modal ─────────────────────────────────────────
+function closeMoraModal() {
+  var popup = document.getElementById('assists-popup');
+  if (popup) popup.style.display = 'none';
+  localStorage.setItem('mora_assists_last_shown', Date.now().toString());
+}
 
-  // Show Wednesday through Friday
-  // Wednesday = 3, Thursday = 4, Friday = 5
-  var isFriday             = today >= 3 && today <= 5;
-  var fridayAlreadyHandled = fridayCaptured || fridayDismissed;
-  var oneDayAgo            = Date.now() - 86400000;
-  var assistsRecent        = assistsLast && parseInt(assistsLast) > oneDayAgo;
-
-  var fridayShownThisSession = false;
-
-  // ── Mora Assists popup ─────────────────────────────────────
-  function showMoraAssistsPopup() {
-    if (fridayShownThisSession) return;
-    var popup = document.getElementById('assists-popup');
-    if (!popup) return;
-    popup.style.display = 'flex';
-    localStorage.setItem('mora_assists_popup_last', Date.now().toString());
-  }
+(function() {
+  var last      = localStorage.getItem('mora_assists_last_shown');
+  var oneDayAgo = Date.now() - 86400000;
+  var shouldShow = !last || parseInt(last) < oneDayAgo;
 
   var popup = document.getElementById('assists-popup');
   if (popup) {
     popup.addEventListener('click', function(e) {
-      if (e.target === popup) popup.style.display = 'none';
+      if (e.target === popup) closeMoraModal();
     });
   }
 
-  // ── Friday modal ───────────────────────────────────────────
-  function showFridayModal() {
-    var modal = document.getElementById('friday-modal');
-    if (!modal) return;
-    fridayShownThisSession = true;
-    modal.style.display = 'flex';
+  if (shouldShow) {
+    // Flag this session so Friday modal won't double-fire
+    setTimeout(function() {
+      var p = document.getElementById('assists-popup');
+      if (!p) return;
+      // Don't show if friday modal is currently visible
+      var fm = document.getElementById('friday-modal');
+      if (fm && fm.style.display === 'flex') return;
+      localStorage.setItem('mora_assists_shown_session', 'true');
+      p.style.display = 'flex';
+      localStorage.setItem('mora_assists_last_shown', Date.now().toString());
+    }, 45000);
   }
+})();
 
-  function dismissFridayModal() {
+// ── Friday email capture modal ─────────────────────────────────
+(function() {
+  var isSendWindow = new Date().getDay() >= 3 && new Date().getDay() <= 5;
+  var captured     = localStorage.getItem('mora_friday_captured');
+  var dismissed    = localStorage.getItem('mora_friday_dismissed');
+  var moraShown    = localStorage.getItem('mora_assists_shown_session');
+
+  function closeFridayModal() {
     var modal = document.getElementById('friday-modal');
     if (modal) modal.style.display = 'none';
-    localStorage.setItem('mora_friday_dismissed', 'true');
-    // Let Mora Assists show after 30s gap
-    if (!assistsRecent) setTimeout(showMoraAssistsPopup, 30000);
   }
 
-  var fridayCloseBtn   = document.getElementById('friday-modal-close');
-  var fridayDismissBtn = document.getElementById('friday-dismiss-btn');
-  if (fridayCloseBtn)   fridayCloseBtn.addEventListener('click', dismissFridayModal);
-  if (fridayDismissBtn) fridayDismissBtn.addEventListener('click', dismissFridayModal);
+  function dismissFriday() {
+    closeFridayModal();
+    localStorage.setItem('mora_friday_dismissed', 'true');
+  }
+
+  var closeBtn   = document.getElementById('friday-modal-close');
+  var dismissBtn = document.getElementById('friday-dismiss-btn');
+  if (closeBtn)   closeBtn.addEventListener('click', dismissFriday);
+  if (dismissBtn) dismissBtn.addEventListener('click', dismissFriday);
 
   var fridayForm = document.getElementById('friday-form');
   if (fridayForm) {
@@ -1816,30 +1842,39 @@
         await fetch('/api/gate-signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email, name: '', source: 'friday_picks_capture' })
+          body: JSON.stringify({ email: email, name: '', source: 'friday_capture' })
         });
       } catch(err) {}
       localStorage.setItem('mora_friday_captured', 'true');
       localStorage.setItem('mora_friday_dismissed', 'true');
       var formEl    = document.getElementById('friday-form');
       var successEl = document.getElementById('friday-success');
-      if (formEl)    formEl.style.display   = 'none';
+      if (formEl)    formEl.style.display = 'none';
       if (successEl) successEl.style.display = 'block';
-      // Close after 3s; warmer lead → Mora Assists after 60s
-      setTimeout(function() {
-        var modal = document.getElementById('friday-modal');
-        if (modal) modal.style.display = 'none';
-        if (!assistsRecent) setTimeout(showMoraAssistsPopup, 60000);
-      }, 3000);
+      setTimeout(closeFridayModal, 3000);
     });
   }
 
-  // ── App install toast ──────────────────────────────────────
-  function showAppInstallToast() {
+  if (isSendWindow && !captured && !dismissed && !moraShown) {
+    setTimeout(function() {
+      var modal = document.getElementById('friday-modal');
+      if (!modal) return;
+      // Don't show if Mora Assists already appeared this session
+      if (localStorage.getItem('mora_assists_shown_session')) return;
+      modal.style.display = 'flex';
+    }, 45000);
+  }
+})();
+
+// ── App install toast ──────────────────────────────────────────
+(function() {
+  var visited = localStorage.getItem('mora_visited');
+
+  function showToast() {
     var toast = document.getElementById('app-install-toast');
     if (!toast) return;
     toast.style.display = 'block';
-    setTimeout(function() { toast.style.display = 'none'; }, 12000);
+    setTimeout(function() { if (toast) toast.style.display = 'none'; }, 12000);
   }
 
   var toastClose = document.getElementById('toast-close');
@@ -1854,28 +1889,12 @@
     if (instr) instr.style.display = instr.style.display === 'none' ? 'block' : 'none';
   });
 
-  // ── Orchestration ──────────────────────────────────────────
-  // App install toast — first visit only, after 10s
   if (!visited) {
-    setTimeout(showAppInstallToast, 10000);
+    setTimeout(showToast, 10000);
     localStorage.setItem('mora_visited', 'true');
   }
-
-  // Friday modal — Fridays only, once per browser
-  if (isFriday && !fridayAlreadyHandled) {
-    setTimeout(showFridayModal, 45000);
-  }
-
-  // Mora Assists popup — 24hr throttle, never conflicts with Friday modal
-  if (!assistsRecent) {
-    var assistsDelay = fridayCaptured ? 60000 : 90000;
-    if (!isFriday || fridayAlreadyHandled) {
-      setTimeout(showMoraAssistsPopup, assistsDelay);
-    }
-    // If Friday modal will show this session → do nothing, wait for next session
-  }
-
 })();
+
 // ── END Orchestrator ───────────────────────────────────────────
 </script>
 

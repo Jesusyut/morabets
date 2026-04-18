@@ -1,0 +1,288 @@
+Rebuild both popups in dashboard.html.
+Two changes only — the Mora Assists popup
+and the Free Picks email capture modal.
+Read dashboard.html completely first.
+Do not touch anything else.
+
+=== MORA ASSISTS POPUP REBUILD ===
+
+Find the existing Mora Assists popup modal.
+Replace its entire inner content.
+
+TRIGGER:
+Show after 45 seconds on page.
+Once per 24 hours per browser.
+Store timestamp in localStorage:
+mora_assists_last_shown
+
+Never show if mora_assists_last_shown
+is less than 86400000ms ago.
+
+DESIGN:
+Centered modal. Max-width 380px.
+Dark #0F2406 background.
+Kelly green #4CBB17 border-2.
+Border-radius: 24px.
+Backdrop: black/60 blur overlay.
+Subtle scale-in animation on appear.
+
+LAYOUT TOP TO BOTTOM:
+
+--- BADGE ROW ---
+Two badges side by side centered:
+
+Badge 1 (kelly green bg, dark text):
+"⚡ LIVE TODAY"
+Font: 10px bold uppercase tracking-widest
+
+Badge 2 (white/10 bg, muted text):
+"10:30 AM ET"
+Font: 10px bold uppercase tracking-widest
+
+--- HEADLINE ---
+Font: Barlow Condensed Black
+Size: 32px
+Color: white
+Text-align: center
+Line-height: 1.1
+Margin-top: 12px
+
+"Best probability.
+Best payout.
+5 picks. Every morning."
+
+--- SUBTEXT ---
+Font: Inter 14px
+Color: #6B9E5A (muted green)
+Text-align: center
+Margin-top: 8px
+
+"We do the math so you don't have to.
+The best plays land in your inbox
+before lines move."
+
+--- SOCIAL PROOF ROW ---
+3 small stats in a row.
+Kelly green numbers. Muted labels.
+Font: Barlow Condensed Bold 20px for number
+Font: Inter 10px for label
+
+Stat 1: "300+" / "props scanned"
+Stat 2: "MLB+NHL" / "daily"
+Stat 3: "$9.99" / "to start"
+
+Background: white/5
+Border-radius: 12px
+Padding: 12px
+Margin: 12px 0
+
+--- PRIMARY CTA ---
+Full width button.
+Background: #4CBB17 (kelly green)
+Text: white
+Font: Barlow Condensed Black 18px
+Uppercase. Tracking-wide.
+Padding: 16px
+Border-radius: 14px
+Box-shadow: 0 4px 20px rgba(76,187,23,0.4)
+
+Button text:
+"Get Today's Picks — $9.99 →"
+
+href: https://buy.stripe.com/8x2eV6e9p4Pn6cO8CV4Vy06
+
+--- SECONDARY LINK ---
+Centered below button.
+Font: Inter 12px
+Color: #6B9E5A
+
+"Subscribe for daily picks — $28.99/mo"
+href: https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05
+
+--- DISMISS ---
+X button top-right corner of modal.
+Small. White/40 color.
+On click: close modal.
+Set localStorage mora_assists_last_shown
+to current timestamp.
+
+--- TIMING LOGIC ---
+
+// Show once per 24 hours
+const last = localStorage.getItem(
+  'mora_assists_last_shown'
+)
+const oneDayAgo = Date.now() - 86400000
+const shouldShow = !last || 
+  parseInt(last) < oneDayAgo
+
+if (shouldShow) {
+  setTimeout(() => {
+    document.getElementById(
+      'mora-assists-modal'
+    ).classList.remove('hidden')
+  }, 45000)
+}
+
+function closeMoraModal() {
+  document.getElementById(
+    'mora-assists-modal'
+  ).classList.add('hidden')
+  localStorage.setItem(
+    'mora_assists_last_shown',
+    Date.now().toString()
+  )
+}
+
+=== FREE PICKS EMAIL CAPTURE REBUILD ===
+
+Find the existing Friday modal.
+Replace its entire inner content.
+
+TRIGGER:
+Show Wednesday through Friday
+(today.getDay() >= 3 && <= 5)
+After 45 seconds.
+Not if mora_assists_last_shown 
+was set in this session.
+Not if mora_friday_captured = true
+in localStorage.
+
+DESIGN:
+Centered modal. Max-width 360px.
+White background.
+Kelly green border-2.
+Border-radius: 24px.
+Backdrop: black/60 blur.
+Same scale-in animation.
+
+LAYOUT TOP TO BOTTOM:
+
+--- TOP BADGE ---
+Kelly green background pill.
+Centered.
+Text: "🎁 FREE THIS WEEK"
+Font: 10px bold uppercase
+
+--- HEADLINE ---
+Font: Barlow Condensed Black 28px
+Color: #0F2406 (dark)
+Text-align: center
+Line-height: 1.1
+Margin-top: 10px
+
+"Get This Week's
+Best Play Free."
+
+--- BODY ---
+Font: Inter 13px
+Color: #1A3D0A
+Text-align: center
+Margin-top: 8px
+
+"One pick. The best one from
+this week's board. Free.
+Drop your email. That's it."
+
+--- EMAIL INPUT ---
+Full width.
+Border: 1.5px solid #4CBB17
+Border-radius: 12px
+Padding: 14px 16px
+Font: Inter 15px
+Placeholder: "your@email.com"
+Background: #F5FAF2
+
+--- CTA BUTTON ---
+Full width.
+Background: #0F2406 (dark)
+Text: white
+Font: Barlow Condensed Black 17px
+Uppercase. Tracking-wide.
+Padding: 15px
+Border-radius: 12px
+Margin-top: 8px
+
+Button text (first person voice):
+"Send Me The Pick →"
+
+On click:
+1. Validate email
+2. POST to ZAPIER_WEBHOOK_URL
+   with email + source: 'friday_capture'
+3. Show success state:
+   Green checkmark icon
+   "You're in. Check your inbox."
+   Small text: "We pick the best one
+   from this week's board."
+4. Set localStorage:
+   mora_friday_captured = true
+   mora_friday_dismissed = true
+5. Auto-close modal after 3 seconds
+
+--- DISMISS ---
+"No thanks" text link centered below.
+Font: Inter 11px
+Color: #6B9E5A
+On click: 
+  close modal
+  set mora_friday_dismissed = true
+
+--- TIMING LOGIC ---
+
+const isSendWindow = 
+  new Date().getDay() >= 3 &&
+  new Date().getDay() <= 5
+
+const captured = localStorage.getItem(
+  'mora_friday_captured'
+)
+const dismissed = localStorage.getItem(
+  'mora_friday_dismissed'
+)
+const moraShownThisSession = 
+  localStorage.getItem(
+    'mora_assists_shown_session'
+  )
+
+if (
+  isSendWindow &&
+  !captured &&
+  !dismissed &&
+  !moraShownThisSession
+) {
+  setTimeout(() => {
+    document.getElementById(
+      'friday-modal'
+    ).classList.remove('hidden')
+  }, 45000)
+}
+
+// When Mora Assists modal shows
+// set session flag so Friday modal
+// does not show same session
+function showMoraAssistsModal() {
+  localStorage.setItem(
+    'mora_assists_shown_session',
+    'true'
+  )
+  // ... show the modal
+}
+
+=== CONSTRAINTS ===
+- Only touch dashboard.html
+- Do not touch app.py
+- Do not touch any routes
+- Do not touch Meta or TikTok pixel
+- Do not touch odds fetching
+- Two modals never show simultaneously
+- Both modals are mobile responsive
+- The kelly green CTA button on the
+  Mora Assists popup has the glow
+  box-shadow — this is intentional
+  it makes the button jump on dark bg
+- First-person CTA copy is intentional
+  ("Send Me The Pick" not "Submit")
+- Badge row on Mora Assists is intentional
+  creates visual anchoring at top
+  before the eye reads the headline
