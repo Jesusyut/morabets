@@ -944,7 +944,17 @@ def format_picks_email(picks_data):
   </div>
   <div class="footer">
     Mora Assists · $28.99/month · 3-day free trial<br>
-    <a href="#">Manage subscription</a> · <a href="#">Unsubscribe</a>
+    <p style="text-align:center;margin:8px 0;font-size:12px;color:#6B9E5A;">
+      <a href="https://billing.stripe.com/p/login/8x2dR26GX2Hf9p05qJ4Vy00"
+         style="color:#6B9E5A;text-decoration:none;">
+        Manage subscription
+      </a>
+      &nbsp;·&nbsp;
+      <a href="https://billing.stripe.com/p/login/8x2dR26GX2Hf9p05qJ4Vy00"
+         style="color:#6B9E5A;text-decoration:none;">
+        Cancel anytime
+      </a>
+    </p>
   </div>
 </div>
 </body>

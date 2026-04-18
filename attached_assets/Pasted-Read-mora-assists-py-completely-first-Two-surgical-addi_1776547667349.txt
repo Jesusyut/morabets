@@ -1,0 +1,84 @@
+Read mora_assists.py completely first.
+Two surgical additions only.
+Do not touch anything else.
+
+=== FIX 1: ADD PORTAL LINK TO 
+WELCOME EMAIL ===
+
+Find the welcome email function in
+mora_assists.py. It likely sends when
+a new subscriber is added via Zapier.
+
+Find the HTML body of the welcome email.
+
+Find the footer or sign-off section.
+
+Add this line before the closing 
+footer content:
+
+<p style="text-align:center;
+          margin-top:16px;
+          font-size:13px;
+          color:#6B9E5A;">
+  <a href="https://billing.stripe.com/p/login/8x2dR26GX2Hf9p05qJ4Vy00"
+     style="color:#4CBB17;
+            text-decoration:none;
+            font-weight:600;">
+    Manage your subscription →
+  </a>
+</p>
+
+This gives every new subscriber
+immediate access to cancel, update
+payment, or manage billing without
+emailing you directly.
+
+
+=== FIX 2: ADD PORTAL LINK TO 
+DAILY PICKS EMAIL FOOTER ===
+
+Find format_picks_email() in mora_assists.py.
+
+Find the HTML footer section of the
+picks email template.
+
+It likely contains unsubscribe text
+or a sign-off from Jesus / Mora Bets.
+
+Add this line in the footer alongside
+the existing footer content:
+
+<p style="text-align:center;
+          margin:8px 0;
+          font-size:12px;
+          color:#6B9E5A;">
+  <a href="https://billing.stripe.com/p/login/8x2dR26GX2Hf9p05qJ4Vy00"
+     style="color:#6B9E5A;
+            text-decoration:none;">
+    Manage subscription
+  </a>
+  &nbsp;·&nbsp;
+  <a href="https://billing.stripe.com/p/login/8x2dR26GX2Hf9p05qJ4Vy00"
+     style="color:#6B9E5A;
+            text-decoration:none;">
+    Cancel anytime
+  </a>
+</p>
+
+
+=== CONSTRAINTS ===
+- Only touch mora_assists.py
+- Only add the two HTML snippets above
+- Do not change any email logic
+- Do not change SendGrid configuration
+- Do not change subscriber loading
+- Do not change pick selection
+- Do not change any scheduler logic
+- Do not change dashboard.html
+- Do not change app.py
+- Delivery pipeline is completely
+  unchanged — only the email HTML
+  content gains these two links
+- The portal link is the same in both:
+  https://billing.stripe.com/p/login/
+  8x2dR26GX2Hf9p05qJ4Vy00
