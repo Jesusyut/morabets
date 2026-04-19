@@ -2125,9 +2125,9 @@ def send_board_email():
 
         quality = [
             p for p in all_props
-            if p.get('no_vig_prob', 0) >= 52
+            if p.get('no_vig_prob', 0) >= 55
             and p.get('best_over_price', 0) != 0
-            and p.get('best_over_price', 0) > -205
+            and p.get('best_over_price', 0) > -235
             and p.get('player', '')
             and not any(
                 x in p.get('player', '')
