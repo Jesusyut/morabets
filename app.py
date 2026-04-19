@@ -2030,27 +2030,27 @@ scheduler = BackgroundScheduler()
 
 # Schedule jobs
 
-# MLB props — 10 AM ET daily (sharp consensus window)
+# MLB props — 7:00 AM PHX daily (sharp consensus window)
 scheduler.add_job(
     func=lambda: _fetch_and_process_mlb_props(),
     trigger="cron",
-    hour=10,
+    hour=7,
     minute=0,
-    timezone="America/New_York",
+    timezone="America/Phoenix",
     id="mlb_props_daily",
-    name="MLB Props Daily 10AM ET",
+    name="MLB Props Daily 7AM PHX",
     replace_existing=True
 )
 
-# NHL props — 10:15 AM ET daily (15 min offset to stagger API calls)
+# NHL props — 7:15 AM PHX daily (15 min offset to stagger API calls)
 scheduler.add_job(
     func=lambda: _fetch_and_process_nhl_props(),
     trigger="cron",
-    hour=10,
+    hour=7,
     minute=15,
-    timezone="America/New_York",
+    timezone="America/Phoenix",
     id="nhl_props_daily",
-    name="NHL Props Daily 10:15AM ET",
+    name="NHL Props Daily 7:15AM PHX",
     replace_existing=True
 )
 
@@ -2058,11 +2058,11 @@ scheduler.add_job(
 scheduler.add_job(
     func=update_odds,
     trigger="cron",
-    hour="10,18",
+    hour="7,15",
     minute=30,
-    timezone="America/New_York",
+    timezone="America/Phoenix",
     id="game_lines_twice_daily",
-    name="Game Lines 10:30AM + 6:30PM ET",
+    name="Game Lines 7:30AM + 3:30PM PHX",
     replace_existing=True
 )
 
@@ -2085,15 +2085,15 @@ scheduler.add_job(
     replace_existing=True
 )
 
-# Mora Assists — send daily picks at 9:00 AM CST
+# Mora Assists — send daily picks at 6:00 AM PHX (= 9:00 AM ET)
 scheduler.add_job(
     func=lambda: run_daily_assists(),
     trigger="cron",
-    hour=9,
+    hour=6,
     minute=0,
-    timezone="America/Chicago",
+    timezone="America/Phoenix",
     id="mora_assists_daily",
-    name="Mora Assists Daily Picks 9:00AM CST",
+    name="Mora Assists Daily Picks 6:00AM PHX",
     replace_existing=True,
     misfire_grace_time=3600
 )
@@ -2226,11 +2226,11 @@ def background_initializer():
             scheduler.add_job(
                 func=_run_assists,
                 trigger='cron',
-                hour=9,
+                hour=6,
                 minute=0,
-                timezone='America/Chicago',
+                timezone='America/Phoenix',
                 id='mora_assists_daily',
-                name='Mora Assists 9:00AM CST',
+                name='Mora Assists 6:00AM PHX',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
@@ -2248,11 +2248,11 @@ def background_initializer():
             scheduler.add_job(
                 func=_fetch_and_process_mlb_props,
                 trigger='cron',
-                hour=10,
+                hour=7,
                 minute=0,
-                timezone='America/New_York',
+                timezone='America/Phoenix',
                 id='mlb_props_daily',
-                name='MLB Props Daily 10AM ET',
+                name='MLB Props Daily 7AM PHX',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
@@ -2266,11 +2266,11 @@ def background_initializer():
             scheduler.add_job(
                 func=_fetch_and_process_nhl_props,
                 trigger='cron',
-                hour=10,
+                hour=7,
                 minute=15,
-                timezone='America/New_York',
+                timezone='America/Phoenix',
                 id='nhl_props_daily',
-                name='NHL Props Daily 10:15AM ET',
+                name='NHL Props Daily 7:15AM PHX',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
@@ -2284,11 +2284,11 @@ def background_initializer():
             scheduler.add_job(
                 func=send_board_email,
                 trigger='cron',
-                hour=14,
-                minute=30,
-                timezone='UTC',
+                hour=7,
+                minute=25,
+                timezone='America/Phoenix',
                 id='board_email_daily',
-                name='Board Email 8:30AM CST',
+                name='Board Email 7:25AM PHX',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
@@ -2302,11 +2302,11 @@ def background_initializer():
             scheduler.add_job(
                 func=update_odds,
                 trigger='cron',
-                hour='10,18',
+                hour='7,15',
                 minute=30,
-                timezone='America/New_York',
+                timezone='America/Phoenix',
                 id='game_lines_twice_daily',
-                name='Game Lines 10:30AM + 6:30PM ET',
+                name='Game Lines 7:30AM + 3:30PM PHX',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
