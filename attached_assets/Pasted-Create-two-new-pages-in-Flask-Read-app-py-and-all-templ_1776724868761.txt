@@ -1,0 +1,605 @@
+Create two new pages in Flask.
+Read app.py and all templates completely first.
+Do not touch anything else.
+
+=== ADD TWO ROUTES TO app.py ===
+
+@app.route('/casino')
+def casino_page():
+    return render_template('casino.html')
+
+@app.route('/crypto-guide')
+def crypto_guide_page():
+    return render_template('crypto_guide.html')
+
+Add both URLs to the sitemap.xml route:
+'https://morabets.com/casino'
+'https://morabets.com/crypto-guide'
+
+
+=== PAGE 1: templates/casino.html ===
+
+SEO title:
+"The Most Logical Way to Gamble Online
+Without Getting Destroyed | Mora Bets"
+
+Meta description:
+"Most online gamblers lose fast because
+they choose the worst games. Here are the
+smartest real-money options if your goal
+is to actually walk away up."
+
+This page is an ADVERTORIAL.
+It reads like an article.
+It does not look like a sales page.
+White background. Serif-feel body text.
+Max-width 680px centered. Mobile first.
+Short paragraphs. Never more than
+3 sentences per paragraph.
+Subheadings break up every 150 words.
+
+No nav links. Logo only at top left.
+Logo links back to morabets.com.
+
+Thin gray top bar above logo:
+Text: "SPONSORED CONTENT"
+Font: 10px gray uppercase tracking-widest
+Background: #F9FAFB
+
+Full page structure write exactly this
+copy word for word:
+
+─────────────────────────────
+TOP BAR
+─────────────────────────────
+"SPONSORED CONTENT"
+
+
+─────────────────────────────
+LOGO — Mora Bets (top left)
+─────────────────────────────
+
+
+─────────────────────────────
+HERO IMAGE PLACEHOLDER
+─────────────────────────────
+Dark green gradient banner.
+Height 200px. Full width.
+White text centered:
+"If You're Going To Gamble Online,
+Stop Choosing The Dumbest Games."
+Subtext: "A disciplined bettor's guide
+to actually giving yourself a chance."
+
+
+─────────────────────────────
+ARTICLE BODY
+─────────────────────────────
+All body text: Inter 16px #1A1A1A
+Line-height: 1.8
+Max-width: 680px centered
+Padding: 0 24px
+
+H2 style: Barlow Condensed Black
+28px #0F2406 uppercase
+
+OPENING PARAGRAPHS:
+
+Most people don't lose because they gamble.
+
+They lose because they choose the worst 
+games, bet emotionally, and treat every 
+session like a dopamine sprint instead 
+of a decision.
+
+The truth nobody tells you: not all 
+gambling is equal. Some games punish bad 
+decisions harder than others. Some house 
+edges are four times worse than others. 
+And most players never bother to learn 
+the difference.
+
+If your goal is to actually walk away 
+with money sometimes — or at least stop 
+donating as fast — the choice of game 
+matters more than anything else.
+
+Here is what the math actually says.
+
+─────────────────────────────
+FIRST INLINE CTA — appears early
+─────────────────────────────
+
+Small gray divider line above and below.
+Centered box. Light green background #E8F5E1.
+Border: 1px solid #4CBB17.
+Border-radius: 12px.
+Padding: 20px 24px.
+
+Text:
+"Want to play blackjack, baccarat,
+poker, and straight sports bets in
+one place? Bovada accepts CA and TX."
+
+Button (kelly green, full width):
+"Check Bovada →"
+href: https://record.revenuenetwork.com/_zStj_F7LspATcJdr7u8D2mNd7ZgqdRLk/1/
+target: _blank
+
+Small text below button:
+"Established 2011. No crypto required
+to get started. Credit card accepted."
+
+
+─────────────────────────────
+SECTION: NOT ALL GAMBLING IS EQUAL
+─────────────────────────────
+
+H2: "NOT ALL GAMBLING IS EQUAL"
+
+Slots exist for one reason.
+
+They are engineered to keep you playing.
+House edge on most slots runs between 
+5% and 15%. That means for every $100 
+you put in, the math takes $5 to $15 
+before you even start.
+
+Roulette looks flashy. American roulette 
+has a 5.26% house edge. European roulette 
+drops it to 2.7%. Neither is smart compared 
+to what's available.
+
+Parlays in sports betting feel exciting.
+They are the sportsbook's favorite product 
+for a reason — each leg compounds the 
+house edge. A four-team parlay at standard 
+juice gives the book roughly a 30% edge 
+before any of your picks matter.
+
+These are not your best options if you 
+care about the math.
+
+
+─────────────────────────────
+SECTION: THE THREE LOGICAL GAMES
+─────────────────────────────
+
+H2: "THE THREE GAMES WORTH PLAYING"
+
+
+SUBSECTION — inline subheading style
+Font: Barlow Condensed Bold 20px kelly green
+
+"1. Blackjack"
+
+The lowest house edge of any table game 
+when played with basic strategy. Usually 
+under 0.5%.
+
+That number only holds if you play 
+correctly. Learn basic strategy before 
+you sit down — it is a one-page chart 
+and it matters.
+
+The rules that separate disciplined 
+players from everyone else:
+
+→ Never take side bets. They add 
+   5-15% house edge on top.
+→ Never chase losses. The math does 
+   not care about your bad run.
+→ Set a loss limit before you sit.
+   Walk when you hit it.
+→ Do not mix decisions with alcohol.
+   This is obvious. Most people 
+   ignore it anyway.
+
+If you do not know basic strategy you 
+are donating at a slightly slower rate 
+than slots.
+
+
+"2. Baccarat"
+
+Simpler than blackjack. One real decision: 
+banker or player.
+
+Always bet banker. House edge on banker 
+is 1.06%. House edge on player is 1.24%. 
+Ignore tie bets — 14.4% edge, they exist 
+purely to extract money faster.
+
+Good for players who want fewer decisions 
+and less mental overhead. The bankroll 
+rules are identical to blackjack — fixed 
+amount before you sit, walk at your limit, 
+no chasing.
+
+
+"3. Poker"
+
+The only casino game where you play 
+against other people instead of the house.
+
+The house takes a small percentage of 
+each pot as rake. The rest is skill and 
+patience versus other players.
+
+If you are disciplined and can read 
+situations you have a real edge over 
+recreational players who play emotionally.
+
+If you tilt easily or play impulsively 
+start with blackjack first. Poker rewards 
+patience above everything.
+
+
+"4. Straight Sports Bets"
+
+A moneyline or spread bet is one decision 
+with transparent odds. The house edge 
+comes from the vig — usually 4-5% on 
+standard -110 lines.
+
+That is far better than a parlay, which 
+multiplies the vig on every leg.
+
+Straight bets are where discipline and 
+information give you the best real shot 
+at a positive expected value over time.
+
+
+─────────────────────────────
+SECOND INLINE CTA — mid-article
+─────────────────────────────
+
+Same green box style as first CTA.
+
+Text:
+"Blackjack, baccarat, poker, and 
+straight sports bets all on one 
+platform. Bovada has been operating 
+since 2011 and accepts CA and TX."
+
+Button:
+"See Bovada →"
+href: https://record.revenuenetwork.com/_zStj_F7LspATcJdr7u8D2mNd7ZgqdRLk/1/
+target: _blank
+
+Small text: "New players get a welcome 
+bonus on first deposit."
+
+
+─────────────────────────────
+SECTION: THE DISCIPLINE RULES
+─────────────────────────────
+
+H2: "THE RULES THAT ACTUALLY PROTECT 
+YOUR BANKROLL"
+
+This part is not exciting. It is 
+the difference between players who 
+last and players who donate.
+
+Six rules every disciplined player 
+follows:
+
+1. Set a fixed bankroll before every 
+session. When it is gone the session 
+is over. No exceptions.
+
+2. Define a win target. If you are up 
+40% of your session bankroll — walk. 
+Most players give it all back.
+
+3. Never chase losses. You are not 
+owed a comeback. The math does not 
+remember your bad run.
+
+4. Avoid side bets in every game. 
+They are designed to look appealing 
+and they consistently extract money.
+
+5. Avoid martingale systems. They 
+feel logical and they destroy 
+bankrolls. If this needs explaining 
+look up the table limit problem.
+
+6. Play only on platforms that are 
+established and pay out. 
+
+A platform that has been operating 
+since 2011 with documented payouts 
+is meaningfully different from 
+a site that appeared last month.
+
+
+─────────────────────────────
+SECTION: CRYPTO OBJECTION
+─────────────────────────────
+
+H2: "WHAT ABOUT CRYPTO?"
+
+A lot of people assume online funding 
+is complicated because of crypto.
+
+It is easier than most people think.
+
+You can buy crypto in under 10 minutes 
+through Coinbase or Kraken, send it 
+once, and you are in. If you have ever 
+used a sportsbook app you can handle 
+this process.
+
+Credit card deposits are also available 
+on Bovada for players who prefer not 
+to deal with crypto at all.
+
+Not sure about the crypto process?
+We wrote a step-by-step beginner guide.
+
+Link:
+"How to fund Bovada without
+crypto experience →"
+href: /crypto-guide
+Color: kelly green #4CBB17
+
+
+─────────────────────────────
+FINAL CTA SECTION
+─────────────────────────────
+
+Light surface background #F5FAF2.
+Padding: 48px 24px.
+Max-width 480px centered.
+Text center.
+
+H3 Barlow Condensed Black 28px:
+"If You're Going To Play Online,
+Use A Platform Built For Smarter 
+Game Selection."
+
+Body text 15px:
+"Blackjack. Baccarat. Poker. 
+Straight sports bets on every game.
+
+Bovada has operated since 2011 and 
+accepts players in California and Texas 
+where DraftKings and FanDuel do not 
+offer straight sports betting."
+
+Primary button full width kelly green:
+"Check Bovada →"
+href: https://record.revenuenetwork.com/_zStj_F7LspATcJdr7u8D2mNd7ZgqdRLk/1/
+target: _blank
+
+Small text below:
+"For entertainment purposes only.
+Please gamble responsibly.
+18+ only."
+
+
+─────────────────────────────
+EMAIL CAPTURE
+─────────────────────────────
+
+White background section below CTA.
+Max-width 400px centered.
+Padding: 32px 24px.
+
+Small eyebrow kelly green caps:
+"FREE GUIDE"
+
+H3 Barlow Condensed:
+"Get The Logical Gambler
+Cheat Sheet."
+
+Body:
+"One page. The bankroll rules, 
+the game edges, and the mistakes 
+that cost most players the most money."
+
+Email input full width.
+Placeholder: "your@email.com"
+
+Button dark full width:
+"Send Me The Guide →"
+
+On submit: POST to Zapier webhook
+https://hooks.zapier.com/hooks/catch/22797974/uj2zhly/
+JSON: { email: email, 
+        source: 'casino_page_guide' }
+
+Success state:
+"✅ Check your inbox."
+
+
+─────────────────────────────
+FOOTER
+─────────────────────────────
+
+Dark #0F2406.
+Centered text.
+
+"← Back to morabets.com"
+Link: /dashboard
+Color: muted green
+
+"© 2026 Mora Bets — 
+Sports analytics and educational content.
+This is not financial or gambling advice.
+For entertainment purposes only."
+
+
+=== PAGE 2: templates/crypto_guide.html ===
+
+SEO title:
+"How To Fund Bovada Without Crypto
+Experience — Step by Step | Mora Bets"
+
+Meta description:
+"A beginner-friendly guide to making
+your first deposit on Bovada. Takes
+under 10 minutes. No crypto experience
+needed."
+
+Same article style as casino.html.
+No nav links. Logo only.
+Sponsored content bar at top.
+
+FULL CONTENT:
+
+HERO:
+Dark banner.
+"How To Use Bovada If You've 
+Never Bought Crypto Before."
+Subtext: "Takes under 10 minutes.
+You do not need to understand 
+blockchain."
+
+OPENING:
+
+The number one reason people do not 
+use offshore sportsbooks and casinos 
+is not the platform — it is the 
+funding process.
+
+Crypto sounds complicated if you have 
+never done it. It is not.
+
+Here is the exact process step by step 
+for someone doing this for the first time.
+
+
+STEP BY STEP NUMBERED LIST:
+Large step numbers kelly green.
+Each step has a subheading and 
+2-3 short paragraphs.
+
+Step 1: Download Coinbase or Kraken
+
+Both are legitimate. Both are beginner 
+friendly. Coinbase has the simpler 
+interface for first-time buyers.
+
+Download the app. Create an account. 
+Verify your ID — this takes a few 
+minutes and is required by US law.
+
+Bitcoin and Ethereum both work on Bovada. 
+Bitcoin is more universally accepted.
+
+Step 2: Buy a small amount first
+
+Start with whatever your first deposit 
+will be plus $5-10 for network fees.
+
+Network fees are the cost of the 
+blockchain transaction. They are usually 
+$1-3 but budget more to be safe.
+
+Do not put your entire bankroll in 
+on the first transfer. Learn the 
+process with a small amount first.
+
+Step 3: Get your deposit address from Bovada
+
+Log into Bovada.
+Go to Cashier → Deposit → Crypto.
+Select Bitcoin or Ethereum.
+Copy the wallet address shown to you.
+
+This is the most important step.
+Wallet addresses are long strings of 
+characters. Copy the entire address.
+A single wrong character sends funds 
+to the wrong place permanently.
+
+Step 4: Send from Coinbase to Bovada
+
+In Coinbase tap Send.
+Paste the Bovada wallet address.
+Enter the amount.
+Review everything carefully.
+Confirm.
+
+Most transactions arrive in 
+10-30 minutes. Network congestion 
+can occasionally make it longer.
+
+Step 5: You are in
+
+Once the deposit lands you have access 
+to every game — blackjack, baccarat, 
+poker, and full sports betting including 
+straight bets in California and Texas.
+
+IMPORTANT NOTES SECTION:
+Surface background box.
+
+"A few things worth knowing:
+
+Bovada also accepts credit cards 
+if you prefer not to use crypto at all.
+This is the simplest option for 
+first-time depositors.
+
+Start small your first time.
+Learn the process before depositing 
+your full bankroll.
+
+Bovada minimum deposit is $20.
+
+You cannot undo a crypto transfer.
+Double-check the wallet address 
+every single time."
+
+
+FINAL CTA:
+Same green box style.
+"Ready to start? Bovada accepts 
+CA and TX for straight sports 
+betting and full casino access."
+
+Button: "Open Bovada →"
+href: https://record.revenuenetwork.com/_zStj_F7LspATcJdr7u8D2mNd7ZgqdRLk/1/
+target: _blank
+
+Link below button:
+"← Back to the casino guide"
+href: /casino
+
+FOOTER:
+Same as casino.html footer.
+
+
+=== CONSTRAINTS ===
+- Create templates/casino.html
+  and templates/crypto_guide.html
+- Add two routes and sitemap entries
+  to app.py
+- Do not touch dashboard.html
+- Do not touch mora_assists_sales.html
+- Do not touch email gate
+- Do not touch pixels
+- Do not touch odds fetching
+- Do not touch color scheme elsewhere
+- Both pages load for everyone
+  no gate no redirect
+- The affiliate link is exact:
+  https://record.revenuenetwork.com/
+  _zStj_F7LspATcJdr7u8D2mNd7ZgqdRLk/1/
+  Use this exact URL in every CTA
+  on both pages
+- Three CTAs on casino.html:
+  First inline early in article
+  Second inline mid-article
+  Third at bottom
+- One CTA on crypto_guide.html
+  at the bottom
+- Sponsored content bar is required
+  on both pages — FTC compliance
+- Short paragraphs throughout
+  Never more than 3 sentences
+- Mobile first layout

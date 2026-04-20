@@ -278,6 +278,16 @@ def value_bets():
     return render_template('seo_value_bets.html')
 
 
+@app.route('/casino')
+def casino_page():
+    return render_template('casino.html')
+
+
+@app.route('/crypto-guide')
+def crypto_guide_page():
+    return render_template('crypto_guide.html')
+
+
 @app.route('/manifest.json')
 def pwa_manifest():
     """PWA web app manifest for home screen install."""
@@ -389,6 +399,18 @@ def sitemap():
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/casino</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://morabets.com/crypto-guide</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>"""
     return _Response(sitemap_xml, mimetype="application/xml")
