@@ -1,9 +1,6 @@
 <!-- ══ STICKY AFFILIATE FOOTER ══════════════════════════════════════
-     Config: edit affiliateBanners below to swap images/URLs.
-     Tracking scripts: Revenue Network — 3 scripts, one per banner slot
+     Config: edit bovada-variant elements below to swap copy/URLs.
      ════════════════════════════════════════════════════════════════ -->
-
-<!-- Revenue Network tracking scripts are loaded in each page's <head> -->
 
 <style>
   #saf-root {
@@ -14,7 +11,7 @@
     z-index: 9000;
     display: flex;
     align-items: center;
-    background: #0a1a04;
+    background: #000000;
     border-top: 1px solid #2a4a1a;
     height: 54px;
     padding: 0 8px 0 0;
@@ -31,32 +28,6 @@
     position: relative;
     height: 100%;
     overflow: hidden;
-  }
-
-  .saf-slide {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.6s ease;
-    pointer-events: none;
-    text-decoration: none;
-  }
-  .saf-slide.saf-active {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .saf-slide img {
-    max-height: 100%;
-    max-width: 100%;
-    width: auto;
-    height: 100%;
-    object-fit: contain;
-    object-position: center;
-    display: block;
   }
 
   #saf-dismiss {
@@ -88,121 +59,165 @@
 
 <div id="saf-root" style="display:none;" role="complementary" aria-label="Sponsored offer">
 
-  <div id="saf-banner-wrap"></div>
+  <div id="saf-banner-wrap">
+
+    <!-- Variant 1 — CA/TX angle -->
+    <a href="https://record.revenuenetwork.com/_zStj_F7LspB43LNeeKRKbGNd7ZgqdRLk/1/"
+       target="_blank"
+       class="bovada-variant"
+       id="bovada-v1"
+       style="position:absolute;
+              top:0;left:0;
+              width:100%;height:100%;
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              padding:0 16px;
+              text-decoration:none;
+              opacity:1;
+              transition:opacity 0.3s ease;">
+      <div style="display:flex;
+                  flex-direction:column;
+                  gap:2px;">
+        <span style="color:#ffffff;
+                     font-family:Inter,sans-serif;
+                     font-size:13px;
+                     font-weight:600;
+                     line-height:1.2;">
+          California or Texas?
+        </span>
+        <span style="color:#9CA3AF;
+                     font-family:Inter,sans-serif;
+                     font-size:11px;
+                     font-weight:400;
+                     line-height:1.2;">
+          Straight bets. Real lines. No DFS required.
+        </span>
+      </div>
+      <div style="display:flex;
+                  align-items:center;
+                  gap:10px;">
+        <div style="display:flex;
+                    flex-direction:column;
+                    align-items:flex-end;
+                    gap:1px;">
+          <span style="color:#ffffff;
+                       font-family:Inter,sans-serif;
+                       font-size:14px;
+                       font-weight:900;
+                       letter-spacing:1px;">
+            BOVADA
+          </span>
+          <span style="color:#6B7280;
+                       font-family:Inter,sans-serif;
+                       font-size:9px;">
+            EST. 2011
+          </span>
+        </div>
+        <span style="color:#4CBB17;
+                     font-family:Inter,sans-serif;
+                     font-size:12px;
+                     font-weight:600;">
+          Bet Now →
+        </span>
+      </div>
+    </a>
+
+    <!-- Variant 2 — Game lines angle -->
+    <a href="https://record.revenuenetwork.com/_zStj_F7LspB43LNeeKRKbGNd7ZgqdRLk/1/"
+       target="_blank"
+       class="bovada-variant"
+       id="bovada-v2"
+       style="position:absolute;
+              top:0;left:0;
+              width:100%;height:100%;
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              padding:0 16px;
+              text-decoration:none;
+              opacity:0;
+              transition:opacity 0.3s ease;">
+      <div style="display:flex;
+                  flex-direction:column;
+                  gap:2px;">
+        <span style="color:#ffffff;
+                     font-family:Inter,sans-serif;
+                     font-size:13px;
+                     font-weight:600;
+                     line-height:1.2;">
+          The board shows the edge.
+        </span>
+        <span style="color:#9CA3AF;
+                     font-family:Inter,sans-serif;
+                     font-size:11px;
+                     font-weight:400;
+                     line-height:1.2;">
+          Full game lines. All sports. Bet from anywhere.
+        </span>
+      </div>
+      <div style="display:flex;
+                  align-items:center;
+                  gap:10px;">
+        <div style="display:flex;
+                    flex-direction:column;
+                    align-items:flex-end;
+                    gap:1px;">
+          <span style="color:#ffffff;
+                       font-family:Inter,sans-serif;
+                       font-size:14px;
+                       font-weight:900;
+                       letter-spacing:1px;">
+            BOVADA
+          </span>
+          <span style="color:#6B7280;
+                       font-family:Inter,sans-serif;
+                       font-size:9px;">
+            EST. 2011
+          </span>
+        </div>
+        <span style="color:#4CBB17;
+                     font-family:Inter,sans-serif;
+                     font-size:12px;
+                     font-weight:600;">
+          Bet Now →
+        </span>
+      </div>
+    </a>
+
+  </div>
+
+  <div id="saf-dismiss" role="button" aria-label="Dismiss banner">×</div>
 
 </div>
 
 <script>
 (function () {
+  var STORAGE_KEY = 'mora_saf_dismissed';
+  var root = document.getElementById('saf-root');
+  var dismiss = document.getElementById('saf-dismiss');
 
-  /* ── Banner config ───────────────────────────────────────────────────── */
-  var affiliateBanners = [
-    {
-      id: "bovada-footer-1",
-      imageSrc: "https://media.revenuenetwork.com/GIF/Bovada/Sports/NHL/728x90.gif",
-      alt: "Bovada sportsbook — NHL betting",
-      href: "https://record.revenuenetwork.com/_zStj_F7LspAn_jq_GPV-pZRmpuyl6pta/4/",
-      ariaLabel: "Open Bovada NHL sportsbook offer"
-    },
-    {
-      id: "bovada-footer-2",
-      imageSrc: "https://media.revenuenetwork.com/GIF/Bovada/Sports/Mobile/All Sports/320x50.gif",
-      alt: "Bovada sportsbook — all sports betting",
-      href: "https://record.revenuenetwork.com/_zStj_F7LspCWK_BFrHLlCyPC5f_kZJ5O/2/",
-      ariaLabel: "Open Bovada all-sports betting offer"
-    },
-    {
-      id: "bovada-footer-3",
-      imageSrc: "https://media.revenuenetwork.com/GIF/Bovada/Sports/MLB/468x60.gif",
-      alt: "Bovada sportsbook — MLB betting",
-      href: "https://record.revenuenetwork.com/_zStj_F7LspBB2_FmHQdkfYkx6j8zsU1q/3/",
-      ariaLabel: "Open Bovada MLB sportsbook offer"
-    }
-  ];
-
-  var STORAGE_KEY   = 'mora_saf_dismissed';
-  var ROTATE_MS     = 20000;
-
-  var root     = document.getElementById('saf-root');
-  var wrap     = document.getElementById('saf-banner-wrap');
-  var dismiss  = document.getElementById('saf-dismiss');
-
-  /* ── Bail immediately if already dismissed ─────────────────────────── */
   if (localStorage.getItem(STORAGE_KEY) === '1') return;
 
-  /* ── Build slides ──────────────────────────────────────────────────── */
-  var slides   = [];
-  var validIdx = [];
-
-  affiliateBanners.forEach(function (b, i) {
-    var a = document.createElement('a');
-    a.className  = 'saf-slide';
-    a.id         = b.id;
-    a.href       = b.href;
-    a.target     = '_blank';
-    a.rel        = 'noopener noreferrer sponsored';
-    a.setAttribute('aria-label', b.ariaLabel);
-
-    var img = document.createElement('img');
-    img.alt = b.alt;
-    img.src = b.imageSrc;
-
-    /* skip slides whose image fails to load */
-    img.onerror = function () {
-      a.style.display = 'none';
-      validIdx = validIdx.filter(function (x) { return x !== i; });
-    };
-    img.onload = function () {
-      if (validIdx.indexOf(i) === -1) validIdx.push(i);
-    };
-
-    a.appendChild(img);
-    wrap.appendChild(a);
-    slides.push(a);
-    validIdx.push(i);  /* optimistically include; removed on error */
-  });
-
-  /* ── Show footer ───────────────────────────────────────────────────── */
   root.style.display = 'flex';
   document.body.classList.add('saf-visible');
 
-  /* ── Rotation logic ────────────────────────────────────────────────── */
-  var current  = 0;
-  var paused   = false;
-  var timer    = null;
-
-  function showSlide(idx) {
-    slides.forEach(function (s, i) {
-      s.classList.toggle('saf-active', i === idx);
-    });
-    current = idx;
+  /* ── Variant rotation ── */
+  var current = 0;
+  var variants = document.querySelectorAll('.bovada-variant');
+  if (variants.length >= 2) {
+    setInterval(function () {
+      variants[current].style.opacity = '0';
+      current = (current + 1) % variants.length;
+      setTimeout(function () {
+        variants[current].style.opacity = '1';
+      }, 300);
+    }, 8000);
   }
 
-  function nextSlide() {
-    if (validIdx.length < 2) return;
-    var pos  = validIdx.indexOf(current);
-    var next = validIdx[(pos + 1) % validIdx.length];
-    showSlide(next);
-  }
-
-  function startTimer() {
-    clearInterval(timer);
-    timer = setInterval(function () {
-      if (!paused) nextSlide();
-    }, ROTATE_MS);
-  }
-
-  showSlide(validIdx[0] !== undefined ? validIdx[0] : 0);
-  startTimer();
-
-  /* ── Pause on hover (desktop) ──────────────────────────────────────── */
-  root.addEventListener('mouseenter', function () { paused = true; });
-  root.addEventListener('mouseleave', function () { paused = false; });
-
-  /* ── Dismiss ───────────────────────────────────────────────────────── */
+  /* ── Dismiss ── */
   dismiss.addEventListener('click', function (e) {
     e.stopPropagation();
-    clearInterval(timer);
     root.style.opacity = '0';
     setTimeout(function () {
       root.style.display = 'none';
