@@ -30,26 +30,6 @@
     overflow: hidden;
   }
 
-  #saf-dismiss {
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 6px;
-    cursor: pointer;
-    margin-left: 8px;
-    color: #ccc;
-    font-size: 14px;
-    line-height: 1;
-    transition: background 0.15s;
-    user-select: none;
-  }
-  #saf-dismiss:hover { background: rgba(255,255,255,0.16); color: #fff; }
-
   /* Push page content up while footer is visible */
   body.saf-visible { padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px)); }
   @media (max-width: 640px) {
@@ -187,18 +167,11 @@
 
   </div>
 
-  <div id="saf-dismiss" role="button" aria-label="Dismiss banner">×</div>
-
 </div>
 
 <script>
 (function () {
-  var STORAGE_KEY = 'mora_saf_dismissed';
   var root = document.getElementById('saf-root');
-  var dismiss = document.getElementById('saf-dismiss');
-
-  if (localStorage.getItem(STORAGE_KEY) === '1') return;
-
   root.style.display = 'flex';
   document.body.classList.add('saf-visible');
 
@@ -214,17 +187,6 @@
       }, 300);
     }, 8000);
   }
-
-  /* ── Dismiss ── */
-  dismiss.addEventListener('click', function (e) {
-    e.stopPropagation();
-    root.style.opacity = '0';
-    setTimeout(function () {
-      root.style.display = 'none';
-      document.body.classList.remove('saf-visible');
-    }, 300);
-    try { localStorage.setItem(STORAGE_KEY, '1'); } catch (_) {}
-  });
 
 })();
 </script>
