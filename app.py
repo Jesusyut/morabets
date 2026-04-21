@@ -288,6 +288,18 @@ def crypto_guide_page():
     return render_template('crypto_guide.html')
 
 
+@app.route('/downloads/cheatsheet')
+def download_cheatsheet():
+    from flask import send_file
+    import os
+    pdf_path = os.path.join(os.path.dirname(__file__), 'static', 'downloads', 'logical_gambler_cheatsheet.pdf')
+    return send_file(
+        pdf_path,
+        as_attachment=True,
+        download_name='LogicalGambler_CheatSheet.pdf'
+    )
+
+
 @app.route('/manifest.json')
 def pwa_manifest():
     """PWA web app manifest for home screen install."""

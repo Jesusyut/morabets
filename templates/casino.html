@@ -428,11 +428,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <p class="email-eyebrow">Free Guide</p>
     <h3>Get The Logical Gambler Cheat Sheet.</h3>
     <p class="sub">One page. The bankroll rules, the game edges, and the mistakes that cost most players the most money.</p>
-    <div id="casino-email-form">
-      <input type="email" id="casino-email-input" placeholder="your@email.com">
-      <button onclick="submitCasinoGuide()">Send Me The Guide →</button>
+    <div id="email-form-section">
+      <input type="email" id="casino-email" placeholder="your@email.com">
+      <button onclick="submitCasinoEmail()">Send Me The Guide →</button>
     </div>
-    <div id="casino-email-success" class="email-success">✅ Check your inbox.</div>
   </div>
 </div>
 
@@ -443,18 +442,43 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </footer>
 
 <script>
-async function submitCasinoGuide() {
-  const email = document.getElementById('casino-email-input').value.trim();
+async function submitCasinoEmail() {
+  const email = document.getElementById('casino-email').value.trim();
   if (!email || !email.includes('@')) return;
-  try {
-    await fetch('https://hooks.zapier.com/hooks/catch/22797974/uj2zhly/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, source: 'casino_page_guide' })
-    });
-    document.getElementById('casino-email-form').style.display = 'none';
-    document.getElementById('casino-email-success').style.display = 'block';
-  } catch(e) { console.log('Submit error:', e); }
+
+  await fetch('https://hooks.zapier.com/hooks/catch/22797974/uj2zhly/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      email: email,
+      source: 'casino_page_guide'
+    })
+  });
+
+  document.getElementById('email-form-section').innerHTML = `
+    <p style="color:#0F2406;
+              font-family:Inter,sans-serif;
+              font-size:15px;
+              margin-bottom:12px;">
+      ✅ You're in. Your guide is ready.
+    </p>
+    <a href="/downloads/cheatsheet"
+       download
+       style="display:block;
+              width:100%;
+              background:#4CBB17;
+              color:#ffffff;
+              font-family:'Barlow Condensed',sans-serif;
+              font-size:17px;
+              font-weight:900;
+              text-transform:uppercase;
+              padding:15px;
+              border-radius:12px;
+              text-align:center;
+              text-decoration:none;">
+      Download The Cheat Sheet →
+    </a>
+  `;
 }
 </script>
 </body>
