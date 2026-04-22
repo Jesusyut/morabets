@@ -935,6 +935,37 @@ def format_picks_email(picks_data):
   </div>
 """
 
+    if picks_data.get('bonus_plays'):
+        html += '''  <div style="max-width:600px;margin:32px auto 0;padding:0 20px;">
+    <div style="background:#0F2406;border-radius:16px;padding:24px;border:1px solid rgba(76,187,23,0.3);">
+      <p style="font-family:Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4CBB17;margin:0 0 4px;">
+        BONUS — NOT POWER PLAYS
+      </p>
+      <h3 style="font-family:Arial,sans-serif;font-size:22px;font-weight:900;color:#ffffff;text-transform:uppercase;margin:0 0 4px;">
+        Total Bases 1.5+ Spots
+      </h3>
+      <p style="font-family:Arial,sans-serif;font-size:13px;color:#6B9E5A;margin:0 0 20px;line-height:1.5;">
+        Contextual reads for deeper plays. Not part of the flat bet system — size these yourself.
+      </p>
+'''
+        for bonus in picks_data['bonus_plays']:
+            html += f'''      <div style="border-top:1px solid rgba(107,158,90,0.2);padding:16px 0;">
+        <div style="margin-bottom:6px;">
+          <span style="font-family:Arial,sans-serif;font-size:18px;font-weight:900;color:#ffffff;">{bonus.get('player','')}</span>
+          <span style="font-family:Arial,sans-serif;font-size:12px;color:#4CBB17;font-weight:700;margin-left:10px;">TB OVER {bonus.get('line','')}</span>
+        </div>
+        <p style="font-family:Arial,sans-serif;font-size:12px;color:#6B9E5A;margin:0 0 4px;">
+          {bonus.get('matchup','')}
+        </p>
+        <p style="font-family:Arial,sans-serif;font-size:13px;color:#9CA3AF;margin:0;line-height:1.5;">
+          {bonus.get('reason','')}
+        </p>
+      </div>
+'''
+        html += '''    </div>
+  </div>
+'''
+
     html += """  <div class="instructions">
     <h3>How to use these picks</h3>
     <p>Same unit every play. Never chase.</p>
