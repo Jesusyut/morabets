@@ -1040,12 +1040,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const nvp = parseFloat(pick.no_vig_prob) || 0;
         const tier = pick.confidence_tier || 'EDGE';
 
-        let tierBg, tierColor, tierBorder, tierLabel;
-        if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔒 LOCK — EV + High Prob'; }
-        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '🔥 FIRE — EV + 65%+'; }
-        else                      { tierBg = '#E8F5E1'; tierColor = '#2D6E0F'; tierBorder = '1px solid #4CBB17'; tierLabel = '⚡ EDGE'; }
+        let tierBg, tierColor, tierBorder;
+        if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierColor = '#FFFFFF'; tierBorder = 'none'; }
+        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#FFFFFF'; tierBorder = 'none'; }
+        else                      { tierBg = '#E8F5E1'; tierColor = '#2D6E0F'; tierBorder = '1px solid #4CBB17'; }
+        const tierLabel = `${nvp.toFixed(1)}%`;
 
         const barColor = tier === 'LOCK' ? '#4CBB17' : tier === 'FIRE' ? '#f97316' : '#3A9012';
+
+        const ppEdge = (nvp/100) > 0.50 ? ((nvp/100) - 0.50) * 100 : null;
+        const ppEdgeHtml = ppEdge != null
+            ? `<div style="text-align:center;margin-top:0.4rem;"><span style="display:inline-block;background:#7C3AED;color:#ffffff;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;padding:0.15rem 0.5rem;border-radius:100px;">PP Edge: +${ppEdge.toFixed(1)}%</span></div>`
+            : '';
 
         const mt = pick.market_type || '';
         let marketBadge = '';
@@ -1095,33 +1101,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     ${marketBadge}
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.25rem;background:#F5FAF2;border:1px solid rgba(76,187,23,0.15);border-radius:0.5rem;padding:0.5rem;margin-bottom:0.6rem;">
-                <div style="text-align:center;">
-                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#6B9E5A;">True Prob</div>
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.05em;color:${barColor};">${nvp.toFixed(1)}%</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#6B9E5A;">EV</div>
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.95em;color:${ev>=0?'#3A9012':'#b91c1c'};">${ev>=0?'+':''}${ev.toFixed(2)}%</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-family:'Inter',sans-serif;font-size:0.62em;color:#6B9E5A;">Fair Odds</div>
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#1A3D0A;">${fmtOdds(pick.fair_odds)}</div>
-                </div>
-            </div>
-            <div style="margin-bottom:0.5rem;">
-                <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.68em;margin-bottom:0.2rem;">
-                    <span style="color:#6B9E5A;">True Probability</span>
-                    <strong style="color:${barColor};">${nvp.toFixed(1)}%</strong>
-                </div>
-                <div style="background:#E8F5E1;border-radius:3px;height:5px;">
-                    <div style="width:${Math.min(100,nvp)}%;background:${barColor};border-radius:3px;height:100%;"></div>
-                </div>
-            </div>
             <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
                 <span style="color:#2D6E0F;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;color:#4CBB17;"></i>Best: <strong>${pick.best_book || '—'}</strong> ${fmtOdds(pick.best_over_price)}</span>
                 ${bookCount > 1 ? `<span style="color:#6B9E5A;margin-left:0.5rem;font-size:0.85em;">${bookCount} books</span>` : ''}
             </div>
+            ${ppEdgeHtml}
             ${lineShopHtml}
         </div>`;
     }
@@ -1137,10 +1121,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const barColor = tier === 'LOCK' ? '#4CBB17' : tier === 'FIRE' ? '#f97316' : '#6B9E5A';
         const isImplied = !!pick.implied_only;
 
-        let tierBg, tierColor, tierBorder, tierLabel;
-        if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '70%+'; }
-        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#FFFFFF'; tierBorder = 'none'; tierLabel = '55%+'; }
-        else                      { tierBg = '#E8F5E1'; tierColor = '#6B9E5A'; tierBorder = '1px solid #c3e6ab'; tierLabel = '52-54%'; }
+        let tierBg, tierColor, tierBorder;
+        if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierColor = '#FFFFFF'; tierBorder = 'none'; }
+        else if (tier === 'FIRE') { tierBg = '#f97316'; tierColor = '#FFFFFF'; tierBorder = 'none'; }
+        else                      { tierBg = '#E8F5E1'; tierColor = '#6B9E5A'; tierBorder = '1px solid #c3e6ab'; }
+        const tierLabel = `${nvp.toFixed(1)}%`;
+
+        const ppEdge = (nvp/100) > 0.50 ? ((nvp/100) - 0.50) * 100 : null;
+        const ppEdgeHtml = ppEdge != null
+            ? `<div style="text-align:center;margin-top:0.4rem;"><span style="display:inline-block;background:#7C3AED;color:#ffffff;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;padding:0.15rem 0.5rem;border-radius:100px;">PP Edge: +${ppEdge.toFixed(1)}%</span></div>`
+            : '';
 
         const mt = pick.market_type || '';
         let marketBadge = '';
@@ -1177,10 +1167,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>`;
         }
 
-        const evBadge = ev != null
-            ? `<span style="background:${ev>0?'rgba(76,187,23,0.12)':'rgba(239,68,68,0.1)'};color:${ev>0?'#4CBB17':'#f87171'};border:1px solid ${ev>0?'rgba(76,187,23,0.3)':'rgba(239,68,68,0.3)'};font-family:'Space Grotesk',sans-serif;font-size:0.7em;padding:0.1rem 0.4rem;border-radius:0.3rem;margin-left:0.3rem;">${ev>0?'+':''}${ev.toFixed(2)}% EV</span>`
-            : '';
-
         const impliedBadge = isImplied
             ? `<span style="background:#F5FAF2;color:#6B9E5A;border:1px dashed rgba(76,187,23,0.35);font-family:'Inter',sans-serif;font-size:0.62em;padding:0.1rem 0.4rem;border-radius:0.3rem;margin-left:0.3rem;">ℹ️ Implied</span>`
             : '';
@@ -1202,19 +1188,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     ${marketBadge}
                 </div>
             </div>
-            <div style="margin-bottom:0.5rem;">
-                <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.7em;margin-bottom:0.2rem;">
-                    <span style="color:#6B9E5A;">${isImplied ? 'Implied Probability' : 'True Probability (no-vig)'}</span>
-                    <strong style="color:${barColor};">${nvp.toFixed(1)}%</strong>
-                </div>
-                <div style="background:#E8F5E1;border-radius:3px;height:5px;">
-                    <div style="width:${Math.min(100,nvp)}%;background:${barColor};border-radius:3px;height:100%;"></div>
-                </div>
-            </div>
             <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
                 <span style="color:#2D6E0F;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;color:#4CBB17;"></i>Best: ${pick.best_book || '—'} <strong>${fmtOdds(pick.best_over_price)}</strong></span>
-                ${evBadge}
             </div>
+            ${ppEdgeHtml}
             ${isImplied ? '' : lineShopHtml}
         </div>`;
     }
@@ -1486,12 +1463,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             const displayPct = noVigProb != null ? noVigProb.toFixed(1) : (hitRate * 100).toFixed(1);
             const tier = prop.confidence_tier || (hitRate >= 0.70 ? 'LOCK' : hitRate >= 0.50 ? 'FIRE' : 'EDGE');
 
-            let tierBg, tierClr, tierBrd, tierLabel;
-            if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierClr = '#FFFFFF'; tierBrd = 'none'; tierLabel = '🔒 LOCK'; }
-            else if (tier === 'FIRE') { tierBg = '#f97316'; tierClr = '#FFFFFF'; tierBrd = 'none'; tierLabel = '🔥 FIRE'; }
-            else                      { tierBg = '#E8F5E1'; tierClr = '#2D6E0F'; tierBrd = '1px solid #4CBB17'; tierLabel = '⚡ EDGE'; }
+            let tierBg, tierClr, tierBrd;
+            if (tier === 'LOCK')      { tierBg = '#4CBB17'; tierClr = '#FFFFFF'; tierBrd = 'none'; }
+            else if (tier === 'FIRE') { tierBg = '#f97316'; tierClr = '#FFFFFF'; tierBrd = 'none'; }
+            else                      { tierBg = '#E8F5E1'; tierClr = '#2D6E0F'; tierBrd = '1px solid #4CBB17'; }
+            const tierLabel = `${displayPct}%`;
             const barColor = tier === 'LOCK' ? '#4CBB17' : tier === 'FIRE' ? '#f97316' : '#3A9012';
             const probBarWidth = Math.min(100, Math.max(0, parseFloat(displayPct)));
+
+            const ppEdgeVal = parseFloat(displayPct) > 50 ? parseFloat(displayPct) - 50 : null;
+            const ppEdgeHtml = ppEdgeVal != null
+                ? `<div style="text-align:center;margin-top:0.4rem;"><span style="display:inline-block;background:#7C3AED;color:#ffffff;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;padding:0.15rem 0.5rem;border-radius:100px;">PP Edge: +${ppEdgeVal.toFixed(1)}%</span></div>`
+                : '';
 
             const playerName = prop.player || prop.player_name || 'Unknown Player';
             const statType = prop.stat || prop.stat_type || prop.market || '';
@@ -1547,27 +1530,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             ${marketBadge}
                         </div>
                     </div>
-                    <div style="margin-bottom:0.5rem;">
-                        <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.7em;margin-bottom:0.2rem;">
-                            <span style="color:#6B9E5A;">True Probability (no-vig)</span>
-                            <strong style="color:${barColor};">${displayPct}%</strong>
-                        </div>
-                        <div style="background:#E8F5E1;border-radius:3px;height:5px;">
-                            <div style="width:${probBarWidth}%;background:${barColor};border-radius:3px;height:100%;"></div>
-                        </div>
-                    </div>
-                    ${prop.ev_pct != null ? `
-                    <div style="display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:0.72em;margin-bottom:0.4rem;padding:0.3rem 0.4rem;background:#F5FAF2;border-radius:0.4rem;">
-                        <span style="color:#6B9E5A;">EV%</span>
-                        <strong style="color:${parseFloat(prop.ev_pct)>=0?'#3A9012':'#b91c1c'};">${parseFloat(prop.ev_pct)>=0?'+':''}${parseFloat(prop.ev_pct).toFixed(2)}%</strong>
-                        <span style="color:#6B9E5A;">Fair</span>
-                        <strong style="color:#1A3D0A;">${fmtOdds(prop.fair_odds)}</strong>
-                        <span style="color:#6B9E5A;">BE%</span>
-                        <strong style="color:#1A3D0A;">${prop.break_even_prob != null ? parseFloat(prop.break_even_prob).toFixed(1)+'%' : '—'}</strong>
-                    </div>` : ''}
                     <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
                         <span style="color:#2D6E0F;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;color:#4CBB17;"></i>Best: ${bestBook} <strong>${fmtOdds(prop.best_over_price)}</strong></span>
                     </div>
+                    ${ppEdgeHtml}
                     ${lineShopHtml}
                 </div>`;
         }).join('');
