@@ -389,53 +389,65 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div id="assists-popup"
      style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
   <div class="ma-card" style="width:100%;max-width:380px;margin:0 1rem;background:#0F2406;border-radius:24px;border:2px solid #4CBB17;box-shadow:0 24px 64px rgba(0,0,0,0.35);position:relative;padding:28px 24px 24px;">
-    <!-- Close -->
-    <button onclick="closeMoraModal()"
-            style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;color:rgba(255,255,255,0.4);cursor:pointer;line-height:1;z-index:1;">×</button>
-    <!-- Badge row -->
-    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;">
-      <span style="background:#4CBB17;color:#0F2406;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border-radius:20px;">⚡ LIVE TODAY</span>
-      <span style="background:rgba(255,255,255,0.1);color:#6B9E5A;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border-radius:20px;">9:00 AM CST</span>
+
+    <!-- MORA BETS NEWSLETTER POPUP -->
+
+    <!-- BADGE -->
+    <div style="text-align:center;margin-bottom:16px;">
+      <span style="display:inline-block;background:rgba(76,187,23,0.15);border:1px solid #4CBB17;border-radius:100px;padding:4px 16px;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#4CBB17;">
+        FREE UNTIL SEPTEMBER 1ST
+      </span>
     </div>
-    <!-- Headline -->
-    <div style="text-align:center;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:32px;line-height:1.1;margin-bottom:8px;">
-      Best probability.<br>Best payout.<br>5 picks. Every morning.
-    </div>
-    <!-- Subtext -->
-    <p style="text-align:center;color:#6B9E5A;font-family:'Inter',sans-serif;font-size:14px;line-height:1.55;margin:0 0 14px;">
-      We do the math so you don't have to.<br>The best plays land in your inbox before lines move.
+
+    <!-- HEADLINE -->
+    <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:900;text-transform:uppercase;color:#ffffff;text-align:center;line-height:1.05;margin:0 0 10px;">
+      The Math Is Expanding.
+      <span style="color:#4CBB17;">Stay Ahead.</span>
+    </h2>
+
+    <!-- SUBTEXT -->
+    <p style="font-family:'Inter',sans-serif;font-size:14px;color:#6B9E5A;text-align:center;line-height:1.6;margin:0 0 20px;">
+      UFC, Soccer, and NBA no-vig analysis is coming to Mora Bets. Drop your email and be the first to know when it goes live.
+      <strong style="color:#ffffff;">Free until September 1st.</strong>
     </p>
-    <!-- Social proof -->
-    <div style="display:flex;gap:8px;background:rgba(255,255,255,0.05);border-radius:12px;padding:12px;margin-bottom:18px;">
-      <div style="flex:1;text-align:center;">
-        <div style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;line-height:1;">300+</div>
-        <div style="color:#6B9E5A;font-family:'Inter',sans-serif;font-size:10px;margin-top:2px;">props scanned</div>
-      </div>
-      <div style="flex:1;text-align:center;border-left:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.08);">
-        <div style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;line-height:1;">MLB+NHL</div>
-        <div style="color:#6B9E5A;font-family:'Inter',sans-serif;font-size:10px;margin-top:2px;">daily</div>
-      </div>
-      <div style="flex:1;text-align:center;">
-        <div style="color:#4CBB17;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;line-height:1;">$9.99</div>
-        <div style="color:#6B9E5A;font-family:'Inter',sans-serif;font-size:10px;margin-top:2px;">to start</div>
-      </div>
+
+    <!-- COMING SOON ROW -->
+    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+      <span style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#6B9E5A;background:rgba(255,255,255,0.05);border:1px solid rgba(107,158,90,0.3);border-radius:100px;padding:4px 12px;">⚡ MLB — Live Now</span>
+      <span style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#6B9E5A;background:rgba(255,255,255,0.05);border:1px solid rgba(107,158,90,0.3);border-radius:100px;padding:4px 12px;">🥊 UFC — Coming Soon</span>
+      <span style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#6B9E5A;background:rgba(255,255,255,0.05);border:1px solid rgba(107,158,90,0.3);border-radius:100px;padding:4px 12px;">⚽ Soccer — Coming Soon</span>
+      <span style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#6B9E5A;background:rgba(255,255,255,0.05);border:1px solid rgba(107,158,90,0.3);border-radius:100px;padding:4px 12px;">🏀 NBA — Coming Soon</span>
     </div>
-    <!-- Primary CTA -->
-    <a href="https://buy.stripe.com/8x2eV6e9p4Pn6cO8CV4Vy06"
-       target="_blank" rel="noopener"
-       onclick="fbq('track','InitiateCheckout',{value:9.99,currency:'USD',content_name:'Mora Assists Day Pass',num_items:1});"
-       style="display:block;width:100%;box-sizing:border-box;background:#4CBB17;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;text-transform:uppercase;letter-spacing:1px;text-decoration:none;text-align:center;padding:16px;border-radius:14px;box-shadow:0 4px 20px rgba(76,187,23,0.4);margin-bottom:14px;">
-      Get Today's Picks — $9.99 →
-    </a>
-    <!-- Secondary link -->
-    <p style="text-align:center;margin:0;">
-      <a href="https://buy.stripe.com/fZucMY6GX2Hfat4bP74Vy05"
-         target="_blank" rel="noopener"
-         onclick="fbq('track','InitiateCheckout',{value:28.99,currency:'USD',content_name:'Mora Assists Monthly',num_items:1});"
-         style="font-family:'Inter',sans-serif;font-size:12px;color:#6B9E5A;text-decoration:underline;">
-        Subscribe for daily picks — $28.99/mo
-      </a>
-    </p>
+
+    <!-- EMAIL INPUT -->
+    <input id="newsletter-email-input"
+           type="email"
+           placeholder="your@email.com"
+           style="width:100%;border:1.5px solid rgba(107,158,90,0.4);border-radius:12px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:15px;background:rgba(255,255,255,0.05);color:#ffffff;box-sizing:border-box;outline:none;margin-bottom:10px;"
+           onfocus="this.style.borderColor='#4CBB17'"
+           onblur="this.style.borderColor='rgba(107,158,90,0.4)'">
+
+    <!-- CTA BUTTON -->
+    <button onclick="submitNewsletter()"
+            style="width:100%;background:#4CBB17;color:#0F2406;font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:16px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 4px 20px rgba(76,187,23,0.3);margin-bottom:10px;">
+      Notify Me When It Drops →
+    </button>
+
+    <!-- SUCCESS STATE (hidden) -->
+    <div id="newsletter-success" style="display:none;text-align:center;padding:16px;background:rgba(76,187,23,0.1);border-radius:12px;margin-bottom:10px;">
+      <p style="font-family:'Inter',sans-serif;font-size:14px;color:#4CBB17;font-weight:600;margin:0;">
+        ✅ You are in. We will hit your inbox first.
+      </p>
+    </div>
+
+    <!-- DISMISS -->
+    <div style="text-align:center;">
+      <button onclick="closeNewsletterPopup()"
+              style="background:none;border:none;color:#6B9E5A;font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;padding:4px;">
+        No thanks
+      </button>
+    </div>
+
   </div>
 </div>
 
@@ -533,10 +545,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
         <!-- Right: links + status -->
         <div style="display:flex;align-items:center;gap:1rem;">
-            <a href="/mora-assists"
-               style="font-size:13px;font-weight:700;color:#4CBB17;text-decoration:none;">
-              Mora Assists ⚡
-            </a>
             <div style="display:none;font-family:'Space Grotesk',sans-serif;font-size:0.7rem;color:#A0BF96;text-align:right;" id="quota-display">
                 <span id="quota-remaining">--</span> API calls left
             </div>
@@ -546,15 +554,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
     </div>
 </nav>
-
-<!-- ── Explainer Bar (cold traffic, always visible) ── -->
-<div style="background:#0F2406;border-bottom:1px solid #4CBB17;padding:10px 20px;text-align:center;">
-  <p style="font-family:'Inter',sans-serif;font-size:13px;color:#6B9E5A;margin:0;line-height:1.5;">
-    Every prop below has the sportsbook's margin removed.
-    <span style="color:#ffffff;font-weight:600;">The percentage is what the market actually believes —</span>
-    not what they charge you for.
-  </p>
-</div>
 
 <!-- ── Thin Status Bar ── -->
 <div style="background:#F5FAF2;border-bottom:1px solid rgba(76,187,23,0.15);padding:0.3rem 1rem;">
@@ -1805,6 +1804,10 @@ function closeMoraModal() {
 }
 
 (function() {
+  // Never show again if user already signed up for the newsletter
+  var signedUp = localStorage.getItem('mora_newsletter_signed_up');
+  if (signedUp) return;
+
   var last      = localStorage.getItem('mora_assists_last_shown');
   var oneDayAgo = Date.now() - 86400000;
   var shouldShow = !last || parseInt(last) < oneDayAgo;
@@ -1825,11 +1828,62 @@ function closeMoraModal() {
       var fm = document.getElementById('friday-modal');
       if (fm && fm.style.display === 'flex') return;
       localStorage.setItem('mora_assists_shown_session', 'true');
+      p.style.opacity = '1';
+      p.style.transition = '';
       p.style.display = 'flex';
       localStorage.setItem('mora_assists_last_shown', Date.now().toString());
     }, 45000);
   }
 })();
+
+// ── Newsletter popup handlers ──────────────────────────────────
+async function submitNewsletter() {
+  var input = document.getElementById('newsletter-email-input');
+  var email = (input && input.value || '').trim();
+
+  if (!email || !email.includes('@')) {
+    if (input) input.style.borderColor = '#EF4444';
+    return;
+  }
+
+  try {
+    await fetch('https://hooks.zapier.com/hooks/catch/22797974/uj2zhly/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email,
+        source: 'newsletter_popup',
+        timestamp: new Date().toISOString()
+      })
+    });
+  } catch(e) {
+    console.log('Submit error:', e);
+  }
+
+  if (input) input.style.display = 'none';
+  var btn = document.querySelector('[onclick="submitNewsletter()"]');
+  if (btn) btn.style.display = 'none';
+  var success = document.getElementById('newsletter-success');
+  if (success) success.style.display = 'block';
+
+  localStorage.setItem('mora_newsletter_signed_up', 'true');
+
+  setTimeout(function() {
+    closeNewsletterPopup();
+  }, 3000);
+}
+
+function closeNewsletterPopup() {
+  var popup = document.getElementById('assists-popup');
+  if (popup) {
+    popup.style.opacity = '0';
+    popup.style.transition = 'opacity 0.3s';
+    setTimeout(function() {
+      popup.style.display = 'none';
+    }, 300);
+  }
+  localStorage.setItem('mora_assists_last_shown', Date.now().toString());
+}
 
 // ── Friday email capture modal ─────────────────────────────────
 (function() {
@@ -1922,98 +1976,6 @@ function closeMoraModal() {
 </script>
 
 {% include '_sticky_affiliate_footer.html' %}
-
-<!-- MORA BETS INTRO OVERLAY -->
-<div id="mora-intro-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(10,28,5,0.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
-
-  <div style="max-width:420px;width:100%;text-align:center;">
-
-    <!-- LOGO MARK -->
-    <div style="width:48px;height:48px;background:#4CBB17;border-radius:12px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;">
-      <span style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#0F2406;">M</span>
-    </div>
-
-    <!-- URGENCY BADGE -->
-    <div style="display:inline-block;background:rgba(76,187,23,0.15);border:1px solid #4CBB17;border-radius:100px;padding:4px 14px;margin-bottom:16px;">
-      <span style="font-family:'Inter',sans-serif;font-size:11px;font-weight:700;color:#4CBB17;letter-spacing:1.5px;text-transform:uppercase;">Free Until September 1st</span>
-    </div>
-
-    <!-- HEADLINE -->
-    <h1 style="font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;text-transform:uppercase;color:#ffffff;line-height:1.0;margin:0 0 12px;letter-spacing:-0.5px;">
-      Math Moves<br>
-      <span style="color:#4CBB17;">Mountains.</span>
-    </h1>
-
-    <!-- SUBTEXT -->
-    <p style="font-family:'Inter',sans-serif;font-size:15px;color:#6B9E5A;line-height:1.6;margin:0 0 28px;">
-      The sportsbook's margin. Stripped from every prop. 300+ lines analyzed daily.
-      <strong style="color:#ffffff;">Free.</strong>
-    </p>
-
-    <!-- PRIMARY CTA -->
-    <button onclick="enterDashboard()" style="width:100%;background:#4CBB17;color:#0F2406;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:18px;border:none;border-radius:14px;cursor:pointer;box-shadow:0 4px 24px rgba(76,187,23,0.35);margin-bottom:12px;">
-      See Today's Board →
-    </button>
-
-    <!-- SECONDARY DISMISS -->
-    <button onclick="enterDashboard()" style="background:none;border:none;color:#6B9E5A;font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;padding:8px;width:100%;">
-      Already know the math? Skip →
-    </button>
-
-    <!-- TRUST ROW -->
-    <div style="display:flex;justify-content:center;gap:24px;margin-top:20px;padding-top:20px;border-top:1px solid rgba(107,158,90,0.2);">
-
-      <div style="text-align:center;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#ffffff;">300+</div>
-        <div style="font-family:'Inter',sans-serif;font-size:10px;color:#6B9E5A;text-transform:uppercase;letter-spacing:1px;">Props Daily</div>
-      </div>
-
-      <div style="width:1px;background:rgba(107,158,90,0.2);"></div>
-
-      <div style="text-align:center;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#ffffff;">MLB+NHL</div>
-        <div style="font-family:'Inter',sans-serif;font-size:10px;color:#6B9E5A;text-transform:uppercase;letter-spacing:1px;">Every Day</div>
-      </div>
-
-      <div style="width:1px;background:rgba(107,158,90,0.2);"></div>
-
-      <div style="text-align:center;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#ffffff;">$0</div>
-        <div style="font-family:'Inter',sans-serif;font-size:10px;color:#6B9E5A;text-transform:uppercase;letter-spacing:1px;">To Start</div>
-      </div>
-
-    </div>
-
-  </div>
-</div>
-
-<!-- OVERLAY JAVASCRIPT -->
-<script>
-(function() {
-  var seen = localStorage.getItem('mora_intro_seen');
-  if (!seen) {
-    var overlay = document.getElementById('mora-intro-overlay');
-    if (overlay) {
-      overlay.style.display = 'flex';
-    }
-  }
-})();
-
-function enterDashboard() {
-  localStorage.setItem('mora_intro_seen', 'true');
-  var overlay = document.getElementById('mora-intro-overlay');
-  if (overlay) {
-    overlay.style.transition = 'opacity 0.3s ease';
-    requestAnimationFrame(function() {
-      overlay.style.opacity = '0';
-    });
-    setTimeout(function() {
-      overlay.style.display = 'none';
-    }, 300);
-  }
-}
-</script>
-<!-- END MORA BETS INTRO OVERLAY -->
 
 </body>
 </html>
