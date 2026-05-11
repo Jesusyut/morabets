@@ -1,0 +1,114 @@
+Replit — confirmed on all 6 points.
+Proceed exactly as you described.
+Here are the answers:
+
+1. CACHE WRITE LOCATION
+Mirror NHL exactly.
+Cache write lives in app.py wrapper
+_fetch_and_process_soccer_props()
+NOT inside soccer_odds_api.py.
+soccer_odds_api.py returns raw props only.
+enrichment.cache_props_to_file() handles
+the write just like NHL.
+
+2. MARKET BATCHING
+Use 2 batches like NHL.
+Split 5 soccer markets into:
+Batch 1: player_shots_on_target,player_shots,player_goals
+Batch 2: player_assists,player_cards
+Mirror NHL's two-pass pattern exactly.
+0.5 second sleep between batches per event.
+
+3. NO UNIFIED /api/props ROUTE
+Confirmed — do not extend a shared route.
+Add a new dedicated route:
+/api/soccer/props
+mirroring /api/nhl/props exactly.
+Add loadSoccerLines() and loadSoccerProps()
+JS functions mirroring their NHL equivalents.
+Route them in switchSport() alongside
+the existing mlb / nhl / nfl cases.
+
+4. TAB data-sport CASING
+Use lowercase to match existing pattern:
+data-sport="soccer"
+No onclick attribute — let the existing
+loop at line 792 handle the switching.
+Tab icon: ⚽
+
+5. /var/data/ PATH
+Use /var/data/soccer_props_cache.json
+for production parity with MLB and NHL.
+Add os.makedirs('/var/data', exist_ok=True)
+at the top of the cache write block
+exactly as you described.
+This matches what Render provides.
+
+6. SOCCER MARKET KEYS UNVERIFIED
+Understood. Proceed with:
+Batch 1: player_shots_on_target,
+         player_shots,
+         player_goals
+Batch 2: player_assists,
+         player_cards
+
+If any key returns 422 it is silent
+and produces zero rows — same behavior
+as NHL. The Step 2 verification will
+show us which keys are live today.
+If verification returns empty due to
+no MLS games that is valid and expected.
+
+=== ADDITIONAL CLARIFICATION ON
+SCHEDULER REGISTRATION ===
+
+Since jobs register in TWO places
+in app.py (module-level AND inside
+background_initializer) add soccer
+in BOTH places to match the pattern.
+
+Module-level job:
+scheduler.add_job(
+    func=fetch_soccer_props_safe,
+    trigger='cron',
+    hour=7,
+    minute=45,
+    timezone='America/Phoenix',
+    id='soccer_props_daily',
+    name='Soccer Props 7:45AM PHX'
+)
+
+background_initializer() job:
+Same parameters plus:
+    replace_existing=True,
+    misfire_grace_time=3600,
+    coalesce=True
+
+=== CACHE PRIMING ===
+
+Add soccer to the cache priming block
+at line 2358 alongside MLB and NHL.
+Use the same _cache_is_fresh() check
+with max_hours=20.
+Cache path: /var/data/soccer_props_cache.json
+
+=== BOARD EMAIL ===
+
+Read send_board_email() body at line 2137.
+Add soccer_props_cache.json to the
+load block alongside mlb and nhl.
+Soccer props then appear in the morning
+board email when MLS has games.
+Same filter thresholds as MLB:
+no_vig_prob >= 55
+best_over_price > -235
+player field not empty
+
+=== NOW PROCEED ===
+
+Step 1: Create soccer_odds_api.py
+Step 2: Run verification and report output
+Step 3: Proceed to app.py and dashboard
+        only after Step 2 confirms success
+        OR confirms empty due to no games
+        (not due to errors)

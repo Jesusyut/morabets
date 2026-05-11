@@ -1294,6 +1294,54 @@ def api_nhl_props():
         logger.error(f"[NHL] /api/nhl/props error: {e}")
         return jsonify({"props": [], "count": 0, "sport": "NHL", "error": str(e)}), 500
 
+@app.route("/api/soccer/props")
+def api_soccer_props():
+    """
+    Soccer player props (MLS + FIFA World Cup) — serves from file cache only.
+    Mirrors /api/nhl/props exactly. Background scheduler populates the cache
+    at 7:45 AM PHX daily.
+    """
+    try:
+        from enrichment import load_props_from_file
+
+        cache_file = "/var/data/soccer_props_cache.json"
+        cache_fresh = False
+
+        if os.path.exists(cache_file):
+            age_seconds = time.time() - os.path.getmtime(cache_file)
+            cache_fresh = age_seconds < 82800  # 23 hours
+
+        if cache_fresh:
+            props = load_props_from_file(cache_file)
+            if props:
+                logger.info(f"[SOCCER PROPS] Serving {len(props)} from cache")
+                return jsonify({
+                    "props":  props,
+                    "count":  len(props),
+                    "sport":  "Soccer",
+                    "cached": True,
+                    "tiers": {
+                        "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                        "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                        "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
+                    }
+                })
+
+        logger.info("[SOCCER PROPS] Cache empty — no MLS/FIFA props available right now")
+        return jsonify({
+            "props":  [],
+            "count":  0,
+            "sport":  "Soccer",
+            "cached": False,
+            "status": "not_available",
+            "message": "Soccer props refresh daily — check back later or when MLS/FIFA games are scheduled"
+        })
+
+    except Exception as e:
+        logger.error(f"[SOCCER] /api/soccer/props error: {e}")
+        return jsonify({"props": [], "count": 0, "sport": "Soccer", "error": str(e)}), 500
+
+
 @app.route("/api/nhl/odds")
 def api_nhl_odds():
     """Curated NHL picks — h2h, spreads, totals — evaluated with EV engine."""
@@ -2010,6 +2058,63 @@ def _fetch_and_process_nhl_props():
         return []
 
 
+def _fetch_and_process_soccer_props():
+    """
+    Fetch, group, and cache Soccer props (MLS + FIFA World Cup).
+    Mirrors _fetch_and_process_nhl_props exactly.
+    Empty result is valid off-season — falls back to stale cache.
+    """
+    try:
+        from soccer_odds_api import fetch_player_props
+        from odds_api import group_props_by_player as _group_props_by_player
+        from enrichment import cache_props_to_file, load_props_from_file
+
+        logger.info("[SOCCER PROPS] Starting fetch...")
+
+        try:
+            os.makedirs('/var/data', exist_ok=True)
+        except OSError:
+            # Read-only filesystem (e.g. local Replit) — cache write will
+            # silently no-op downstream, mirroring MLB/NHL behavior.
+            pass
+
+        raw = fetch_player_props()
+
+        if not raw:
+            logger.info("[SOCCER PROPS] No raw props — checking yesterday's cache")
+            stale = load_props_from_file("/var/data/soccer_props_cache.json")
+            if stale:
+                logger.info(
+                    f"[SOCCER PROPS] Serving {len(stale)} stale props "
+                    f"(no fresh data available)"
+                )
+            return stale or []
+
+        props = _group_props_by_player(raw)
+
+        if not props:
+            logger.warning("[SOCCER PROPS] 0 after grouping")
+            return []
+
+        cache_props_to_file(props, "/var/data/soccer_props_cache.json")
+        logger.info(f"[SOCCER PROPS] Cached {len(props)} ✅")
+
+        return props
+
+    except Exception as e:
+        logger.error(f"[SOCCER PROPS] failed: {e}", exc_info=True)
+        return []
+
+
+def fetch_soccer_props_safe():
+    """Safe wrapper for the soccer scheduler job."""
+    try:
+        props = _fetch_and_process_soccer_props()
+        logger.info(f"Soccer props fetched: {len(props)} props cached")
+    except Exception as e:
+        logger.error(f"Soccer props fetch failed: {e}")
+
+
 # Keep old names as aliases for backward compat with existing scheduler jobs
 def update_player_props():
     return _fetch_and_process_mlb_props()
@@ -2088,6 +2193,18 @@ scheduler.add_job(
     replace_existing=True
 )
 
+# Soccer props — 7:45 AM PHX daily (after MLB, NHL, board email)
+scheduler.add_job(
+    func=fetch_soccer_props_safe,
+    trigger="cron",
+    hour=7,
+    minute=45,
+    timezone="America/Phoenix",
+    id="soccer_props_daily",
+    name="Soccer Props 7:45AM PHX",
+    replace_existing=True
+)
+
 # Game lines refresh twice daily
 scheduler.add_job(
     func=update_odds,
@@ -2155,7 +2272,8 @@ def send_board_email():
 
         mlb = load_json('/var/data/mlb_props_cache.json')
         nhl = load_json('/var/data/nhl_props_cache.json')
-        all_props = mlb + nhl
+        soccer = load_json('/var/data/soccer_props_cache.json')
+        all_props = mlb + nhl + soccer
 
         quality = [
             p for p in all_props
@@ -2313,6 +2431,24 @@ def background_initializer():
         except Exception as e:
             logger.warning(f"NHL props job error: {e}")
 
+        # ── REGISTER SOCCER PROPS JOB ────────────────────────────
+        try:
+            scheduler.add_job(
+                func=fetch_soccer_props_safe,
+                trigger='cron',
+                hour=7,
+                minute=45,
+                timezone='America/Phoenix',
+                id='soccer_props_daily',
+                name='Soccer Props 7:45AM PHX',
+                replace_existing=True,
+                misfire_grace_time=3600,
+                coalesce=True
+            )
+            logger.info("✅ Soccer props job registered")
+        except Exception as e:
+            logger.warning(f"Soccer props job error: {e}")
+
         # ── REGISTER BOARD EMAIL JOB ──────────────────────────────
         try:
             scheduler.add_job(
@@ -2388,6 +2524,17 @@ def background_initializer():
                 logger.info("✅ NHL props primed")
             except Exception as e:
                 logger.warning(f"NHL props failed: {e}")
+
+        # Soccer props — skip if fetched within 20 hours
+        soccer_cache = '/var/data/soccer_props_cache.json'
+        if _cache_is_fresh(soccer_cache, max_hours=20):
+            logger.info("[CACHE] Soccer props fresh — skipping fetch")
+        else:
+            try:
+                _fetch_and_process_soccer_props()
+                logger.info("✅ Soccer props primed")
+            except Exception as e:
+                logger.warning(f"Soccer props failed: {e}")
 
         # Odds — skip if fetched within 6 hours
         odds_flag = '/var/data/odds_last_fetch.txt'

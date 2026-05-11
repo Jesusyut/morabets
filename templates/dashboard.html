@@ -593,6 +593,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <button class="sport-tab active-tab" data-sport="mlb" type="button">⚾ MLB</button>
             <button class="sport-tab" data-sport="nfl" type="button">🏈 NFL</button>
             <button class="sport-tab" data-sport="nhl" type="button">🏒 NHL</button>
+            <button class="sport-tab" data-sport="soccer" type="button">⚽ Soccer</button>
         </div>
         <div style="display:flex;gap:0.4rem;align-items:center;" id="view-mode-toggle">
             <button id="mode-lines-btn" onclick="switchMode('lines')" class="view-btn active-view">🎯 Best Lines</button>
@@ -775,7 +776,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     let nflProps = [];
 
     function sportLabel() {
-        return currentSport === 'mlb' ? 'MLB' : currentSport === 'nfl' ? 'NFL' : 'NHL';
+        if (currentSport === 'mlb') return 'MLB';
+        if (currentSport === 'nfl') return 'NFL';
+        if (currentSport === 'nhl') return 'NHL';
+        if (currentSport === 'soccer') return 'Soccer';
+        return 'MLB';
     }
     function setPropsLabel() {
         const propsLabel = document.getElementById('total-props-label');
@@ -890,10 +895,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (currentMode === 'lines') {
             if (currentSport === 'mlb') loadMLBLines();
             else if (currentSport === 'nfl') loadNFLProps();
+            else if (currentSport === 'soccer') loadSoccerLines();
             else loadNHLLines();
         } else {
             if (currentSport === 'mlb') loadMLBProps();
             else if (currentSport === 'nfl') loadNFLProps();
+            else if (currentSport === 'soccer') loadSoccerProps();
             else loadNHLProps();
         }
     }
@@ -1241,6 +1248,45 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // ─────────────────────────────────────────────
     //  NHL Props loader
     // ─────────────────────────────────────────────
+    async function loadSoccerLines() {
+        // Best Lines tab for Soccer — props-only sport, so reuse the props loader.
+        loadSoccerProps();
+    }
+
+    async function loadSoccerProps() {
+        setPropsLabel();
+        showSkeleton();
+        try {
+            const propsRes = await fetch('/api/soccer/props?t=' + Date.now());
+            const data = await propsRes.json();
+            const rawProps = Array.isArray(data) ? data : (data.props || []);
+            console.log(`[BOARD] Soccer props received:`, rawProps.length);
+            allProps = rawProps; environmentData = {}; matchupData = {};
+            if (allProps.length === 0) {
+                const msg = data.message || 'Soccer props refresh daily — check back when MLS or FIFA games are scheduled.';
+                document.getElementById('player-props-container').innerHTML = `
+                  <div style="text-align:center;padding:3rem 1rem;max-width:420px;margin:0 auto;">
+                    <div style="font-size:2.5rem;margin-bottom:1rem;">⚽</div>
+                    <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.25rem;font-weight:700;color:#0F2406;text-transform:uppercase;margin-bottom:0.5rem;">Soccer Props Not Available Yet</h4>
+                    <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;line-height:1.6;margin-bottom:1rem;">${msg}</p>
+                    <p style="font-family:'Inter',sans-serif;font-size:0.8rem;color:#A0BF96;">Covering MLS and FIFA World Cup. The board updates automatically each morning.</p>
+                  </div>`;
+                document.getElementById('prop-count-display').textContent = '0 props';
+                return;
+            }
+            allProps.forEach(p => {
+                const key = (p.away_team && p.home_team) ? `${p.away_team} @ ${p.home_team}` : 'Soccer Props';
+                if (!matchupData[key]) matchupData[key] = [];
+                matchupData[key].push(p);
+            });
+            if (Object.keys(matchupData).length === 0) matchupData = null;
+            displayTodaysGames();
+        } catch(e) {
+            console.error('[Soccer] Error loading props:', e);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">Soccer props unavailable — no games scheduled.</div>`;
+        }
+    }
+
     async function loadNHLProps() {
         setPropsLabel();
         showSkeleton();
@@ -1551,7 +1597,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         const matchupCards = Object.entries(matchupData).map(([matchup, props]) => {
             const propCount = Array.isArray(props) ? props.length : 0;
-            const sportIcon = currentSport === 'mlb' ? '⚾' : currentSport === 'nhl' ? '🏒' : '🏈';
+            const sportIcon = currentSport === 'mlb' ? '⚾' : currentSport === 'nhl' ? '🏒' : currentSport === 'soccer' ? '⚽' : '🏈';
             let displayMatchup = matchup, environmentLabel = '';
             if (matchup.includes(' — ')) { const parts = matchup.split(' — '); displayMatchup = parts[0]; environmentLabel = parts[1]; }
             const teamParts = displayMatchup.split(' @ ');
