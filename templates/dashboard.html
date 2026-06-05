@@ -1842,7 +1842,9 @@ function closeMoraModal() {
     });
   }
 
-  if (!seen && !recentlyShown) {
+  // Free Pick Friday popup temporarily disabled per request.
+  var POPUP_ENABLED = false;
+  if (POPUP_ENABLED && !seen && !recentlyShown) {
     setTimeout(function() {
       var modal = document.getElementById('assists-popup');
       if (!modal) return;
