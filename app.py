@@ -2236,18 +2236,7 @@ scheduler.add_job(
     replace_existing=True
 )
 
-# Mora Assists — send daily picks at 6:00 AM PHX (= 9:00 AM ET)
-scheduler.add_job(
-    func=lambda: run_daily_assists(),
-    trigger="cron",
-    hour=6,
-    minute=0,
-    timezone="America/Phoenix",
-    id="mora_assists_daily",
-    name="Mora Assists Daily Picks 6:00AM PHX",
-    replace_existing=True,
-    misfire_grace_time=3600
-)
+# Mora Assists daily picks email removed per request.
 
 
 
@@ -2370,30 +2359,7 @@ def background_initializer():
         else:
             logger.info("⚠️ Scheduler already running")
 
-        # ── REGISTER MORA ASSISTS JOB ─────────────────────────────
-        # MUST run every startup — APScheduler does not persist jobs
-        # across Render process restarts.
-        try:
-            from mora_assists import run_daily_assists as _run_assists
-            scheduler.add_job(
-                func=_run_assists,
-                trigger='cron',
-                hour=6,
-                minute=0,
-                timezone='America/Phoenix',
-                id='mora_assists_daily',
-                name='Mora Assists 6:00AM PHX',
-                replace_existing=True,
-                misfire_grace_time=3600,
-                coalesce=True
-            )
-            job = scheduler.get_job('mora_assists_daily')
-            if job:
-                logger.info(f"✅ mora_assists_daily registered — next: {job.next_run_time}")
-            else:
-                logger.error("❌ mora_assists_daily failed to register")
-        except Exception as e:
-            logger.error(f"❌ Failed to register mora_assists job: {e}")
+        # Mora Assists daily picks email removed per request.
 
         # ── REGISTER MLB PROPS JOB ───────────────────────────────
         try:
@@ -2558,17 +2524,7 @@ def background_initializer():
             except Exception as e:
                 logger.warning(f"Odds failed: {e}")
 
-        # ── MISFIRE RECOVERY CHECK ───────────────────────────────
-        import threading as _threading
-        def _recovery_check():
-            import time
-            time.sleep(10)
-            try:
-                from mora_assists import check_missed_send_today
-                check_missed_send_today()
-            except Exception as e:
-                logger.error(f"Recovery check error: {e}")
-        _threading.Thread(target=_recovery_check, daemon=True).start()
+        # Mora Assists misfire recovery removed per request.
 
         app_initialized = True
         logger.info("🎉 Background init complete")
