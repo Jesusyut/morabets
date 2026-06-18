@@ -50,7 +50,7 @@ f.parentNode.insertBefore(j,f);
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Space+Grotesk:wght@400;600&display=swap" as="style">
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
 
     <!-- Structured data: WebApplication -->
     <script type="application/ld+json">
@@ -378,93 +378,90 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </div>
 
-<!-- ── Mora Assists Popup ── -->
+<!-- ── Mora Bets Newsletter Popup (retro arcade) ── -->
 <style>
 @keyframes maScaleIn {
   from { opacity:0; transform:scale(0.92); }
   to   { opacity:1; transform:scale(1); }
 }
+@keyframes arcadeBlink { 0%,49%{opacity:1;} 50%,100%{opacity:0.25;} }
 #assists-popup .ma-card { animation: maScaleIn 0.28s cubic-bezier(0.34,1.56,0.64,1) both; }
+#assists-popup .arcade-grid {
+  position:absolute; left:0; right:0; bottom:0; height:120px; overflow:hidden;
+  border-bottom-left-radius:14px; border-bottom-right-radius:14px; pointer-events:none; opacity:0.6;
+  background-image:
+    linear-gradient(rgba(76,187,23,0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(76,187,23,0.5) 1px, transparent 1px);
+  background-size: 28px 28px;
+  transform: perspective(180px) rotateX(60deg);
+  transform-origin: bottom center;
+}
+#assists-popup .arcade-scan {
+  position:absolute; inset:0; pointer-events:none; border-radius:14px;
+  background: repeating-linear-gradient(rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0) 4px);
+}
+#assists-popup .arcade-blink { animation: arcadeBlink 1.1s steps(1) infinite; }
+.arcade-font { font-family:'Press Start 2P', monospace; }
 </style>
 <div id="assists-popup"
-     style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
-  <div class="ma-card" style="width:100%;max-width:380px;margin:0 1rem;background:#0F2406;border-radius:24px;border:2px solid #4CBB17;box-shadow:0 24px 64px rgba(0,0,0,0.35);position:relative;padding:28px 24px 24px;">
+     style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;background:rgba(0,0,0,0.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
+  <div class="ma-card" style="width:100%;max-width:360px;margin:0 1rem;background:#050d02;border-radius:14px;border:3px solid #4CBB17;box-shadow:0 0 0 3px #050d02,0 0 40px rgba(76,187,23,0.45),0 24px 64px rgba(0,0,0,0.6);position:relative;padding:30px 22px 26px;overflow:hidden;">
 
-    <!-- MORA BETS NEWSLETTER POPUP -->
+    <div class="arcade-grid"></div>
 
-    <!-- BADGE ROW -->
-    <div style="text-align:center;margin-bottom:14px;">
-      <span style="display:inline-block;background:rgba(76,187,23,0.15);border:1px solid #4CBB17;border-radius:100px;padding:4px 16px;font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#4CBB17;">
-        FREE UNTIL WORLD CUP KICKOFF
-      </span>
-    </div>
-
-    <!-- COUNTDOWN TIMER -->
-    <div id="wc-countdown" style="display:flex;justify-content:center;gap:12px;margin-bottom:16px;">
-      <div style="text-align:center;">
-        <div id="wc-days" style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:#4CBB17;line-height:1;">--</div>
-        <div style="font-family:'Inter',sans-serif;font-size:9px;color:#6B9E5A;text-transform:uppercase;letter-spacing:1px;">Days</div>
-      </div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:#4CBB17;align-self:flex-start;padding-top:2px;">:</div>
-      <div style="text-align:center;">
-        <div id="wc-hours" style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:#4CBB17;line-height:1;">--</div>
-        <div style="font-family:'Inter',sans-serif;font-size:9px;color:#6B9E5A;text-transform:uppercase;letter-spacing:1px;">Hrs</div>
-      </div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:#4CBB17;align-self:flex-start;padding-top:2px;">:</div>
-      <div style="text-align:center;">
-        <div id="wc-mins" style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:#ffffff;line-height:1;">--</div>
-        <div style="font-family:'Inter',sans-serif;font-size:9px;color:#6B9E5A;text-transform:uppercase;letter-spacing:1px;">Min</div>
-      </div>
+    <!-- INSERT COIN BADGE -->
+    <div style="text-align:center;margin-bottom:18px;position:relative;z-index:2;">
+      <span class="arcade-font arcade-blink" style="font-size:9px;color:#4CBB17;letter-spacing:1px;">★ NEW UPDATE ★</span>
     </div>
 
     <!-- HEADLINE -->
-    <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;text-transform:uppercase;color:#ffffff;text-align:center;line-height:1.05;margin:0 0 8px;">
-      The Math Is Expanding.
-      <span style="color:#4CBB17;">Get In Early.</span>
+    <h2 class="arcade-font" style="font-size:22px;color:#4CBB17;text-align:center;line-height:1.4;margin:0 0 6px;text-shadow:0 0 10px rgba(76,187,23,0.7),3px 3px 0 #0a1f02;">
+      MORA BETS
     </h2>
-
-    <!-- SUBTEXT -->
-    <p style="font-family:'Inter',sans-serif;font-size:13px;color:#6B9E5A;text-align:center;line-height:1.6;margin:0 0 14px;">
-      Free Friday bet suggestions in your inbox. MMA and NBA no-vig analysis coming soon. World Cup coverage launching with kickoff.
+    <p class="arcade-font" style="font-size:10px;color:#ffffff;text-align:center;line-height:1.7;margin:0 0 18px;position:relative;z-index:2;">
+      JOIN THE NEWSLETTER
     </p>
 
-    <!-- COMING SOON PILLS -->
-    <div style="display:flex;justify-content:center;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
-      <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:600;color:#4CBB17;background:rgba(76,187,23,0.1);border:1px solid rgba(76,187,23,0.3);border-radius:100px;padding:3px 10px;">⚡ MLB — Live</span>
-      <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:600;color:#6B9E5A;background:rgba(255,255,255,0.04);border:1px solid rgba(107,158,90,0.25);border-radius:100px;padding:3px 10px;">⚽ World Cup</span>
-      <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:600;color:#6B9E5A;background:rgba(255,255,255,0.04);border:1px solid rgba(107,158,90,0.25);border-radius:100px;padding:3px 10px;">🥊 MMA</span>
-      <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:600;color:#6B9E5A;background:rgba(255,255,255,0.04);border:1px solid rgba(107,158,90,0.25);border-radius:100px;padding:3px 10px;">🏀 NBA</span>
-    </div>
+    <!-- SUBTEXT -->
+    <p class="arcade-font" style="font-size:8px;color:#6B9E5A;text-align:center;line-height:1.9;margin:0 0 18px;position:relative;z-index:2;">
+      FREE FRIDAY PICKS<br>+ NEW SPORT DROPS
+    </p>
 
     <!-- EMAIL INPUT -->
     <input id="newsletter-email-input"
            type="email"
-           placeholder="your@email.com"
-           style="width:100%;border:1.5px solid rgba(107,158,90,0.4);border-radius:12px;padding:13px 16px;font-family:'Inter',sans-serif;font-size:15px;background:rgba(255,255,255,0.05);color:#ffffff;box-sizing:border-box;outline:none;margin-bottom:8px;"
-           onfocus="this.style.borderColor='#4CBB17'"
-           onblur="this.style.borderColor='rgba(107,158,90,0.4)'">
+           placeholder="ENTER EMAIL"
+           class="arcade-font"
+           style="width:100%;border:2px solid #4CBB17;border-radius:4px;padding:13px 14px;font-size:9px;background:#0a1f02;color:#4CBB17;box-sizing:border-box;outline:none;margin-bottom:10px;position:relative;z-index:2;letter-spacing:0.5px;"
+           onfocus="this.style.boxShadow='0 0 12px rgba(76,187,23,0.6)'"
+           onblur="this.style.boxShadow='none'">
 
     <!-- CTA BUTTON -->
     <button onclick="submitNewsletter()"
-            style="width:100%;background:#4CBB17;color:#0F2406;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:15px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 4px 20px rgba(76,187,23,0.3);margin-bottom:8px;">
-      Get Free Friday Picks →
+            class="arcade-font"
+            style="width:100%;background:#4CBB17;color:#050d02;font-size:11px;padding:15px;border:none;border-radius:4px;cursor:pointer;box-shadow:0 4px 0 #2D6E0F;margin-bottom:10px;position:relative;z-index:2;letter-spacing:1px;"
+            onmousedown="this.style.transform='translateY(3px)';this.style.boxShadow='0 1px 0 #2D6E0F'"
+            onmouseup="this.style.transform='';this.style.boxShadow='0 4px 0 #2D6E0F'">
+      ▶ PRESS START
     </button>
 
     <!-- SUCCESS STATE -->
-    <div id="newsletter-success" style="display:none;text-align:center;padding:14px;background:rgba(76,187,23,0.1);border-radius:12px;margin-bottom:8px;">
-      <p style="font-family:'Inter',sans-serif;font-size:14px;color:#4CBB17;font-weight:600;margin:0;">
-        ✅ You are in. First picks land Friday.
+    <div id="newsletter-success" style="display:none;text-align:center;padding:14px;background:rgba(76,187,23,0.12);border:2px solid #4CBB17;border-radius:4px;margin-bottom:10px;position:relative;z-index:2;">
+      <p class="arcade-font" style="font-size:9px;color:#4CBB17;line-height:1.7;margin:0;">
+        ✓ YOU'RE IN!<br>FIRST PICKS FRIDAY
       </p>
     </div>
 
     <!-- DISMISS -->
-    <div style="text-align:center;">
+    <div style="text-align:center;position:relative;z-index:2;">
       <button onclick="closeNewsletterPopup()"
-              style="background:none;border:none;color:#6B9E5A;font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;padding:4px;">
-        No thanks
+              class="arcade-font"
+              style="background:none;border:none;color:#6B9E5A;font-size:7px;cursor:pointer;padding:4px;letter-spacing:1px;">
+        NO THANKS
       </button>
     </div>
 
+    <div class="arcade-scan"></div>
   </div>
 </div>
 
@@ -1171,7 +1168,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const allBooks = Array.isArray(pick.all_books) ? pick.all_books : [];
         let lineShopHtml = '';
         if (allBooks.length > 1) {
-            const cardId = `nv-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}-${line||'ml'}`;
+            const cardId = `nv-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}-${(line!=null?line:'ml').toString().replace(/[^a-zA-Z0-9]/g,'')}`;
             const savings = pick.line_shop_savings_pct || 0;
             const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
                 const isBest = b.over_price === pick.best_over_price;
@@ -1842,8 +1839,8 @@ function closeMoraModal() {
     });
   }
 
-  // Free Pick Friday popup temporarily disabled per request.
-  var POPUP_ENABLED = false;
+  // Newsletter signup popup (retro arcade) — enabled.
+  var POPUP_ENABLED = true;
   if (POPUP_ENABLED && !seen && !recentlyShown) {
     setTimeout(function() {
       var modal = document.getElementById('assists-popup');
@@ -1858,37 +1855,6 @@ function closeMoraModal() {
     }, 15000);
   }
 })();
-
-// ── World Cup countdown timer ──────────────────────────────────
-function startWorldCupCountdown() {
-  var target = new Date('June 12, 2026 00:00:00 UTC').getTime();
-
-  var timer = setInterval(function() {
-    var now = Date.now();
-    var diff = target - now;
-
-    if (diff <= 0) {
-      clearInterval(timer);
-      var el = document.getElementById('wc-countdown');
-      if (el) el.style.display = 'none';
-      return;
-    }
-
-    var days  = Math.floor(diff / (1000 * 60 * 60 * 24));
-    var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    var mins  = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    var d = document.getElementById('wc-days');
-    var h = document.getElementById('wc-hours');
-    var m = document.getElementById('wc-mins');
-
-    if (d) d.textContent = days;
-    if (h) h.textContent = hours;
-    if (m) m.textContent = mins;
-  }, 1000);
-}
-
-startWorldCupCountdown();
 
 // ── Newsletter popup handlers ──────────────────────────────────
 async function submitNewsletter() {
@@ -2011,21 +1977,35 @@ function closeNewsletterPopup() {
 (function() {
   var visited = localStorage.getItem('mora_visited');
 
+  function hideToast() {
+    var toast = document.getElementById('app-install-toast');
+    if (toast) toast.style.display = 'none';
+    document.removeEventListener('click', outsideClick, true);
+  }
+
+  function outsideClick(e) {
+    var toast = document.getElementById('app-install-toast');
+    if (toast && toast.style.display !== 'none' && !toast.contains(e.target)) {
+      hideToast();
+    }
+  }
+
   function showToast() {
     var toast = document.getElementById('app-install-toast');
     if (!toast) return;
     toast.style.display = 'block';
-    setTimeout(function() { if (toast) toast.style.display = 'none'; }, 12000);
+    // Stays up until the user clicks away (or the × button); no auto-dismiss.
+    setTimeout(function() {
+      document.addEventListener('click', outsideClick, true);
+    }, 0);
   }
 
   var toastClose = document.getElementById('toast-close');
-  if (toastClose) toastClose.addEventListener('click', function() {
-    var toast = document.getElementById('app-install-toast');
-    if (toast) toast.style.display = 'none';
-  });
+  if (toastClose) toastClose.addEventListener('click', hideToast);
 
   var toastHow = document.getElementById('toast-how');
-  if (toastHow) toastHow.addEventListener('click', function() {
+  if (toastHow) toastHow.addEventListener('click', function(e) {
+    e.stopPropagation();
     var instr = document.getElementById('toast-instructions');
     if (instr) instr.style.display = instr.style.display === 'none' ? 'block' : 'none';
   });
