@@ -1,0 +1,194 @@
+This is a LIVE production app with active
+users and paying subscribers. Read every
+file completely before changing anything.
+Report findings first. Surgical fix only.
+
+═══════════════════════════════════════
+THE BUG
+═══════════════════════════════════════
+
+On the MLB tab, clicking "Best Lines"
+shows team-level moneyline/run line data
+(TODAY'S LINES section — team name, win
+probability, PP Edge, Line Shop) which is
+completely different from clicking
+"Player Props" (which shows player props
+grouped by matchup).
+
+On the Soccer tab, clicking "Best Lines"
+shows the SAME content as "Player Props"
+— soccer player props grouped by matchup.
+The Best Lines button does nothing
+different for Soccer. The game lines
+data built in the previous session
+(/api/soccer/gamelines, fetch_soccer_game_lines,
+3-way no-vig) is not being rendered
+anywhere in the UI despite existing
+and being verified working on the backend.
+
+═══════════════════════════════════════
+STEP 1 — INVESTIGATE BEFORE CHANGING
+ANYTHING
+═══════════════════════════════════════
+
+Read dashboard.html completely and report:
+
+1. Find the click handler for the
+   "Best Lines" / "Player Props" toggle
+   buttons. What function do they call?
+   (Likely something like switchView()
+   or toggleLinesView() — report exact
+   name and code)
+
+2. Find how MLB's Best Lines view is
+   triggered and rendered. What function
+   loads and displays TODAY'S LINES for
+   MLB (team moneylines, PP Edge, Line
+   Shop)? Report the exact function name
+   — likely something like loadMLBLines()
+   or displayBestLines() based on naming
+   patterns already seen in this codebase
+   (loadMLBProps, loadNHLLines, etc.)
+
+3. Find the equivalent function for
+   Soccer — does loadSoccerLines() exist
+   at all, or does the Best Lines button
+   for Soccer currently fall through to
+   loadSoccerProps() because no dedicated
+   function was wired up?
+
+4. Confirm /api/soccer/gamelines is
+   being called ANYWHERE in the current
+   frontend code, or if it was built on
+   the backend in the previous session
+   but never connected to a button.
+
+Report all four findings before writing
+any code.
+
+═══════════════════════════════════════
+STEP 2 — THE LIKELY FIX
+═══════════════════════════════════════
+
+Based on the pattern already established
+for MLB and NHL, the fix is almost
+certainly:
+
+1. Create loadSoccerLines() function
+   that mirrors loadMLBLines() / 
+   whatever the correctly-named MLB
+   function is — exactly the same
+   structure, fetching from
+   /api/soccer/gamelines instead of
+   the MLB equivalent endpoint.
+
+2. Wire the Best Lines button, when
+   Soccer tab is active, to call
+   loadSoccerLines() instead of falling
+   through to loadSoccerProps().
+
+3. Render using the SAME card template
+   MLB uses for TODAY'S LINES — team name,
+   win probability badge, market type
+   (Moneyline Win / Run Line equivalent
+   for soccer would be the h2h 3-way
+   outcome — Home Win / Draw / Away Win),
+   best book + odds, PP Edge, Line Shop.
+
+   For soccer specifically the market
+   label should read "Win" or "Match
+   Result" instead of "Moneyline Win"
+   since soccer h2h is 3-way (home/draw/
+   away) not 2-way like MLB moneylines.
+   Confirm how the 3-way no-vig data
+   from no_vig_three_way() is structured
+   (home/draw/away percentages) and map
+   it to the same card layout MLB uses,
+   substituting the win probability with
+   whichever outcome (home, draw, or away)
+   has the highest no-vig probability —
+   mirroring how MLB shows the favored
+   team.
+
+4. Soccer totals (over/under goals) data
+   already fetched can populate the
+   HIGH SCORING / LOW SCORING tag exactly
+   as it does now on the Player Props view
+   — confirm this stays consistent between
+   both Best Lines and Player Props views
+   for Soccer since both should reflect
+   the same environment classification.
+
+═══════════════════════════════════════
+STEP 3 — VERIFY BEFORE TOUCHING
+ANYTHING USER-FACING
+═══════════════════════════════════════
+
+Before changing any rendering code run
+this to confirm the gamelines endpoint
+is returning usable data right now:
+
+curl -s https://morabets.com/api/soccer/gamelines | head -c 2000
+
+Report the raw output. Confirm it
+includes win probability per team
+(or per outcome: home/draw/away),
+best book, odds, and environment tag
+in a structure compatible with the
+existing MLB card renderer.
+
+═══════════════════════════════════════
+CONSTRAINTS — LIVE APP, ZERO RISK
+TOLERANCE
+═══════════════════════════════════════
+
+- Do NOT touch MLB Best Lines or
+  Player Props rendering in any way —
+  confirmed working, paying subscribers
+  depend on it
+- Do NOT touch NHL or NFL tabs
+- Do NOT touch app.py scheduler jobs
+- Do NOT touch soccer_odds_api.py
+  fetch logic — the backend data is
+  already verified correct, this is
+  a frontend wiring fix only
+- Do NOT touch the Line Shop delegated
+  click listener fixed in the previous
+  session
+- Do NOT touch mora_assists.py
+- Do NOT touch email gate, pixels, or
+  the Bovada footer
+- Only touch: the Best Lines button
+  click handler logic, and add a new
+  loadSoccerLines() function if it
+  does not already exist
+- Test sequence after fix, in this
+  exact order:
+  1. MLB tab → Player Props → confirm
+     unchanged
+  2. MLB tab → Best Lines → confirm
+     unchanged
+  3. NHL tab → both views → confirm
+     unchanged
+  4. Soccer tab → Player Props →
+     confirm unchanged (currently working)
+  5. Soccer tab → Best Lines → confirm
+     NOW shows team-level lines with
+     win probability, PP Edge, Line Shop
+     — not player props
+  6. Switch between MLB and Soccer
+     tabs multiple times rapidly →
+     confirm no stale data, no console
+     errors, no view bleeding between
+     sports
+- Report exact root cause and exact
+  fix applied before considering this
+  complete
+- If the fix requires restructuring
+  how the Best Lines/Player Props
+  toggle works globally (not just
+  adding a soccer-specific branch),
+  stop and report back before
+  proceeding — do not risk the
+  working MLB/NHL toggle behavior
+  to fix Soccer

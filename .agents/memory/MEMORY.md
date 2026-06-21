@@ -1,0 +1,1 @@
+- [Soccer Best Lines](soccer-best-lines.md) — 3-way h2h mapped into shared MLB Best Lines card; use max of home/draw/away, never backend favored_team.

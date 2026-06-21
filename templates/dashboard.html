@@ -1258,11 +1258,82 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
 
     // ─────────────────────────────────────────────
-    //  NHL Props loader
+    //  Soccer Best Lines loader
     // ─────────────────────────────────────────────
     async function loadSoccerLines() {
-        // Best Lines tab for Soccer — props-only sport, so reuse the props loader.
-        loadSoccerProps();
+        // Best Lines for Soccer — renders team-level h2h (3-way) lines from
+        // /api/soccer/gamelines, mapped into the SAME card template MLB uses.
+        showSkeleton();
+        try {
+            const res  = await fetch('/api/soccer/gamelines?t=' + Date.now());
+            const data = await res.json();
+            // Stale-response guard: if the user switched sport/mode while this
+            // fetch was in flight, bail before overwriting the active view.
+            if (currentSport !== 'soccer' || currentMode !== 'lines') return;
+            const games = data.games || [];
+
+            const noVigPicks = [];
+            games.forEach(g => {
+                // Highest of the THREE outcomes (home / draw / away) — soccer
+                // h2h is 3-way, so the "favored" side may be the draw.
+                const sides = [
+                    { side: 'home', name: g.home_team, prob: g.no_vig_home, opp: 'away' },
+                    { side: 'draw', name: 'Draw',       prob: g.no_vig_draw, opp: 'away' },
+                    { side: 'away', name: g.away_team, prob: g.no_vig_away, opp: 'home' },
+                ].filter(s => s.prob != null);
+                if (!sides.length) return;
+                const top = sides.reduce((m, s) => s.prob > m.prob ? s : m, sides[0]);
+                if (top.prob < 52) return;  // mirror MLB Today's Lines ≥52%
+
+                const favBooks = (g.h2h && g.h2h[top.side] && g.h2h[top.side].all_books) || [];
+                if (!favBooks.length) return;
+                const oppMap = {};
+                ((g.h2h && g.h2h[top.opp] && g.h2h[top.opp].all_books) || []).forEach(b => { oppMap[b.book] = b.price; });
+
+                // Line shop: favored price vs opposing-side price per book
+                // (mirrors MLB moneyline's "team / opponent" two-value display).
+                const all_books = favBooks
+                    .filter(b => b.price != null && oppMap[b.book] != null)
+                    .map(b => ({ book: b.book, over_price: b.price, under_price: oppMap[b.book] }));
+
+                const prices = favBooks.filter(b => b.price != null);
+                const bestBook = prices.reduce((m, b) => b.price > m.price ? b : m, prices[0]);
+
+                noVigPicks.push({
+                    player: top.name,
+                    stat: 'Match Result',
+                    stat_label: 'Match Result',
+                    line: null,
+                    no_vig_prob: top.prob,
+                    confidence_tier: top.prob >= 70 ? 'LOCK' : top.prob >= 55 ? 'FIRE' : 'LOW',
+                    best_over_price: (g.h2h[top.side].best_price != null) ? g.h2h[top.side].best_price : bestBook.price,
+                    best_book: bestBook.book,
+                    all_books: all_books.length > 1 ? all_books : [],
+                    game_time: g.game_time,
+                    sport: 'Soccer',
+                    market_type: 'moneyline',
+                });
+            });
+
+            noVigPicks.sort((a, b) => b.no_vig_prob - a.no_vig_prob);
+
+            if (noVigPicks.length === 0) {
+                document.getElementById('player-props-container').innerHTML = `
+                    <div style="text-align:center;padding:4rem 0;">
+                        <div style="font-size:3rem;margin-bottom:1rem;">⚽</div>
+                        <p style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;color:#0F2406;margin:0 0 0.5rem;">No soccer lines available right now.</p>
+                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:#6B9E5A;">Covering MLS and FIFA World Cup. Lines refresh each morning when sharp odds open.</p>
+                    </div>`;
+                document.getElementById('prop-count-display').textContent = '0 picks';
+                return;
+            }
+
+            document.getElementById('prop-count-display').textContent = `${noVigPicks.length} lines · 52%+`;
+            renderLinesBoard(noVigPicks, [], { no_vig: noVigPicks.length, edge: 0, implied: 0 }, 'Soccer');
+        } catch (e) {
+            console.error('[Soccer] Error loading best lines:', e);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">Soccer lines temporarily unavailable.</div>`;
+        }
     }
 
     async function loadSoccerProps() {
