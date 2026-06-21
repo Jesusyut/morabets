@@ -1342,6 +1342,61 @@ def api_soccer_props():
         return jsonify({"props": [], "count": 0, "sport": "Soccer", "error": str(e)}), 500
 
 
+@app.route("/api/soccer/gamelines")
+def api_soccer_gamelines():
+    """
+    Soccer game-level lines (MLS + FIFA World Cup): 3-way h2h moneyline + totals.
+    Mirrors the MLB Best Lines pattern (/api/mlb/odds): serves fresh file cache
+    when available, otherwise does a cheap live fetch (one /odds call per league).
+
+    Returns the raw game lines plus an `environments` map keyed by
+    "{away_team} @ {home_team}" so the dashboard can attach the HIGH/LOW SCORING
+    tag and favored-team win-probability badge to each soccer game card.
+    """
+    try:
+        cache_file = "/var/data/soccer_gamelines_cache.json"
+        games = None
+
+        if os.path.exists(cache_file):
+            age_seconds = time.time() - os.path.getmtime(cache_file)
+            if age_seconds < 82800:  # 23 hours
+                try:
+                    with open(cache_file, "r") as f:
+                        games = json.load(f)
+                    logger.info(f"[SOCCER LINES] Serving {len(games)} from cache")
+                except Exception:
+                    games = None
+
+        if games is None:
+            from soccer_odds_api import fetch_soccer_game_lines
+            games = fetch_soccer_game_lines()
+
+        environments = {}
+        for g in (games or []):
+            key = f"{g.get('away_team','')} @ {g.get('home_team','')}"
+            environments[key] = {
+                "favored_team": g.get("favored_team"),
+                "favored_prob": g.get("favored_prob"),
+                "environment":  g.get("environment", ""),
+                "no_vig_home":  g.get("no_vig_home"),
+                "no_vig_draw":  g.get("no_vig_draw"),
+                "no_vig_away":  g.get("no_vig_away"),
+                "home_team":    g.get("home_team"),
+                "away_team":    g.get("away_team"),
+            }
+
+        return jsonify({
+            "games":        games or [],
+            "environments": environments,
+            "count":        len(games or []),
+            "sport":        "Soccer",
+        })
+
+    except Exception as e:
+        logger.error(f"[SOCCER] /api/soccer/gamelines error: {e}")
+        return jsonify({"games": [], "environments": {}, "count": 0, "sport": "Soccer", "error": str(e)}), 500
+
+
 @app.route("/api/nhl/odds")
 def api_nhl_odds():
     """Curated NHL picks — h2h, spreads, totals — evaluated with EV engine."""
@@ -2106,13 +2161,40 @@ def _fetch_and_process_soccer_props():
         return []
 
 
+def _fetch_and_cache_soccer_game_lines():
+    """Fetch soccer game lines (h2h 3-way + totals) and cache to a SEPARATE
+    file from player props so neither overwrites the other."""
+    try:
+        from soccer_odds_api import fetch_soccer_game_lines
+        try:
+            os.makedirs('/var/data', exist_ok=True)
+        except OSError:
+            pass
+        lines = fetch_soccer_game_lines()
+        if lines:
+            try:
+                with open("/var/data/soccer_gamelines_cache.json", "w") as f:
+                    json.dump(lines, f)
+            except OSError:
+                # Read-only filesystem (e.g. local Replit dev) — write no-ops,
+                # mirroring MLB/NHL cache behavior. Live fetch still serves data.
+                pass
+        return lines or []
+    except Exception as e:
+        logger.error(f"[SOCCER LINES] fetch/cache failed: {e}", exc_info=True)
+        return []
+
+
 def fetch_soccer_props_safe():
-    """Safe wrapper for the soccer scheduler job."""
+    """Safe wrapper for the soccer scheduler job — props AND game lines."""
     try:
         props = _fetch_and_process_soccer_props()
-        logger.info(f"Soccer props fetched: {len(props)} props cached")
+        gamelines = _fetch_and_cache_soccer_game_lines()
+        logger.info(
+            f"Soccer: {len(props)} props, {len(gamelines)} game lines cached"
+        )
     except Exception as e:
-        logger.error(f"Soccer props fetch failed: {e}")
+        logger.error(f"Soccer fetch failed: {e}")
 
 
 # Keep old names as aliases for backward compat with existing scheduler jobs

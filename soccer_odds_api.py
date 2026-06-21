@@ -267,3 +267,205 @@ def fetch_soccer_props():
     Caching is handled by the app.py wrapper.
     """
     return fetch_player_props()
+
+
+def classify_soccer_environment(total_point):
+    """
+    Classify a soccer game's scoring environment from the over/under total goals
+    line. Soccer totals cluster around 2.5 goals, so the bands are tighter than
+    MLB/NHL run/goal totals.
+      >= 3.0  -> HIGH SCORING
+      <= 2.25 -> LOW SCORING
+      else    -> "" (neutral, e.g. the common 2.5 line)
+    """
+    try:
+        if total_point is None:
+            return ""
+        pt = float(total_point)
+        if pt >= 3.0:
+            return "HIGH SCORING"
+        if pt <= 2.25:
+            return "LOW SCORING"
+        return ""
+    except (TypeError, ValueError):
+        return ""
+
+
+def fetch_soccer_game_lines():
+    """
+    Fetch game-level lines for MLS and FIFA World Cup: h2h (3-way moneyline:
+    home / draw / away) and totals (over/under total goals). Separate from
+    player props.
+
+    Unlike player props, this is ONE simple /odds call per sport_key (not an
+    event-by-event loop) — the /odds endpoint returns every game with its lines
+    in a single response, mirroring how MLB/NHL game lines are pulled.
+
+    Returns a list of game dicts, each with:
+      home_team, away_team, matchup, game_time, league,
+      no_vig_home / no_vig_draw / no_vig_away (true probabilities, 0-100),
+      favored_team (home or away — whichever has the higher no-vig win prob),
+      favored_prob, environment ("HIGH SCORING" / "LOW SCORING" / ""),
+      h2h (best price + all_books per outcome), totals (point + best prices).
+    """
+    from probability import no_vig_three_way
+
+    if not ODDS_API_KEY:
+        logger.error("[SOCCER LINES] No ODDS_API_KEY")
+        return []
+
+    cache_key = "soccer_game_lines_all"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        logger.info(f"[SOCCER LINES] {len(cached)} game lines from cache")
+        return cached
+
+    BOOKS = "draftkings,fanduel,betmgm,betrivers"
+    games = []
+
+    for sport_key, league_label in SPORT_KEYS:
+        try:
+            resp = requests.get(
+                f"{BASE_URL}/sports/{sport_key}/odds",
+                params={
+                    "apiKey":     ODDS_API_KEY,
+                    "regions":    "us",
+                    "markets":    "h2h,totals",
+                    "oddsFormat": "american",
+                    "bookmakers": BOOKS,
+                },
+                timeout=20,
+            )
+
+            if resp.status_code in (404, 422):
+                logger.info(f"[SOCCER LINES:{sport_key}] No game lines (status {resp.status_code}) — out of season")
+                continue
+            if resp.status_code == 429:
+                logger.warning(f"[SOCCER LINES:{sport_key}] Rate limited — skipping")
+                continue
+
+            resp.raise_for_status()
+
+            quota = resp.headers.get("x-requests-remaining", "?")
+            data = resp.json()
+            logger.info(f"[SOCCER LINES:{sport_key}] {len(data)} games ({league_label}) quota={quota}")
+
+            for game in data:
+                home      = game.get("home_team", "")
+                away      = game.get("away_team", "")
+                game_time = game.get("commence_time", "")
+                if not home or not away:
+                    continue
+                matchup = f"{away} @ {home}"
+
+                # Per-book prices for each outcome
+                home_books = []   # [{book, price}]
+                draw_books = []
+                away_books = []
+                # Per-book triples (only books that posted all three outcomes)
+                triples = []      # [{home, draw, away}]
+                total_point = None
+                over_books  = []  # [{book, over_price, under_price}]
+                under_books = []
+
+                for bk in game.get("bookmakers", []):
+                    bk_name = bk.get("title", "")
+                    b_home = b_draw = b_away = None
+                    for market in bk.get("markets", []):
+                        mk       = market.get("key", "")
+                        outcomes = market.get("outcomes", [])
+
+                        if mk == "h2h":
+                            for o in outcomes:
+                                name  = o.get("name", "")
+                                price = o.get("price")
+                                if price is None:
+                                    continue
+                                if name == home:
+                                    b_home = price
+                                    home_books.append({"book": bk_name, "price": price})
+                                elif name == away:
+                                    b_away = price
+                                    away_books.append({"book": bk_name, "price": price})
+                                elif name == "Draw":
+                                    b_draw = price
+                                    draw_books.append({"book": bk_name, "price": price})
+
+                        elif mk == "totals":
+                            over_o  = next((o for o in outcomes if o.get("name") == "Over"),  None)
+                            under_o = next((o for o in outcomes if o.get("name") == "Under"), None)
+                            if over_o and under_o:
+                                op = over_o.get("price")
+                                up = under_o.get("price")
+                                pt = over_o.get("point")
+                                if op is not None and up is not None and pt is not None:
+                                    total_point = pt
+                                    over_books.append({"book": bk_name, "over_price": op,  "under_price": up})
+                                    under_books.append({"book": bk_name, "over_price": up, "under_price": op})
+
+                    if b_home is not None and b_draw is not None and b_away is not None:
+                        triples.append({"home": b_home, "draw": b_draw, "away": b_away})
+
+                # ── 3-way no-vig: average the per-book stripped probabilities ──
+                nv_home_vals, nv_draw_vals, nv_away_vals = [], [], []
+                for t in triples:
+                    nv = no_vig_three_way(t["home"], t["draw"], t["away"])
+                    if nv["no_vig_home"] is not None:
+                        nv_home_vals.append(nv["no_vig_home"])
+                    if nv["no_vig_draw"] is not None:
+                        nv_draw_vals.append(nv["no_vig_draw"])
+                    if nv["no_vig_away"] is not None:
+                        nv_away_vals.append(nv["no_vig_away"])
+
+                def _avg(vals):
+                    return round(sum(vals) / len(vals), 1) if vals else None
+
+                no_vig_home = _avg(nv_home_vals)
+                no_vig_draw = _avg(nv_draw_vals)
+                no_vig_away = _avg(nv_away_vals)
+
+                # Best (most favorable) American price per outcome across books
+                def _best(books):
+                    prices = [b["price"] for b in books if b.get("price") is not None]
+                    return max(prices) if prices else None
+
+                favored_team = None
+                favored_prob = None
+                if no_vig_home is not None and no_vig_away is not None:
+                    if no_vig_home >= no_vig_away:
+                        favored_team, favored_prob = home, no_vig_home
+                    else:
+                        favored_team, favored_prob = away, no_vig_away
+
+                games.append({
+                    "home_team":   home,
+                    "away_team":   away,
+                    "matchup":     matchup,
+                    "game_time":   game_time,
+                    "league":      league_label,
+                    "sport":       "Soccer",
+                    "no_vig_home": no_vig_home,
+                    "no_vig_draw": no_vig_draw,
+                    "no_vig_away": no_vig_away,
+                    "favored_team": favored_team,
+                    "favored_prob": favored_prob,
+                    "environment": classify_soccer_environment(total_point),
+                    "h2h": {
+                        "home": {"best_price": _best(home_books), "all_books": home_books},
+                        "draw": {"best_price": _best(draw_books), "all_books": draw_books},
+                        "away": {"best_price": _best(away_books), "all_books": away_books},
+                    },
+                    "totals": {
+                        "point":       total_point,
+                        "over_books":  over_books,
+                        "under_books": under_books,
+                    },
+                })
+
+        except Exception as e:
+            logger.error(f"[SOCCER LINES:{sport_key}] error: {e}")
+            continue
+
+    logger.info(f"[SOCCER LINES] {len(games)} total game lines built")
+    _cache_set(cache_key, games)
+    return games

@@ -81,6 +81,36 @@ def no_vig_probability(over_price, under_price):
     except Exception:
         return 50.0
 
+def no_vig_three_way(home_price, draw_price, away_price):
+    """
+    Strip vig from a THREE-way market (soccer h2h: home win / draw / away win).
+    All inputs are American odds. Returns a dict of true probabilities (0-100)
+    for each outcome. The 2-way no_vig_probability() above only handles
+    over/under or team-A/team-B markets, so soccer moneylines need this variant.
+    """
+    def to_implied(american):
+        if american is None:
+            return None
+        if american > 0:
+            return 100 / (american + 100)
+        return abs(american) / (abs(american) + 100)
+    try:
+        raw_home = to_implied(home_price)
+        raw_draw = to_implied(draw_price)
+        raw_away = to_implied(away_price)
+        parts = [p for p in (raw_home, raw_draw, raw_away) if p is not None]
+        total = sum(parts)
+        if total == 0 or not parts:
+            return {"no_vig_home": None, "no_vig_draw": None, "no_vig_away": None}
+        return {
+            "no_vig_home": round((raw_home / total) * 100, 1) if raw_home is not None else None,
+            "no_vig_draw": round((raw_draw / total) * 100, 1) if raw_draw is not None else None,
+            "no_vig_away": round((raw_away / total) * 100, 1) if raw_away is not None else None,
+        }
+    except Exception:
+        return {"no_vig_home": None, "no_vig_draw": None, "no_vig_away": None}
+
+
 def get_confidence_tier(no_vig_prob):
     """Return LOCK, FIRE, or LOW based on no-vig probability."""
     if no_vig_prob >= 70:

@@ -1091,7 +1091,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const allBooks = Array.isArray(pick.all_books) ? pick.all_books : [];
         let lineShopHtml = '';
         if (allBooks.length > 1) {
-            const cardId = `es-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}`;
             const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
                 const isBest = b.over_price === pick.best_over_price;
                 const fmt = o => o > 0 ? `+${o}` : `${o}`;
@@ -1100,11 +1099,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>`;
             }).join('');
             lineShopHtml = `
-                <div style="margin-top:0.6rem;">
-                    <button class="btn btn-outline-secondary w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}" style="font-size:0.68em;">
+                <div class="line-shop-wrap" style="margin-top:0.6rem;">
+                    <button class="line-shop-toggle btn btn-outline-secondary w-100 py-1" type="button" style="font-size:0.68em;">
                         <i class="fas fa-store" style="margin-right:0.25rem;"></i>Compare ${allBooks.length} books
                     </button>
-                    <div class="collapse mt-1" id="${cardId}"><div style="padding:0 0.25rem;">${bookRows}</div></div>
+                    <div class="line-shop-panel mt-1" style="display:none;"><div style="padding:0 0.25rem;">${bookRows}</div></div>
                 </div>`;
         }
 
@@ -1168,7 +1167,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const allBooks = Array.isArray(pick.all_books) ? pick.all_books : [];
         let lineShopHtml = '';
         if (allBooks.length > 1) {
-            const cardId = `nv-${(pick.player||'').replace(/[^a-zA-Z0-9]/g,'')}-${mt}-${(line!=null?line:'ml').toString().replace(/[^a-zA-Z0-9]/g,'')}`;
             const savings = pick.line_shop_savings_pct || 0;
             const bookRows = allBooks.slice().sort((a,b)=>b.over_price-a.over_price).map(b => {
                 const isBest = b.over_price === pick.best_over_price;
@@ -1178,11 +1176,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>`;
             }).join('');
             lineShopHtml = `
-                <div style="margin-top:0.5rem;">
-                    <button class="btn btn-outline-secondary w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}" style="font-size:0.68em;">
+                <div class="line-shop-wrap" style="margin-top:0.5rem;">
+                    <button class="line-shop-toggle btn btn-outline-secondary w-100 py-1" type="button" style="font-size:0.68em;">
                         <i class="fas fa-store" style="margin-right:0.25rem;"></i>Line Shop (${allBooks.length} books${savings>0?` · save ~${savings}%`:''})
                     </button>
-                    <div class="collapse mt-1" id="${cardId}"><div style="padding:0 0.25rem;">${bookRows}</div></div>
+                    <div class="line-shop-panel mt-1" style="display:none;"><div style="padding:0 0.25rem;">${bookRows}</div></div>
                 </div>`;
         }
 
@@ -1271,11 +1269,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         setPropsLabel();
         showSkeleton();
         try {
-            const propsRes = await fetch('/api/soccer/props?t=' + Date.now());
+            const [propsRes, linesRes] = await Promise.all([
+                fetch('/api/soccer/props?t=' + Date.now()),
+                fetch('/api/soccer/gamelines?t=' + Date.now()).catch(() => ({ json: async () => ({}) }))
+            ]);
             const data = await propsRes.json();
+            const linesData = await linesRes.json().catch(() => ({}));
             const rawProps = Array.isArray(data) ? data : (data.props || []);
             console.log(`[BOARD] Soccer props received:`, rawProps.length);
-            allProps = rawProps; environmentData = {}; matchupData = {};
+            allProps = rawProps; environmentData = linesData.environments || {}; matchupData = {};
             if (allProps.length === 0) {
                 const msg = data.message || 'Soccer props refresh daily — check back when MLS or FIFA games are scheduled.';
                 document.getElementById('player-props-container').innerHTML = `
@@ -1289,7 +1291,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 return;
             }
             allProps.forEach(p => {
-                const key = (p.away_team && p.home_team) ? `${p.away_team} @ ${p.home_team}` : 'Soccer Props';
+                const rawKey = (p.away_team && p.home_team) ? `${p.away_team} @ ${p.home_team}` : 'Soccer Props';
+                let envLabel = '';
+                if (environmentData && environmentData[rawKey]) {
+                    const e = environmentData[rawKey].environment || '';
+                    if (/high/i.test(e)) envLabel = 'HIGH SCORING'; else if (/low/i.test(e)) envLabel = 'LOW SCORING';
+                }
+                const key = envLabel ? `${rawKey} — ${envLabel}` : rawKey;
                 if (!matchupData[key]) matchupData[key] = [];
                 matchupData[key].push(p);
             });
@@ -1555,7 +1563,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             const allBooks = Array.isArray(prop.all_books) ? prop.all_books : [];
             let lineShopHtml = '';
             if (allBooks.length > 1) {
-                const cardId = `ls-${playerName.replace(/\s/g,'-')}-${statType}`.replace(/[^a-zA-Z0-9-]/g,'');
                 const savings = prop.line_shop_savings_pct != null ? prop.line_shop_savings_pct : 0;
                 const bookRows = allBooks.slice().sort((a,b) => b.over_price - a.over_price).map(b => {
                     const isBest = b.over_price === (prop.best_over_price || -9999);
@@ -1565,11 +1572,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     </div>`;
                 }).join('');
                 lineShopHtml = `
-                    <div style="margin-top:0.5rem;">
-                        <button class="btn btn-outline-secondary w-100 py-1" style="font-size:0.68em;" type="button" data-bs-toggle="collapse" data-bs-target="#${cardId}">
+                    <div class="line-shop-wrap" style="margin-top:0.5rem;">
+                        <button class="line-shop-toggle btn btn-outline-secondary w-100 py-1" style="font-size:0.68em;" type="button">
                             <i class="fas fa-store" style="margin-right:0.25rem;"></i>Line Shop (${allBooks.length} books${savings > 0 ? ` · save ~${savings}%` : ''})
                         </button>
-                        <div class="collapse mt-1" id="${cardId}"><div style="padding:0 0.25rem;">${bookRows}</div></div>
+                        <div class="line-shop-panel mt-1" style="display:none;"><div style="padding:0 0.25rem;">${bookRows}</div></div>
                     </div>`;
             }
 
@@ -1716,6 +1723,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         currentPropsDisplayed += 50;
         displayProps();
     });
+
+    // ── Line Shop: single delegated listener on the static props container ──
+    // Survives every innerHTML re-render of cards (MLB / NHL / Soccer). No dynamic
+    // element IDs, so decimal lines / duplicate players can no longer break it.
+    (function initLineShopDelegation() {
+        const container = document.getElementById('player-props-container');
+        if (!container) return;
+        container.addEventListener('click', function(e) {
+            const toggle = e.target.closest('.line-shop-toggle');
+            if (!toggle || !container.contains(toggle)) return;
+            const wrap = toggle.closest('.line-shop-wrap');
+            const panel = wrap ? wrap.querySelector('.line-shop-panel') : null;
+            if (!panel) return;
+            e.preventDefault();
+            e.stopPropagation();
+            panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'block' : 'none';
+        });
+    })();
 
     console.log('Dashboard loaded successfully');
 </script>
