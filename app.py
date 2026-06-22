@@ -3590,5 +3590,179 @@ def unsubscribe_assists():
         </body></html>""", 500
 
 
+# In-memory per-IP throttle for the (public) Context Edge endpoint. Each request
+# triggers a paid Anthropic call, so cap bursts to limit cost-exhaustion abuse.
+_CE_RATE_BUCKETS = {}
+_CE_RATE_MAX = 15        # requests
+_CE_RATE_WINDOW = 60     # seconds
+
+
+@app.route('/api/context-edge', methods=['POST'])
+def context_edge_analysis():
+    """
+    Receives a betting line from the frontend and returns Claude's
+    Context Edge analysis as JSON. Additive feature — does not affect
+    any existing route or data pipeline.
+    """
+    import anthropic
+
+    raw = None
+    try:
+        # Lightweight per-IP rate limit
+        ip = (request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown')
+              .split(',')[0].strip())
+        now = time.time()
+        bucket = [t for t in _CE_RATE_BUCKETS.get(ip, []) if now - t < _CE_RATE_WINDOW]
+        if len(bucket) >= _CE_RATE_MAX:
+            return jsonify({'error': 'Too many requests. Please wait a moment and try again.'}), 429
+        bucket.append(now)
+        _CE_RATE_BUCKETS[ip] = bucket
+
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        player = data.get('player', '')
+        stat = data.get('stat', '')
+        line = data.get('line', '')
+        odds = data.get('best_over_price', '')
+        no_vig = data.get('no_vig_prob', '')
+        matchup = data.get('matchup', '')
+        sport = data.get('sport', '')
+        environment = data.get('environment', 'No label')
+        home_team = data.get('home_team', '')
+        away_team = data.get('away_team', '')
+        all_books = data.get('all_books', [])
+        market_type = data.get('market_type', 'player_prop')
+
+        # Sportsbook implied probability from raw American odds
+        try:
+            odds_num = float(odds) if odds not in ('', None) else 0
+        except (TypeError, ValueError):
+            odds_num = 0
+        if odds_num:
+            if odds_num < 0:
+                impl = abs(odds_num) / (abs(odds_num) + 100) * 100
+            else:
+                impl = 100 / (odds_num + 100) * 100
+            implied_prob = f"{impl:.1f}%"
+        else:
+            implied_prob = "Unknown"
+
+        books_str = ', '.join([
+            f"{b.get('book','')} ({b.get('over_price','')})"
+            for b in all_books[:5]
+        ]) if all_books else 'Not provided'
+
+        user_message = f"""
+Analyze this betting line for context edge:
+
+SPORT: {sport}
+MATCHUP: {matchup}
+HOME TEAM: {home_team}
+AWAY TEAM: {away_team}
+ENVIRONMENT: {environment}
+MARKET TYPE: {market_type}
+PLAYER: {player}
+STAT: {stat} OVER {line}
+BEST ODDS: {odds} (American)
+SPORTSBOOK IMPLIED PROBABILITY: {implied_prob}
+NO-VIG TRUE PROBABILITY: {no_vig}%
+BOOKS CARRYING THIS LINE: {books_str}
+
+Additional context provided by user:
+{data.get('user_context', 'None provided')}
+
+Analyze the context edge for this line.
+Return ONLY valid JSON matching the required schema exactly.
+Do not invent data not provided above.
+List any missing data under missing_data.
+"""
+
+        SYSTEM_PROMPT = """You are Mora Bets Context Edge Analyst.
+Your job is to decide whether selected betting lines have a CONTEXT EDGE.
+A context edge means matchup-specific information may make the true probability better than the no-vig market probability or better than the sportsbook implied probability.
+
+You must analyze:
+- Price value
+- No-vig probability vs sportsbook implied probability
+- Starting pitcher/starter/goalie context when relevant
+- Injuries and lineup context
+- Weather/venue/park context
+- Rest/travel/fatigue
+- Recent form
+- Matchup style
+- Splits
+- Alt-line safety
+- Market movement if provided
+- Missing data
+
+You must not invent data. If data is not provided, list it under missing_data and reduce confidence accordingly.
+
+You must return ONLY valid JSON. No preamble. No explanation outside the JSON.
+
+Required JSON schema:
+{
+  "verdict": "PLAY | SMALL PLAY | PASS",
+  "confidence": 1-10,
+  "risk_level": "LOW | MEDIUM | HIGH",
+  "context_edge_score": 1-10,
+  "price_value_score": 1-10,
+  "no_vig_probability": "",
+  "book_odds": "",
+  "sportsbook_implied_probability": "",
+  "estimated_true_probability_range": "",
+  "estimated_edge": "",
+  "context_supporting_bet": [],
+  "context_against_bet": [],
+  "missing_data": [],
+  "best_line": "",
+  "alt_line_suggestion": "",
+  "suggested_unit_size": "",
+  "reason": "",
+  "what_would_make_this_a_pass": ""
+}
+
+Decision rules — strictly enforced:
+- If sportsbook implied probability exceeds no-vig probability and context is weak: verdict MUST be PASS
+- If odds are heavy favorite pricing and true probability does not clearly exceed break-even: verdict MUST be PASS
+- If plus-money or fair-priced AND context strongly supports: consider PLAY or SMALL PLAY
+- If important context data is missing: confidence cannot exceed 7
+- If both price_value_score AND context_edge_score are below 7: verdict MUST be PASS
+- Prefer disciplined passes over forced plays
+- Never recommend a bet solely because no-vig probability is high"""
+
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key:
+            return jsonify({'error': 'Context Edge is not configured.'}), 503
+
+        client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
+        message = client.messages.create(
+            model='claude-sonnet-4-5-20250929',
+            max_tokens=1500,
+            system=SYSTEM_PROMPT,
+            messages=[{'role': 'user', 'content': user_message}]
+        )
+
+        raw = message.content[0].text.strip()
+
+        # Strip markdown fences if present
+        if raw.startswith('```'):
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+        raw = raw.strip()
+
+        result = json.loads(raw)
+        return jsonify(result)
+
+    except json.JSONDecodeError:
+        logger.error(f'Context edge: invalid JSON from model. Raw preview: {(raw or "")[:300]}')
+        return jsonify({'error': 'Analysis temporarily unavailable. Please try again.'}), 502
+    except Exception as e:
+        logger.error(f'Context edge error: {e}')
+        return jsonify({'error': 'Analysis failed. Please try again.'}), 500
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

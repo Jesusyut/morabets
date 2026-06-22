@@ -1,1 +1,2 @@
 - [Soccer Best Lines](soccer-best-lines.md) — 3-way h2h mapped into shared MLB Best Lines card; use max of home/draw/away, never backend favored_team.
+- [LLM endpoint safety](llm-endpoint-safety.md) — public LLM routes need per-IP rate limit + timeout; render model output text-only (never innerHTML); generic errors only.

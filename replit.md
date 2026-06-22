@@ -3,6 +3,13 @@
 ## Overview
 Mora Bets is a free sports betting analytics platform for MLB, NHL, and NFL. It provides real-time odds comparison, EV (expected value) analysis, and player prop evaluation with no paywall, no login, and no subscription required. The platform is fully open — any visitor can access the dashboard and all tools.
 
+### Recent Updates (June 2026) — Context Edge Analyst (additive)
+- **Context Edge button**: A subtle "🔍 Context Edge" button on every prop/game-line card opens an inline overlay with an AI second-opinion on the bet
+- **Endpoint**: New `POST /api/context-edge` calls Anthropic Claude (`claude-sonnet-4-5-20250929`) and returns a structured JSON verdict (PLAY/SMALL PLAY/PASS, confidence, context/price scores, probabilities, supporting/against context, missing data, unit size, "what would make this a pass")
+- **Re-analyze with context**: Users can add their own notes (injury/weather/lineup) and re-run the analysis
+- **Safety**: public endpoint is per-IP rate-limited (15/min) with a 30s timeout; untrusted model output is rendered text-only (no innerHTML); errors are generic
+- Fully additive — no existing route, data pipeline, scheduler, or UI behavior was changed
+
 ### Recent Updates (April 2026) — Premium Rebuild & Paywall Removal
 - **Paywall fully removed**: All Stripe/token/license-key code deleted from `app.py`. Dashboard is open to all visitors
 - **Email capture**: `/api/subscribe` + `save_subscriber()` saves emails to `email_subscribers.json`; slide-in modal in dashboard (45s delay / 60% scroll, once per session, skips <375px)
