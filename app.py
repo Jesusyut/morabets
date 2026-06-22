@@ -3622,6 +3622,11 @@ def context_edge_analysis():
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
+        # Passcode gate — feature is in private testing; only the owner has the code.
+        expected_passcode = os.environ.get('CONTEXT_EDGE_PASSCODE', '4774')
+        if str(data.get('passcode', '')).strip() != expected_passcode:
+            return jsonify({'error': 'Invalid passcode.'}), 403
+
         player = data.get('player', '')
         stat = data.get('stat', '')
         line = data.get('line', '')

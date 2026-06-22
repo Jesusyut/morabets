@@ -1865,7 +1865,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // ─────────────────────────────────────────────
     let _currentContextProp = null;
 
+    // Private testing gate — prompt for the passcode once per browser session.
+    function _ceGetPasscode() {
+        let code = sessionStorage.getItem('ce_passcode');
+        if (!code) {
+            code = (window.prompt('Context Edge is in private testing.\nEnter passcode to continue:') || '').trim();
+            if (code) sessionStorage.setItem('ce_passcode', code);
+        }
+        return code;
+    }
+
     function openContextEdgePanel(prop) {
+        const code = _ceGetPasscode();
+        if (!code) return;
         _currentContextProp = prop;
         const overlay = document.getElementById('context-edge-overlay');
         overlay.style.display = 'flex';
@@ -1888,12 +1900,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     async function fetchContextEdge(prop, userContext) {
         try {
-            const payload = { ...prop, user_context: userContext };
+            const payload = { ...prop, user_context: userContext, passcode: sessionStorage.getItem('ce_passcode') || '' };
             const response = await fetch('/api/context-edge', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+            if (response.status === 403) {
+                // Wrong/expired passcode — clear it so the user is re-prompted next time.
+                sessionStorage.removeItem('ce_passcode');
+                throw new Error('Invalid passcode');
+            }
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
             if (data.error) throw new Error(data.error);
