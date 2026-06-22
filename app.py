@@ -3627,39 +3627,59 @@ def context_edge_analysis():
         if str(data.get('passcode', '')).strip() != expected_passcode:
             return jsonify({'error': 'Invalid passcode.'}), 403
 
-        player = data.get('player', '')
-        stat = data.get('stat', '')
-        line = data.get('line', '')
-        odds = data.get('best_over_price', '')
-        no_vig = data.get('no_vig_prob', '')
-        matchup = data.get('matchup', '')
-        sport = data.get('sport', '')
-        environment = data.get('environment', 'No label')
-        home_team = data.get('home_team', '')
-        away_team = data.get('away_team', '')
-        all_books = data.get('all_books', [])
-        market_type = data.get('market_type', 'player_prop')
+        # validate_only: passcode check passed above, so just confirm access. No Claude call.
+        if data.get('validate_only'):
+            return jsonify({'valid': True}), 200
 
-        # Sportsbook implied probability from raw American odds
-        try:
-            odds_num = float(odds) if odds not in ('', None) else 0
-        except (TypeError, ValueError):
-            odds_num = 0
-        if odds_num:
-            if odds_num < 0:
-                impl = abs(odds_num) / (abs(odds_num) + 100) * 100
+        # Build the user message. Two supported input formats:
+        #   A) New chat format: free-text {user_message} typed by the user
+        #   B) Old structured format: prop fields (player, stat, matchup, ...)
+        chat_message = (data.get('user_message') or '').strip()
+        if chat_message:
+            user_message = f"""
+Analyze this betting line for context edge. The user has described it in natural language:
+
+{chat_message}
+
+Analyze the context edge for this line.
+Return ONLY valid JSON matching the required schema exactly.
+Do not invent data not provided above.
+List any missing data under missing_data.
+"""
+        elif data.get('player') or data.get('matchup'):
+            player = data.get('player', '')
+            stat = data.get('stat', '')
+            line = data.get('line', '')
+            odds = data.get('best_over_price', '')
+            no_vig = data.get('no_vig_prob', '')
+            matchup = data.get('matchup', '')
+            sport = data.get('sport', '')
+            environment = data.get('environment', 'No label')
+            home_team = data.get('home_team', '')
+            away_team = data.get('away_team', '')
+            all_books = data.get('all_books', [])
+            market_type = data.get('market_type', 'player_prop')
+
+            # Sportsbook implied probability from raw American odds
+            try:
+                odds_num = float(odds) if odds not in ('', None) else 0
+            except (TypeError, ValueError):
+                odds_num = 0
+            if odds_num:
+                if odds_num < 0:
+                    impl = abs(odds_num) / (abs(odds_num) + 100) * 100
+                else:
+                    impl = 100 / (odds_num + 100) * 100
+                implied_prob = f"{impl:.1f}%"
             else:
-                impl = 100 / (odds_num + 100) * 100
-            implied_prob = f"{impl:.1f}%"
-        else:
-            implied_prob = "Unknown"
+                implied_prob = "Unknown"
 
-        books_str = ', '.join([
-            f"{b.get('book','')} ({b.get('over_price','')})"
-            for b in all_books[:5]
-        ]) if all_books else 'Not provided'
+            books_str = ', '.join([
+                f"{b.get('book','')} ({b.get('over_price','')})"
+                for b in all_books[:5]
+            ]) if all_books else 'Not provided'
 
-        user_message = f"""
+            user_message = f"""
 Analyze this betting line for context edge:
 
 SPORT: {sport}
@@ -3683,6 +3703,8 @@ Return ONLY valid JSON matching the required schema exactly.
 Do not invent data not provided above.
 List any missing data under missing_data.
 """
+        else:
+            return jsonify({'error': 'No input'}), 400
 
         SYSTEM_PROMPT = """You are Mora Bets Context Edge Analyst.
 Your job is to decide whether selected betting lines have a CONTEXT EDGE.

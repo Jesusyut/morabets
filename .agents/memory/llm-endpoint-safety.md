@@ -20,3 +20,11 @@ JS that renders model output into the DOM.
 
 Note: Anthropic model id `claude-sonnet-4-6` is NOT valid; use
 `claude-sonnet-4-5-20250929` (Claude Sonnet 4.5).
+
+## Context Edge entry point (June 2026)
+Context Edge is a SINGLE floating chat bubble (bottom-right), NOT a button on
+every card. **Why:** per-card buttons risked accidental paid Claude calls on a
+public app; one intentional entry point = zero unintended fan-out. The
+/api/context-edge route accepts both a free-text `user_message` (chat format) and
+the legacy structured prop fields, plus a `validate_only` passcode-check that
+skips the Claude call. Keep both formats working if editing the route.
