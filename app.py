@@ -3597,6 +3597,59 @@ _CE_RATE_MAX = 15        # requests
 _CE_RATE_WINDOW = 60     # seconds
 
 
+def load_board_for_context():
+    """Load the current no-vig board from all available sport caches.
+    READ ONLY — never writes to cache files. Returns a fresh list every call."""
+    caches = {
+        'MLB': '/var/data/mlb_props_cache.json',
+        'Soccer': '/var/data/soccer_props_cache.json',
+        'NHL': '/var/data/nhl_props_cache.json',
+    }
+    board = []
+    for sport, path in caches.items():
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    props = json.load(f)
+                qualifying = [
+                    p for p in props
+                    if p.get('no_vig_prob', 0) >= 52
+                    and p.get('best_over_price', 0) != 0
+                    and p.get('best_over_price', 0) > -235
+                    and p.get('player', '')
+                    and not any(x in p.get('player', '') for x in ['Batter', 'Pitcher', '_'])
+                ]
+                qualifying.sort(key=lambda x: x.get('no_vig_prob', 0), reverse=True)
+                board.extend(qualifying[:40])
+            except Exception as e:
+                logger.warning(f'Cache load error {sport}: {e}')
+    return board
+
+
+def format_board_for_claude(board):
+    """Render the board as a compact one-line-per-prop string for the prompt."""
+    if not board:
+        return "No qualifying props on board today."
+    lines = []
+    for p in board:
+        over = p.get('best_over_price', 0)
+        nv = p.get('no_vig_prob', 0)
+        books = [b.get('book', '') for b in p.get('all_books', [])]
+        stat = p.get('stat_label', p.get('stat', '')).replace('player_', '').replace('_', ' ').title()
+        env = p.get('environment', '')
+        lines.append(
+            f"{p.get('player','')} | "
+            f"{stat} OVER {p.get('line','')} | "
+            f"Over: {over} | "
+            f"No-vig: {nv}% | "
+            f"{p.get('matchup','')} | "
+            f"{p.get('sport','MLB')} | "
+            f"Env: {env or 'none'} | "
+            f"Books: {', '.join(books[:2])}"
+        )
+    return '\n'.join(lines)
+
+
 @app.route('/api/context-edge', methods=['POST'])
 def context_edge_analysis():
     """
@@ -3631,161 +3684,73 @@ def context_edge_analysis():
         if data.get('validate_only'):
             return jsonify({'valid': True}), 200
 
-        # Build the user message. Two supported input formats:
-        #   A) New chat format: free-text {user_message} typed by the user
-        #   B) Old structured format: prop fields (player, stat, matchup, ...)
-        chat_message = (data.get('user_message') or '').strip()
-        if chat_message:
-            user_message = f"""
-Analyze this betting line for context edge. The user has described it in natural language:
-
-{chat_message}
-
-Analyze the context edge for this line.
-Return ONLY valid JSON matching the required schema exactly.
-Do not invent data not provided above.
-List any missing data under missing_data.
-"""
-        elif data.get('player') or data.get('matchup'):
-            player = data.get('player', '')
-            stat = data.get('stat', '')
-            line = data.get('line', '')
-            odds = data.get('best_over_price', '')
-            no_vig = data.get('no_vig_prob', '')
-            matchup = data.get('matchup', '')
-            sport = data.get('sport', '')
-            environment = data.get('environment', 'No label')
-            home_team = data.get('home_team', '')
-            away_team = data.get('away_team', '')
-            all_books = data.get('all_books', [])
-            market_type = data.get('market_type', 'player_prop')
-
-            # Sportsbook implied probability from raw American odds
-            try:
-                odds_num = float(odds) if odds not in ('', None) else 0
-            except (TypeError, ValueError):
-                odds_num = 0
-            if odds_num:
-                if odds_num < 0:
-                    impl = abs(odds_num) / (abs(odds_num) + 100) * 100
-                else:
-                    impl = 100 / (odds_num + 100) * 100
-                implied_prob = f"{impl:.1f}%"
-            else:
-                implied_prob = "Unknown"
-
-            books_str = ', '.join([
-                f"{b.get('book','')} ({b.get('over_price','')})"
-                for b in all_books[:5]
-            ]) if all_books else 'Not provided'
-
-            user_message = f"""
-Analyze this betting line for context edge:
-
-SPORT: {sport}
-MATCHUP: {matchup}
-HOME TEAM: {home_team}
-AWAY TEAM: {away_team}
-ENVIRONMENT: {environment}
-MARKET TYPE: {market_type}
-PLAYER: {player}
-STAT: {stat} OVER {line}
-BEST ODDS: {odds} (American)
-SPORTSBOOK IMPLIED PROBABILITY: {implied_prob}
-NO-VIG TRUE PROBABILITY: {no_vig}%
-BOOKS CARRYING THIS LINE: {books_str}
-
-Additional context provided by user:
-{data.get('user_context', 'None provided')}
-
-Analyze the context edge for this line.
-Return ONLY valid JSON matching the required schema exactly.
-Do not invent data not provided above.
-List any missing data under missing_data.
-"""
-        else:
-            return jsonify({'error': 'No input'}), 400
-
-        SYSTEM_PROMPT = """You are Mora Bets Context Edge Analyst.
-Your job is to decide whether selected betting lines have a CONTEXT EDGE.
-A context edge means matchup-specific information may make the true probability better than the no-vig market probability or better than the sportsbook implied probability.
-
-You must analyze:
-- Price value
-- No-vig probability vs sportsbook implied probability
-- Starting pitcher/starter/goalie context when relevant
-- Injuries and lineup context
-- Weather/venue/park context
-- Rest/travel/fatigue
-- Recent form
-- Matchup style
-- Splits
-- Alt-line safety
-- Market movement if provided
-- Missing data
-
-You must not invent data. If data is not provided, list it under missing_data and reduce confidence accordingly.
-
-You must return ONLY valid JSON. No preamble. No explanation outside the JSON.
-
-Required JSON schema:
-{
-  "verdict": "PLAY | SMALL PLAY | PASS",
-  "confidence": 1-10,
-  "risk_level": "LOW | MEDIUM | HIGH",
-  "context_edge_score": 1-10,
-  "price_value_score": 1-10,
-  "no_vig_probability": "",
-  "book_odds": "",
-  "sportsbook_implied_probability": "",
-  "estimated_true_probability_range": "",
-  "estimated_edge": "",
-  "context_supporting_bet": [],
-  "context_against_bet": [],
-  "missing_data": [],
-  "best_line": "",
-  "alt_line_suggestion": "",
-  "suggested_unit_size": "",
-  "reason": "",
-  "what_would_make_this_a_pass": ""
-}
-
-Decision rules — strictly enforced:
-- If sportsbook implied probability exceeds no-vig probability and context is weak: verdict MUST be PASS
-- If odds are heavy favorite pricing and true probability does not clearly exceed break-even: verdict MUST be PASS
-- If plus-money or fair-priced AND context strongly supports: consider PLAY or SMALL PLAY
-- If important context data is missing: confidence cannot exceed 7
-- If both price_value_score AND context_edge_score are below 7: verdict MUST be PASS
-- Prefer disciplined passes over forced plays
-- Never recommend a bet solely because no-vig probability is high"""
-
         api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
             return jsonify({'error': 'Context Edge is not configured.'}), 503
 
+        # Load today's live no-vig board fresh on every call (READ ONLY — never writes).
+        board = load_board_for_context()
+        if not board:
+            return jsonify({'response': "No props on the board right now. Check back after 7 AM PHX when the daily fetch runs."})
+
+        # New chat flow: the user types free text; the board is supplied to Claude below.
+        chat_message = (data.get('user_message') or '').strip()
+        if not chat_message:
+            return jsonify({'error': 'No input'}), 400
+
+        SYSTEM_PROMPT = f"""You are Mora Bets Context Edge Analyst.
+
+You have access to today's live no-vig betting board below.
+No-vig probability means the sportsbook margin has been removed — this is the true market probability.
+
+TODAY'S BOARD (no-vig calculated, ≥52% probability, max -235 odds):
+{format_board_for_claude(board)}
+
+YOUR JOB:
+The user will ask about bets, players, or request picks.
+You analyze the board above and provide context edge analysis.
+
+A context edge means a line may be mispriced because the no-vig math does not fully reflect matchup-specific factors like:
+- Starting pitcher quality and recent form
+- Ballpark/venue environment (HIGH SCORING / LOW SCORING tagged above)
+- Team home/road splits and recent win streaks
+- Opposing pitcher ERA and hard-hit rate
+- Lineup position and batting order
+- Weather conditions for outdoor games
+- Rest days, travel fatigue, back-to-back
+- Public line movement direction
+- Multi-book confirmation (consensus = market agrees)
+
+RULES:
+- Only analyze props from the board above
+- Do not invent odds or probabilities — use the board data
+- If user asks for "best bets" or "top plays" pick the strongest context edges from the board, not just highest no-vig %
+- Be direct and concise — this is a chat interface
+- Format responses cleanly with clear verdicts
+- A high no-vig % alone is NOT enough — require context edge
+- Max 5 picks per response unless user asks for more
+- For each pick state: player, stat, odds, no-vig %, and the ONE strongest context reason in one sentence
+
+RESPONSE FORMAT for picks:
+⚡ [PLAYER] — [STAT] OVER [LINE]
+Odds: [ODDS] · No-Vig: [NV]% · Verdict: PLAY / SMALL PLAY / PASS
+Context: [One sentence. Specific. No fluff.]
+
+If user asks about a specific player not on the board, tell them that player's line did not qualify today and why (juice too heavy, low no-vig, or not in cache).
+
+If board is empty or user asks about a sport with no games today, say so clearly."""
+
         client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
         message = client.messages.create(
             model='claude-sonnet-4-5-20250929',
-            max_tokens=1500,
+            max_tokens=1200,
             system=SYSTEM_PROMPT,
-            messages=[{'role': 'user', 'content': user_message}]
+            messages=[{'role': 'user', 'content': chat_message}]
         )
 
         raw = message.content[0].text.strip()
+        return jsonify({'response': raw})
 
-        # Strip markdown fences if present
-        if raw.startswith('```'):
-            raw = raw.split('```')[1]
-            if raw.startswith('json'):
-                raw = raw[4:]
-        raw = raw.strip()
-
-        result = json.loads(raw)
-        return jsonify(result)
-
-    except json.JSONDecodeError:
-        logger.error(f'Context edge: invalid JSON from model. Raw preview: {(raw or "")[:300]}')
-        return jsonify({'error': 'Analysis temporarily unavailable. Please try again.'}), 502
     except Exception as e:
         logger.error(f'Context edge error: {e}')
         return jsonify({'error': 'Analysis failed. Please try again.'}), 500
