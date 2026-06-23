@@ -3751,10 +3751,8 @@ If board is empty or user asks about a sport with no games today, say so clearly
         return jsonify({'response': raw})
 
     except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
-        logger.error(f'Context edge full error: {tb}')
-        return jsonify({'error': str(e), 'traceback': tb}), 500
+        logger.error(f'Context edge error: {e}')
+        return jsonify({'error': 'Analysis failed. Try again.'}), 500
 
 
 if __name__ == "__main__":

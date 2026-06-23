@@ -1,0 +1,112 @@
+Add anthropic to pyproject.toml and
+uv.lock so it installs regardless of
+which build path Render uses.
+
+Do not touch anything else.
+
+=== FIX 1: pyproject.toml ===
+
+Find pyproject.toml.
+Find the [project] dependencies list.
+Add anthropic to it alongside the
+other existing dependencies.
+
+The line to add:
+"anthropic>=0.25.0",
+
+Add it in alphabetical order with
+the existing dependencies if possible.
+
+=== FIX 2: uv.lock ===
+
+After updating pyproject.toml run:
+
+uv add anthropic
+
+This resolves the package and updates
+uv.lock automatically with the correct
+version pinning and dependency tree.
+
+Do NOT manually edit uv.lock —
+let uv resolve it.
+
+=== FIX 3: ALSO VERIFY requirements.txt ===
+
+Confirm anthropic is already in
+requirements.txt as reported.
+If it is there already leave it.
+If not add:
+anthropic>=0.25.0
+
+Having it in all three places ensures
+it installs regardless of whether
+Render uses pip, uv, or poetry.
+
+=== FIX 4: MOVE import anthropic
+INSIDE try BLOCK ===
+
+Find /api/context-edge route in app.py.
+Confirm import anthropic is now inside
+the try block from the previous change.
+If it is already there leave it.
+If it is still at the top of the file
+or outside try move it inside now.
+
+The route try block should start with:
+
+try:
+    import anthropic
+    import json
+    ...rest of route logic
+
+=== FIX 5: CLEAN UP TEMPORARY
+TRACEBACK HANDLER ===
+
+Find the temporary except clause
+that was added for diagnosis:
+
+except Exception as e:
+    import traceback
+    tb = traceback.format_exc()
+    logger.error(
+        f'Context edge full error: {tb}'
+    )
+    return jsonify({
+        'error': str(e),
+        'traceback': tb
+    }), 500
+
+Replace with the clean production
+error handler:
+
+except Exception as e:
+    logger.error(
+        f'Context edge error: {e}'
+    )
+    return jsonify(
+        {'error': 'Analysis failed. Try again.'}
+    ), 500
+
+=== VERIFY AFTER CHANGES ===
+
+Run in Replit shell:
+
+python3 -c "import anthropic; print('anthropic version:', anthropic.__version__)"
+
+Should print a version number.
+If it errors the uv add step did
+not complete correctly.
+
+=== CONSTRAINTS ===
+- Only touch pyproject.toml,
+  uv.lock (via uv add), requirements.txt,
+  and the except clause in app.py
+- Do not touch any sport fetch functions
+- Do not touch scheduler jobs
+- Do not touch mora_assists.py
+- Do not touch dashboard.html
+- Do not touch Bovada footer
+- Do not touch newsletter popup
+- Do not touch line shop listener
+- uv add handles uv.lock automatically
+  do not manually edit that file
