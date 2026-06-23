@@ -1894,152 +1894,161 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     function quickPrompt(text) {
         const input = document.getElementById('ce-input');
-        if (input) {
-            input.value = text;
-            sendContextMessage();
+        if (!input) return;
+
+        const passcode = sessionStorage.getItem('ce_passcode') || '';
+
+        if (!passcode || !_ceAuthed) {
+            document.getElementById('ce-input-area').style.display = 'none';
+            document.getElementById('ce-passcode-gate').style.display = 'block';
+            return;
         }
+
+        input.value = text;
+        sendContextMessage();
     }
 
     async function sendContextMessage() {
         const input = document.getElementById('ce-input');
         const btn = document.getElementById('ce-send-btn');
         const messages = document.getElementById('ce-messages');
-        const text = input.value.trim();
 
+        if (!input || !messages) {
+            console.error('CE: DOM elements missing');
+            return;
+        }
+
+        const text = input.value.trim();
         if (!text) return;
 
+        const passcode = sessionStorage.getItem('ce_passcode') || '';
+
+        if (!passcode) {
+            document.getElementById('ce-input-area').style.display = 'none';
+            document.getElementById('ce-passcode-gate').style.display = 'block';
+            return;
+        }
+
         // Add user message bubble
-        messages.innerHTML += `
-            <div style="
-              align-self: flex-end;
-              background: rgba(76,187,23,0.15);
-              border: 1px solid rgba(76,187,23,0.3);
-              border-radius: 14px 14px 2px 14px;
-              padding: 10px 13px;
-              max-width: 90%;
-            ">
-              <p style="
-                font-family: 'Inter', sans-serif;
-                font-size: 13px;
-                color: #ffffff;
-                margin: 0;
-                line-height: 1.5;
-                white-space: pre-wrap;
-              ">${text.replace(/</g, '&lt;')}</p>
-            </div>
+        const userBubble = document.createElement('div');
+        userBubble.style.cssText = `
+            align-self: flex-end;
+            background: rgba(76,187,23,0.15);
+            border: 1px solid rgba(76,187,23,0.3);
+            border-radius: 14px 14px 2px 14px;
+            padding: 10px 13px;
+            max-width: 90%;
         `;
+        userBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:13px;color:#ffffff;margin:0;line-height:1.5;">${text.replace(/</g,'&lt;')}</p>`;
+        messages.appendChild(userBubble);
 
         // Add loading bubble
-        const loadId = 'ce-loading-' + Date.now();
-        messages.innerHTML += `
-            <div id="${loadId}"
-              style="
-                align-self: flex-start;
-                background: rgba(255,255,255,0.04);
-                border-radius: 14px 14px 14px 2px;
-                padding: 12px 14px;
-                max-width: 90%;
-              ">
-              <p style="
-                font-family: 'Inter', sans-serif;
-                font-size: 12px;
-                color: #6B9E5A;
-                margin: 0;
-                letter-spacing: 1px;
-              ">
-                Analyzing context...
-              </p>
-            </div>
+        const loadBubble = document.createElement('div');
+        loadBubble.style.cssText = `
+            align-self: flex-start;
+            background: rgba(255,255,255,0.04);
+            border-radius: 14px 14px 14px 2px;
+            padding: 12px 14px;
+            max-width: 90%;
         `;
-
+        loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#6B9E5A;margin:0;letter-spacing:1px;">Analyzing board...</p>`;
+        messages.appendChild(loadBubble);
         messages.scrollTop = messages.scrollHeight;
+
         input.value = '';
         btn.disabled = true;
         btn.textContent = 'Analyzing...';
 
         try {
-            const passcode = sessionStorage.getItem('ce_passcode') || '';
+            const payload = {
+                passcode: passcode,
+                user_message: text
+            };
+
+            console.log('CE: sending to /api/context-edge', payload);
+
             const res = await fetch('/api/context-edge', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ passcode: passcode, user_message: text })
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
             });
 
+            console.log('CE: response status', res.status);
+
+            const raw = await res.text();
+            console.log('CE: raw response', raw.substring(0, 200));
+
             if (res.status === 403) {
-                _ceAuthed = false;
                 sessionStorage.removeItem('ce_passcode');
+                _ceAuthed = false;
+                loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">Session expired. Re-enter passcode.</p>`;
                 document.getElementById('ce-input-area').style.display = 'none';
                 document.getElementById('ce-passcode-gate').style.display = 'block';
-                const le = document.getElementById(loadId);
-                if (le) le.remove();
+                btn.disabled = false;
+                btn.textContent = 'Analyze Context Edge →';
                 return;
             }
 
-            const data = await res.json().catch(() => ({}));
-            console.log('CE status:', res.status);
-            console.log('CE data:', JSON.stringify(data));
-            console.log('CE response field:', data.response);
-
-            // Error / rate-limit responses surface as an error bubble — never a verdict.
-            if (!res.ok || data.error) {
-                const le = document.getElementById(loadId);
-                const msg = res.status === 429
-                    ? 'Too many requests. Please wait a moment and try again.'
-                    : (data.error || 'Analysis failed. Try again.');
-                if (le) le.innerHTML =
-                    `<p style="font-family:Inter,sans-serif;font-size:12px;color:#EF4444;margin:0;">${msg.replace(/</g, '&lt;')}</p>`;
-                messages.scrollTop = messages.scrollHeight;
+            if (!res.ok) {
+                loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">Server error ${res.status}. Try again.</p>`;
+                btn.disabled = false;
+                btn.textContent = 'Analyze Context Edge →';
                 return;
             }
 
-            const loadEl = document.getElementById(loadId);
-            if (loadEl) loadEl.remove();
+            let data;
+            try {
+                data = JSON.parse(raw);
+            } catch(parseErr) {
+                console.error('CE: JSON parse failed', parseErr, raw);
+                loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">Parse error. Raw: ${raw.substring(0,100)}</p>`;
+                btn.disabled = false;
+                btn.textContent = 'Analyze Context Edge →';
+                return;
+            }
 
-            const text = data.response || data.error || 'No response received.';
+            console.log('CE: parsed data keys', Object.keys(data));
 
-            // Escape first (model output is untrusted), then apply light markdown.
-            const esc = s => String(s == null ? '' : s)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const formatted = esc(text)
+            const responseText = data.response ||
+                data.error ||
+                'No response field in data.';
+
+            // Convert markdown to HTML
+            const formatted = responseText
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/## (.*?)(<br>|$)/g, '<strong style="color:#4CBB17;font-size:14px;">$1</strong><br>')
                 .replace(/⚡/g, '<span style="color:#4CBB17">⚡</span>')
-                .replace(/SMALL PLAY|PLAY|PASS/g, m => {
-                    const color = m === 'PASS' ? '#EF4444' : (m === 'SMALL PLAY' ? '#EAB308' : '#4CBB17');
-                    return `<span style="color:${color};font-weight:700;">${m}</span>`;
-                })
+                .replace(/\bSMALL PLAY\b/g, '<span style="color:#EAB308;font-weight:700;">SMALL PLAY</span>')
+                .replace(/\bPLAY\b/g, '<span style="color:#4CBB17;font-weight:700;">PLAY</span>')
+                .replace(/\bPASS\b/g, '<span style="color:#EF4444;font-weight:700;">PASS</span>')
                 .replace(/\n/g, '<br>');
 
-            messages.innerHTML += `
-              <div style="
-                align-self: flex-start;
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(107,158,90,0.2);
-                border-radius: 14px 14px 14px 2px;
-                padding: 14px 16px;
-                max-width: 98%;
-                width: 100%;
-              ">
-                <p style="
-                  font-family: 'Inter', sans-serif;
-                  font-size: 13px;
-                  color: #9CA3AF;
-                  margin: 0;
-                  line-height: 1.7;
-                ">${formatted}</p>
-              </div>
+            loadBubble.innerHTML = `
+                <div style="
+                    font-family: 'Inter', sans-serif;
+                    font-size: 13px;
+                    color: #9CA3AF;
+                    line-height: 1.7;
+                ">${formatted}</div>
             `;
 
             messages.scrollTop = messages.scrollHeight;
 
-        } catch (e) {
-            console.log('CE catch error:', e.message, e.stack);
-            const loadEl = document.getElementById(loadId);
-            if (loadEl) loadEl.innerHTML =
-                '<p style="font-family:Inter,sans-serif;font-size:12px;color:#EF4444;margin:0;">Analysis failed. Try again.</p>';
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'Analyze Context Edge →';
+        } catch(err) {
+            console.error('CE: fetch exception', err.message, err.stack);
+            loadBubble.innerHTML = `
+                <p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">
+                    Error: ${err.message}
+                </p>
+            `;
         }
+
+        btn.disabled = false;
+        btn.textContent = 'Analyze Context Edge →';
     }
 
     // Auto-hide tooltip after 6 seconds
