@@ -1958,7 +1958,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         btn.textContent = 'Analyzing...';
 
         try {
-            const passcode = sessionStorage.getItem('ce_passcode');
+            const passcode = sessionStorage.getItem('ce_passcode') || '';
             const res = await fetch('/api/context-edge', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1976,6 +1976,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             }
 
             const data = await res.json().catch(() => ({}));
+            console.log('CE status:', res.status);
+            console.log('CE data:', JSON.stringify(data));
+            console.log('CE response field:', data.response);
 
             // Error / rate-limit responses surface as an error bubble — never a verdict.
             if (!res.ok || data.error) {
@@ -2029,6 +2032,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             messages.scrollTop = messages.scrollHeight;
 
         } catch (e) {
+            console.log('CE catch error:', e.message, e.stack);
             const loadEl = document.getElementById(loadId);
             if (loadEl) loadEl.innerHTML =
                 '<p style="font-family:Inter,sans-serif;font-size:12px;color:#EF4444;margin:0;">Analysis failed. Try again.</p>';
