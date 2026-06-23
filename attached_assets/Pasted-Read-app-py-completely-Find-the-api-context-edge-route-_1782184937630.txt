@@ -1,0 +1,96 @@
+Read app.py completely.
+Find the /api/context-edge route.
+Do not change anything yet.
+
+Report exactly:
+
+1. Where is "import anthropic" —
+   is it at the top of app.py with
+   all other imports, or inside the
+   try block inside the route?
+
+2. What does the full route look like
+   from @app.route to the end of the
+   function — paste the entire thing
+
+3. What is the passcode check logic —
+   exactly how does it validate and
+   what does it return on success vs fail
+
+4. Run this in the Render shell right now:
+
+python3 -c "
+import sys
+sys.path.insert(0, '/opt/render/project/src')
+
+# Test anthropic import
+try:
+    import anthropic
+    print('OK: anthropic', anthropic.__version__)
+except Exception as e:
+    print('FAIL import:', e)
+
+# Test API key
+import os
+key = os.environ.get('ANTHROPIC_API_KEY','')
+print('API key:', 'SET' if key else 'MISSING', len(key), 'chars')
+
+# Test direct Claude call
+try:
+    client = anthropic.Anthropic(api_key=key)
+    msg = client.messages.create(
+        model='claude-haiku-4-5',
+        max_tokens=20,
+        messages=[{'role':'user','content':'say ok'}]
+    )
+    print('Claude OK:', msg.content[0].text)
+except Exception as e:
+    print('Claude FAIL:', e)
+
+# Test cache files
+import json
+for path in [
+    '/var/data/mlb_props_cache.json',
+    '/var/data/soccer_props_cache.json'
+]:
+    if os.path.exists(path):
+        with open(path) as f:
+            d = json.load(f)
+        print(f'Cache OK: {path} — {len(d)} props')
+    else:
+        print(f'Cache MISSING: {path}')
+"
+
+5. Then test the route directly —
+   run this in the Render shell:
+
+python3 -c "
+import requests, json
+resp = requests.post(
+    'https://morabets.com/api/context-edge',
+    json={
+        'passcode': '4774',
+        'user_message': 'best bets today'
+    }
+)
+print('Status:', resp.status_code)
+print('Response:', resp.text[:500])
+"
+
+6. Check Render logs for the last
+   error — run:
+
+grep -i 'error\|context\|anthropic' \
+/var/log/render.log 2>/dev/null | tail -30
+
+Or check Render dashboard →
+your service → Logs tab →
+look for any red error lines that
+appear when you click the button.
+
+Report all output from steps 4, 5, 6
+before any code changes.
+The instant failure means the crash
+happens in Python before Claude is
+called — the shell output will show
+exactly where.
