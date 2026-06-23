@@ -1,0 +1,218 @@
+This is a LIVE production app.
+Read app.py completely first.
+Do NOT change anything yet.
+
+═══════════════════════════════════════
+STEP 1 — DIAGNOSE THE FAILURE FIRST
+═══════════════════════════════════════
+
+Find the /api/context-edge route in app.py.
+
+Add temporary detailed error logging
+to find exactly where it fails.
+
+Find the try/except block in the route.
+In the except clause change it to:
+
+except Exception as e:
+    import traceback
+    tb = traceback.format_exc()
+    logger.error(
+        f'Context edge full error: {tb}'
+    )
+    return jsonify({
+        'error': str(e),
+        'traceback': tb
+    }), 500
+
+Deploy this change only.
+Then trigger a failure by clicking
+"best bets today" in the chat.
+
+Then run this in the Render shell
+to see the exact error:
+
+grep "Context edge" /var/log/render/* 2>/dev/null | tail -20
+
+OR check Render logs directly in the
+dashboard under your service → Logs.
+Filter for "Context edge" or "error".
+
+Report the EXACT error message and
+traceback before any other changes.
+
+The most likely causes in order of
+probability:
+
+CAUSE A — anthropic package not installed
+Check requirements.txt or pyproject.toml
+for anthropic. If missing add:
+anthropic>=0.25.0
+This is the most common cause.
+
+CAUSE B — ANTHROPIC_API_KEY not set
+Run in Render shell:
+python3 -c "import os; print(os.environ.get('ANTHROPIC_API_KEY', 'NOT SET'))"
+If it prints NOT SET the env var is
+missing from Render environment variables.
+
+CAUSE C — Cache files not found
+Run in Render shell:
+ls -la /var/data/*.json
+If mlb_props_cache.json does not exist
+the board load fails silently or errors.
+
+CAUSE D — load_board_for_context or
+format_board_for_claude functions not
+defined in the right scope in app.py —
+defined inside the route function instead
+of at module level, or defined after
+the route that calls them.
+
+CAUSE E — The passcode check returns
+before reaching Claude — passcode gate
+blocking the quick prompt calls because
+sessionStorage is not being sent
+correctly from the mobile browser.
+
+═══════════════════════════════════════
+STEP 2 — AFTER DIAGNOSIS, APPLY FIX
+═══════════════════════════════════════
+
+Report the exact error from Step 1.
+Then apply only the fix for that cause.
+
+If CAUSE A — anthropic not installed:
+Add to requirements.txt:
+anthropic>=0.25.0
+Redeploy. Done.
+
+If CAUSE B — API key missing:
+Go to Render dashboard →
+your service → Environment → Add:
+Key: ANTHROPIC_API_KEY
+Value: [your Anthropic API key]
+Save. Redeploy. Done.
+
+If CAUSE C — cache files missing:
+The route needs a graceful fallback.
+Find load_board_for_context() in app.py.
+Confirm it handles missing files with
+try/except already. If not add:
+try:
+    with open(path) as f:
+        props = json.load(f)
+except FileNotFoundError:
+    continue
+except Exception as e:
+    logger.warning(f'Cache {sport}: {e}')
+    continue
+
+If CAUSE D — function scope issue:
+Move load_board_for_context() and
+format_board_for_claude() to module
+level in app.py — above all routes,
+not nested inside the route function.
+
+If CAUSE E — passcode not sent from mobile:
+Find sendContextMessage() in dashboard.html.
+Confirm sessionStorage.getItem('ce_passcode')
+is being included in the fetch body.
+Add a console.log before the fetch to
+verify passcode value on mobile.
+Add to the fetch body explicitly:
+passcode: sessionStorage.getItem('ce_passcode') || ''
+
+Also check the passcode validation flow
+for the quick prompt buttons specifically —
+quickPrompt() calls sendContextMessage()
+which requires _ceAuthed to be true.
+If the user never went through the
+passcode gate (session storage empty
+on mobile), _ceAuthed is false but the
+gate UI may not be shown correctly.
+
+Add this check at the start of
+sendContextMessage():
+
+if (!_ceAuthed) {
+  document.getElementById(
+    'ce-input-area'
+  ).style.display = 'none';
+  document.getElementById(
+    'ce-passcode-gate'
+  ).style.display = 'block';
+  return;
+}
+
+═══════════════════════════════════════
+STEP 3 — VERIFY FIX WORKS
+═══════════════════════════════════════
+
+After applying the fix for the diagnosed
+cause run this test in Render shell:
+
+python3 -c "
+import sys, os, json
+sys.path.insert(0, '/opt/render/project/src')
+
+# Test 1: Can we import anthropic?
+try:
+    import anthropic
+    print('OK: anthropic installed')
+except ImportError as e:
+    print(f'FAIL: anthropic not installed: {e}')
+
+# Test 2: API key set?
+key = os.environ.get('ANTHROPIC_API_KEY', '')
+print(f'OK: API key set ({len(key)} chars)' if key else 'FAIL: ANTHROPIC_API_KEY not set')
+
+# Test 3: Cache files exist?
+caches = [
+    '/var/data/mlb_props_cache.json',
+    '/var/data/soccer_props_cache.json',
+]
+for c in caches:
+    if os.path.exists(c):
+        with open(c) as f:
+            data = json.load(f)
+        print(f'OK: {c} — {len(data)} props')
+    else:
+        print(f'WARN: {c} not found')
+
+# Test 4: Quick Claude call
+try:
+    client = anthropic.Anthropic(
+        api_key=os.environ.get('ANTHROPIC_API_KEY')
+    )
+    msg = client.messages.create(
+        model='claude-sonnet-4-6',
+        max_tokens=50,
+        messages=[{'role':'user','content':'Say OK'}]
+    )
+    print(f'OK: Claude responds: {msg.content[0].text}')
+except Exception as e:
+    print(f'FAIL: Claude call failed: {e}')
+"
+
+All four should print OK before the
+chat feature will work.
+
+═══════════════════════════════════════
+CONSTRAINTS
+═══════════════════════════════════════
+
+- Diagnose before fixing — do not
+  guess and make multiple changes
+- Only fix the confirmed root cause
+- Do not touch MLB/NHL/Soccer fetch
+- Do not touch mora_assists.py
+- Do not touch scheduler jobs
+- Do not touch Bovada footer
+- Do not touch the newsletter popup
+- Do not touch the line shop listener
+- Remove the temporary traceback
+  logging after diagnosis is complete
+  (replace with the clean error handler)
+- Report the exact error output from
+  Render logs before any other changes

@@ -3657,10 +3657,9 @@ def context_edge_analysis():
     Context Edge analysis as JSON. Additive feature — does not affect
     any existing route or data pipeline.
     """
-    import anthropic
-
     raw = None
     try:
+        import anthropic
         # Lightweight per-IP rate limit
         ip = (request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown')
               .split(',')[0].strip())
@@ -3752,8 +3751,10 @@ If board is empty or user asks about a sport with no games today, say so clearly
         return jsonify({'response': raw})
 
     except Exception as e:
-        logger.error(f'Context edge error: {e}')
-        return jsonify({'error': 'Analysis failed. Please try again.'}), 500
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f'Context edge full error: {tb}')
+        return jsonify({'error': str(e), 'traceback': tb}), 500
 
 
 if __name__ == "__main__":
