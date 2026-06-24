@@ -1,0 +1,125 @@
+Read app.py completely.
+Find the /api/context-edge route.
+Two fixes only.
+
+=== FIX 1: REDUCE BOARD SIZE ===
+
+Find load_board_for_context() function.
+Currently loads up to 40 props per sport.
+
+Change the limit from 40 to 15 total:
+
+qualifying.sort(
+    key=lambda x: x.get('no_vig_prob', 0),
+    reverse=True
+)
+board.extend(qualifying[:15])
+
+Also tighten the filter to only the
+best props — raise minimum no_vig_prob
+from 52 to 57:
+
+qualifying = [
+    p for p in props
+    if p.get('no_vig_prob', 0) >= 57
+    and p.get('best_over_price', 0) != 0
+    and p.get('best_over_price', 0) > -235
+    and p.get('player', '')
+    and not any(
+        x in p.get('player', '')
+        for x in ['Batter','Pitcher','_']
+    )
+]
+
+This sends Claude 15 high-quality props
+instead of 40+ mediocre ones.
+Faster response. Better picks.
+
+
+=== FIX 2: ADD TIMEOUT TO CLAUDE CALL ===
+
+Find the client.messages.create() call
+inside the route.
+
+Add a timeout parameter:
+
+message = client.messages.create(
+    model='claude-sonnet-4-5-20250929',
+    max_tokens=1000,
+    system=SYSTEM_PROMPT,
+    messages=[
+        {
+            'role': 'user',
+            'content': data.get(
+                'user_message', ''
+            )
+        }
+    ],
+    timeout=45.0
+)
+
+Two changes:
+- max_tokens reduced from 1200 to 1000
+- timeout set to 45 seconds explicitly
+
+This tells the Anthropic client to
+fail fast at 45s instead of waiting
+60s+ before Render kills the request.
+
+Also wrap the client.messages.create
+call in its own try/except so a timeout
+returns a helpful message instead of
+a generic 500:
+
+try:
+    message = client.messages.create(
+        model='claude-sonnet-4-5-20250929',
+        max_tokens=1000,
+        system=SYSTEM_PROMPT,
+        messages=[
+            {
+                'role': 'user',
+                'content': data.get(
+                    'user_message', ''
+                )
+            }
+        ],
+        timeout=45.0
+    )
+    raw = message.content[0].text.strip()
+    return jsonify({'response': raw})
+
+except anthropic.APITimeoutError:
+    logger.warning('Context edge timeout')
+    return jsonify({
+        'response': 'Board is large today — taking longer than usual. Try a more specific question like "best MLB value bets" or "top 3 plays today".'
+    }), 200
+
+except Exception as claude_err:
+    logger.error(
+        f'Claude call failed: {claude_err}'
+    )
+    return jsonify({
+        'response': 'Analysis failed. Try again.'
+    }), 500
+
+Note: returning 200 on timeout with
+a helpful message instead of 500 means
+the frontend shows the message cleanly
+instead of the red error bubble.
+
+
+=== CONSTRAINTS ===
+- Only touch app.py
+- Only change load_board_for_context()
+  filter threshold and board size limit
+- Only change the claude call timeout
+  and max_tokens
+- Only add the timeout try/except
+- Do not touch SYSTEM_PROMPT text
+- Do not touch dashboard.html
+- Do not touch any sport tabs
+- Do not touch mora_assists.py
+- Do not touch scheduler jobs
+- Do not touch Bovada footer
+- Do not touch newsletter popup

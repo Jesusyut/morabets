@@ -3613,14 +3613,14 @@ def load_board_for_context():
                     props = json.load(f)
                 qualifying = [
                     p for p in props
-                    if p.get('no_vig_prob', 0) >= 52
+                    if p.get('no_vig_prob', 0) >= 57
                     and p.get('best_over_price', 0) != 0
                     and p.get('best_over_price', 0) > -235
                     and p.get('player', '')
                     and not any(x in p.get('player', '') for x in ['Batter', 'Pitcher', '_'])
                 ]
                 qualifying.sort(key=lambda x: x.get('no_vig_prob', 0), reverse=True)
-                board.extend(qualifying[:40])
+                board.extend(qualifying[:15])
             except Exception as e:
                 logger.warning(f'Cache load error {sport}: {e}')
     return board
@@ -3903,15 +3903,28 @@ from finding value not just high probability.
 """
 
         client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
-        message = client.messages.create(
-            model='claude-sonnet-4-5-20250929',
-            max_tokens=1200,
-            system=SYSTEM_PROMPT,
-            messages=[{'role': 'user', 'content': chat_message}]
-        )
+        try:
+            message = client.messages.create(
+                model='claude-sonnet-4-5-20250929',
+                max_tokens=1000,
+                system=SYSTEM_PROMPT,
+                messages=[{'role': 'user', 'content': chat_message}],
+                timeout=45.0
+            )
+            raw = message.content[0].text.strip()
+            return jsonify({'response': raw})
 
-        raw = message.content[0].text.strip()
-        return jsonify({'response': raw})
+        except anthropic.APITimeoutError:
+            logger.warning('Context edge timeout')
+            return jsonify({
+                'response': 'Board is large today — taking longer than usual. Try a more specific question like "best MLB value bets" or "top 3 plays today".'
+            }), 200
+
+        except Exception as claude_err:
+            logger.error(f'Claude call failed: {claude_err}')
+            return jsonify({
+                'response': 'Analysis failed. Try again.'
+            }), 500
 
     except Exception as e:
         logger.error(f'Context edge error: {e}')
