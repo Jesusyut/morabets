@@ -3660,6 +3660,8 @@ def context_edge_analysis():
     raw = None
     try:
         import anthropic
+        from datetime import datetime as _dt
+        today_str = _dt.now().strftime('%A %B %d %Y')
         # Lightweight per-IP rate limit
         ip = (request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown')
               .split(',')[0].strip())
@@ -3709,7 +3711,7 @@ probability that is BETTER than what
 the market is pricing. The no-vig board
 is your reference — not your answer.
 
-TODAY'S DATE: {__import__('datetime').datetime.now().strftime('%A %B %d %Y')}
+TODAY'S DATE: {today_str}
 TODAY'S LIVE BOARD (no-vig calculated):
 {format_board_for_claude(board)}
 

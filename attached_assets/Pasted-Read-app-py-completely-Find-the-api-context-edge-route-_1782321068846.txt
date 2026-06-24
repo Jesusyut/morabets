@@ -1,0 +1,108 @@
+Read app.py completely.
+Find the /api/context-edge route.
+Find the SYSTEM_PROMPT string.
+
+Report exactly how the date line
+currently reads — the exact Python
+code around the datetime import.
+
+Then run this in the Render shell:
+
+python3 -c "
+import sys, os, json
+sys.path.insert(0, '/opt/render/project/src')
+
+# Test the exact date expression
+try:
+    from datetime import datetime
+    d = datetime.now().strftime('%A %B %d %Y')
+    print('Date OK:', d)
+except Exception as e:
+    print('Date FAIL:', e)
+
+# Test building the system prompt
+try:
+    mlb_path = '/var/data/mlb_props_cache.json'
+    soccer_path = '/var/data/soccer_props_cache.json'
+    board = []
+    for path in [mlb_path, soccer_path]:
+        if os.path.exists(path):
+            with open(path) as f:
+                props = json.load(f)
+            board.extend(props[:5])
+    print(f'Board props loaded: {len(board)}')
+except Exception as e:
+    print('Board load FAIL:', e)
+
+# Test format_board_for_claude exists
+try:
+    import app
+    result = app.format_board_for_claude([])
+    print('format_board_for_claude OK')
+except Exception as e:
+    print('format_board_for_claude FAIL:', e)
+"
+
+Report the output then make this fix:
+
+=== FIX: REPLACE INLINE DATE WITH
+CLEAN APPROACH ===
+
+Find the /api/context-edge route.
+At the very TOP of the try block
+after import anthropic and before
+building SYSTEM_PROMPT add:
+
+from datetime import datetime as _dt
+today_str = _dt.now().strftime(
+    '%A %B %d %Y'
+)
+
+Then find the SYSTEM_PROMPT string
+where the date line was added.
+Change whatever is there to use the
+variable instead:
+
+TODAY'S DATE: {today_str}
+TODAY'S LIVE BOARD (no-vig calculated):
+{format_board_for_claude(board)}
+
+This replaces the broken inline
+__import__ with a clean variable
+that is set before the f-string runs.
+
+The f-string cannot contain complex
+Python expressions like __import__()
+calls — only variable references work
+inside f-string curly braces.
+
+=== ALSO CHECK ===
+
+While in the route confirm that
+format_board_for_claude() is defined
+at MODULE LEVEL in app.py — not inside
+the route function or any other function.
+
+If it is nested inside the route
+function it needs to be moved to
+module level (outside all routes,
+near the top of app.py below imports).
+
+A function defined inside the route
+only exists while that request is
+running and cannot be reliably called
+during the f-string build.
+
+=== CONSTRAINTS ===
+- Only touch the /api/context-edge
+  route in app.py
+- Only fix the date variable approach
+- Only move format_board_for_claude
+  to module level if it is not there
+- Do not touch dashboard.html
+- Do not touch any sport tabs
+- Do not touch mora_assists.py
+- Do not touch scheduler jobs
+- Do not touch Bovada footer
+- Do not touch newsletter popup
+- Do not touch line shop listener
