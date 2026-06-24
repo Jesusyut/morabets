@@ -3593,8 +3593,8 @@ def unsubscribe_assists():
 # In-memory per-IP throttle for the (public) Context Edge endpoint. Each request
 # triggers a paid Anthropic call, so cap bursts to limit cost-exhaustion abuse.
 _CE_RATE_BUCKETS = {}
-_CE_RATE_MAX = 15        # requests
-_CE_RATE_WINDOW = 60     # seconds
+_CE_RATE_MAX = 10        # requests
+_CE_RATE_WINDOW = 3600   # seconds (per hour)
 
 
 def load_board_for_context():
@@ -3668,7 +3668,7 @@ def context_edge_analysis():
         now = time.time()
         bucket = [t for t in _CE_RATE_BUCKETS.get(ip, []) if now - t < _CE_RATE_WINDOW]
         if len(bucket) >= _CE_RATE_MAX:
-            return jsonify({'error': 'Too many requests. Please wait a moment and try again.'}), 429
+            return jsonify({'response': 'Too many requests. Wait a few minutes and try again.'}), 200
         bucket.append(now)
         _CE_RATE_BUCKETS[ip] = bucket
 
