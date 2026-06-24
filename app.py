@@ -3699,6 +3699,10 @@ def context_edge_analysis():
         if not chat_message:
             return jsonify({'error': 'No input'}), 400
 
+        # Pre-build the board string BEFORE the f-string so the f-string
+        # only references simple variables (no inline function calls).
+        board_text = format_board_for_claude(board)
+
         SYSTEM_PROMPT = f"""You are Mora Bets Context Edge Analyst.
   You are a sharp sports bettor and researcher.
   Today's date: {today_str}
@@ -3742,7 +3746,7 @@ def context_edge_analysis():
 
   STEP 3: CHECK THE NO-VIG BOARD
   Today's no-vig reference board:
-  {format_board_for_claude(board)}
+  {board_text}
 
   After building your 5 picks from
   research, check the board for any
@@ -3857,7 +3861,9 @@ def context_edge_analysis():
             }), 500
 
     except Exception as e:
-        logger.error(f'Context edge error: {e}')
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f'Context edge error: {tb}')
         return jsonify({'error': 'Analysis failed. Try again.'}), 500
 
 
