@@ -3837,7 +3837,7 @@ def context_edge_analysis():
                     }
                 ],
                 messages=[{'role': 'user', 'content': chat_message}],
-                timeout=55.0
+                timeout=90.0
             )
             raw = ''
             for block in message.content:
