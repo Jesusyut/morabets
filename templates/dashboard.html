@@ -2405,12 +2405,98 @@ function closeNewsletterPopup() {
     <!-- Welcome message — always shown -->
     <div style="background: rgba(76,187,23,0.08); border-left: 2px solid #4CBB17; border-radius: 0 10px 10px 0; padding: 12px 14px;">
       <p style="font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; margin: 0 0 8px; line-height: 1.6;">I have today's no-vig board loaded. Just tell me what you want.</p>
-      <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
-        <button onclick="quickPrompt('best bets today')" style="background: rgba(76,187,23,0.1); border: 1px solid rgba(76,187,23,0.3); border-radius: 100px; padding: 4px 10px; font-family: 'Inter', sans-serif; font-size: 11px; color: #4CBB17; cursor: pointer;">best bets today</button>
-        <button onclick="quickPrompt('top 5 plays')" style="background: rgba(76,187,23,0.1); border: 1px solid rgba(76,187,23,0.3); border-radius: 100px; padding: 4px 10px; font-family: 'Inter', sans-serif; font-size: 11px; color: #4CBB17; cursor: pointer;">top 5 plays</button>
-        <button onclick="quickPrompt('best value bets plus money or under -150')" style="background: rgba(76,187,23,0.1); border: 1px solid rgba(76,187,23,0.3); border-radius: 100px; padding: 4px 10px; font-family: 'Inter', sans-serif; font-size: 11px; color: #4CBB17; cursor: pointer;">best value odds</button>
-        <button onclick="quickPrompt('World Cup edges today')" style="background: rgba(76,187,23,0.1); border: 1px solid rgba(76,187,23,0.3); border-radius: 100px; padding: 4px 10px; font-family: 'Inter', sans-serif; font-size: 11px; color: #4CBB17; cursor: pointer;">World Cup edges</button>
-      </div>
+      <div style="
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+">
+
+  <button onclick="quickPrompt('best value bets today MLB — include moneylines, spreads, and player props')"
+    style="
+      background: rgba(76,187,23,0.1);
+      border: 1px solid rgba(76,187,23,0.3);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: #4CBB17;
+      cursor: pointer;
+    ">⚾ MLB value</button>
+
+  <button onclick="quickPrompt('best value bets today Soccer World Cup — include moneylines and totals')"
+    style="
+      background: rgba(76,187,23,0.1);
+      border: 1px solid rgba(76,187,23,0.3);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: #4CBB17;
+      cursor: pointer;
+    ">⚽ Soccer value</button>
+
+  <button onclick="quickPrompt('top 5 plays today across all sports — mix of player props, moneylines, and spreads')"
+    style="
+      background: rgba(76,187,23,0.1);
+      border: 1px solid rgba(76,187,23,0.3);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: #4CBB17;
+      cursor: pointer;
+    ">⚡ Top 5 plays</button>
+
+  <button onclick="quickPrompt('best plus money plays today — any sport, odds better than +100')"
+    style="
+      background: rgba(76,187,23,0.1);
+      border: 1px solid rgba(76,187,23,0.3);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: #4CBB17;
+      cursor: pointer;
+    ">💰 Plus money</button>
+
+  <button onclick="quickPrompt('best MLB moneyline and run line bets today based on pitching matchups and park factors')"
+    style="
+      background: rgba(76,187,23,0.1);
+      border: 1px solid rgba(76,187,23,0.3);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: #4CBB17;
+      cursor: pointer;
+    ">📊 MLB lines</button>
+
+  <button onclick="quickPrompt('World Cup match result and total goals bets today — best context edges')"
+    style="
+      background: rgba(76,187,23,0.1);
+      border: 1px solid rgba(76,187,23,0.3);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: #4CBB17;
+      cursor: pointer;
+    ">🏆 World Cup</button>
+
+  <button onclick="quickPrompt('best high scoring game total plays today — overs with park factor and pitching context')"
+    style="
+      background: rgba(76,187,23,0.1);
+      border: 1px solid rgba(76,187,23,0.3);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: #4CBB17;
+      cursor: pointer;
+    ">📈 Game totals</button>
+
+</div>
     </div>
   </div>
 

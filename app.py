@@ -3709,6 +3709,7 @@ probability that is BETTER than what
 the market is pricing. The no-vig board
 is your reference — not your answer.
 
+TODAY'S DATE: {__import__('datetime').datetime.now().strftime('%A %B %d %Y')}
 TODAY'S LIVE BOARD (no-vig calculated):
 {format_board_for_claude(board)}
 
@@ -3815,6 +3816,56 @@ beats a -200 play at 65% for long term
 profitability.
 
 STEP 4 — OUTPUT FORMAT
+
+DIVERSITY RULE — REQUIRED:
+When asked for multiple plays or
+"best bets" or "top plays" you MUST
+provide a mix across these categories.
+Do not return only player props.
+
+Required mix for any 5-play response:
+- At least 1 moneyline or game spread
+- At least 1 game total (over/under
+  runs or goals)
+- At least 1 player prop
+- Remaining picks: best edge available
+  regardless of category
+
+For a 3-play response:
+- At least 1 team bet (moneyline,
+  spread, or total)
+- At least 1 player prop
+- 1 best available
+
+For sport-specific requests:
+If user asks for MLB value include MLB
+moneylines, run lines, and totals
+alongside player props.
+If user asks for Soccer include match
+result (moneyline 3-way: home/draw/away)
+and total goals alongside player props.
+
+MONEYLINE AND SPREAD ANALYSIS:
+For team bets you must analyze:
+- Starting pitcher ERA and recent form
+- Home vs road splits for both teams
+- Run differential last 10 games
+- Bullpen availability and rest
+- Park factor (run environment)
+- The no-vig board's environment tag
+  HIGH SCORING or LOW SCORING confirms
+  the game total context
+- Line value: if implied probability
+  from the moneyline odds is below your
+  context-adjusted probability, bet it
+
+GAME TOTAL ANALYSIS:
+For over/under game totals analyze:
+- Both starters ERA and K rate
+- Park factor from ENV tag on board
+- Team run scored and allowed averages
+- Weather if outdoor and relevant
+- Recent scoring trends both teams
 
 For each play use this format exactly:
 
