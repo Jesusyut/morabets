@@ -2420,6 +2420,73 @@ def send_board_email():
 # Global flag to track initialization
 app_initialized = False
 
+CONTEXT_EDGE_OUTPUT_KEYS = [
+    "mlb_value",
+    "soccer_value",
+    "top_5_plays",
+    "plus_money",
+    "mlb_lines",
+    "world_cup",
+    "game_totals",
+]
+
+
+def _context_edge_scheduler_enabled():
+    return os.environ.get("CONTEXT_EDGE_SCHEDULER_ENABLED", "").lower() == "true"
+
+
+def _run_context_edge_button_output_job(output_key, run_window):
+    logger.info(f"[CONTEXT EDGE] Started {run_window} generation for {output_key}")
+    try:
+        from context_edge_button_generator_service import generate_context_edge_button_output
+
+        result = generate_context_edge_button_output(output_key, run_window)
+        status = result.get("status") if isinstance(result, dict) else "unknown"
+        if status == "failed":
+            logger.error(f"[CONTEXT EDGE] Failed {run_window} generation for {output_key}")
+        else:
+            logger.info(
+                f"[CONTEXT EDGE] Completed {run_window} generation for {output_key} "
+                f"with status={status}"
+            )
+        return result
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE] Failed {run_window} generation for {output_key}: {e}")
+        raise
+
+
+def _register_context_edge_output_jobs():
+    if not _context_edge_scheduler_enabled():
+        logger.info("[CONTEXT EDGE] Scheduler disabled; set CONTEXT_EDGE_SCHEDULER_ENABLED=true to enable")
+        return
+
+    windows = [
+        ("morning", 9),
+        ("afternoon", 15),
+    ]
+    for run_window, hour in windows:
+        for index, output_key in enumerate(CONTEXT_EDGE_OUTPUT_KEYS):
+            minute = index * 3
+            job_id = f"context_edge_{run_window}_{output_key}"
+            scheduler.add_job(
+                func=_run_context_edge_button_output_job,
+                trigger="cron",
+                hour=hour,
+                minute=minute,
+                timezone="America/Phoenix",
+                id=job_id,
+                name=f"Context Edge {run_window} {output_key}",
+                args=[output_key, run_window],
+                replace_existing=True,
+                misfire_grace_time=1800,
+                coalesce=True,
+                max_instances=1,
+            )
+            logger.info(
+                f"[CONTEXT EDGE] Scheduled {run_window} generation for {output_key} "
+                f"at {hour:02d}:{minute:02d} America/Phoenix"
+            )
+
 def background_initializer():
     """
     Registers all scheduled jobs and primes caches on startup.
@@ -2532,6 +2599,12 @@ def background_initializer():
             logger.info("✅ Game odds job registered")
         except Exception as e:
             logger.warning(f"Odds job error: {e}")
+
+        # ── REGISTER CONTEXT EDGE CACHED OUTPUTS ───────────────────
+        try:
+            _register_context_edge_output_jobs()
+        except Exception as e:
+            logger.warning(f"Context Edge scheduler job error: {e}")
 
         # ── LOG ALL REGISTERED JOBS ──────────────────────────────
         all_jobs = scheduler.get_jobs()
@@ -3648,6 +3721,96 @@ def format_board_for_claude(board):
             f"Books: {', '.join(books[:2])}"
         )
     return '\n'.join(lines)
+
+
+def _context_edge_admin_authorized():
+    expected = os.environ.get("ADMIN_CONTEXT_EDGE_TOKEN", "")
+    provided = request.headers.get("X-Admin-Token", "")
+    return bool(expected and provided and provided == expected)
+
+
+@app.route('/admin/context-edge/run/<output_key>', methods=['POST'])
+def admin_context_edge_run(output_key):
+    if not _context_edge_admin_authorized():
+        return jsonify({'error': 'forbidden'}), 403
+
+    try:
+        from context_edge_button_generator_service import generate_context_edge_button_output
+        from context_edge_button_output_service import (
+            get_output_config,
+            get_phoenix_run_window,
+        )
+        from supabase_backend import normalize_context_edge_run_window
+
+        try:
+            get_output_config(output_key)
+        except KeyError:
+            return jsonify({'error': 'Invalid output key'}), 400
+
+        data = request.get_json(silent=True) or {}
+        try:
+            run_window = normalize_context_edge_run_window(
+                data.get('run_window') or get_phoenix_run_window()
+            )
+        except ValueError:
+            return jsonify({'error': 'Invalid run window'}), 400
+
+        result = generate_context_edge_button_output(output_key, run_window)
+        return jsonify({
+            'success': True,
+            'output_key': output_key.strip().lower(),
+            'run_window': run_window,
+            'result': result,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE] Manual admin run failed for {output_key}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/context-edge/run-all/<run_window>', methods=['POST'])
+def admin_context_edge_run_all(run_window):
+    if not _context_edge_admin_authorized():
+        return jsonify({'error': 'forbidden'}), 403
+
+    try:
+        from context_edge_button_generator_service import generate_context_edge_button_output
+        from supabase_backend import normalize_context_edge_run_window
+
+        try:
+            normalized_run_window = normalize_context_edge_run_window(run_window)
+        except ValueError:
+            return jsonify({'error': 'Invalid run window'}), 400
+
+        results = []
+        for output_key in CONTEXT_EDGE_OUTPUT_KEYS:
+            logger.info(
+                f"[CONTEXT EDGE] Manual run-all started for {output_key} "
+                f"({normalized_run_window})"
+            )
+            result = generate_context_edge_button_output(
+                output_key,
+                normalized_run_window,
+            )
+            results.append({
+                'output_key': output_key,
+                'result': result,
+            })
+            logger.info(
+                f"[CONTEXT EDGE] Manual run-all completed for {output_key} "
+                f"({normalized_run_window})"
+            )
+
+        return jsonify({
+            'success': True,
+            'run_window': normalized_run_window,
+            'count': len(results),
+            'results': results,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE] Manual admin run-all failed for {run_window}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/context-edge/output/<output_key>', methods=['GET'])
