@@ -1934,16 +1934,51 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         return loadBubble;
     }
 
+    function runRetroScanLoader(loadBubble, messages) {
+        const steps = [
+            "SCANNING TODAY'S BOARD...",
+            "CHECKING LINE MOVEMENT...",
+            "COMPARING TRUE PROBABILITY...",
+            "SEARCHING FOR MARKET MISTAKES...",
+            "EDGE FOUND."
+        ];
+        let index = 0;
+
+        return new Promise(function(resolve) {
+            function renderStep() {
+                const progress = Math.min(100, ((index + 1) / steps.length) * 100);
+                loadBubble.innerHTML = `
+                    <div style="font-family:'Press Start 2P',monospace;color:#4CBB17;">
+                        <div style="font-size:9px;line-height:1.8;text-shadow:0 0 8px rgba(76,187,23,0.65);">${steps[index]}</div>
+                        <div style="height:8px;background:rgba(76,187,23,0.12);border:1px solid rgba(76,187,23,0.35);margin-top:10px;overflow:hidden;">
+                            <div style="height:100%;width:${progress}%;background:#4CBB17;box-shadow:0 0 10px rgba(76,187,23,0.8);transition:width 0.2s linear;"></div>
+                        </div>
+                    </div>
+                `;
+                messages.scrollTop = messages.scrollHeight;
+                index += 1;
+                if (index < steps.length) {
+                    setTimeout(renderStep, 700);
+                } else {
+                    setTimeout(resolve, 450);
+                }
+            }
+            renderStep();
+        });
+    }
+
     async function sendCachedContextOutput(text, outputKey) {
         const messages = document.getElementById('ce-messages');
         if (!messages) return;
 
         appendContextUserBubble(messages, text);
-        const loadBubble = appendContextLoadingBubble(messages, 'Loading cached scan...');
+        const loadBubble = appendContextLoadingBubble(messages, "SCANNING TODAY'S BOARD...");
 
         try {
+            const scanPromise = runRetroScanLoader(loadBubble, messages);
             const res = await fetch(`/api/context-edge/output/${encodeURIComponent(outputKey)}`);
             const data = await res.json().catch(() => ({}));
+            await scanPromise;
 
             if (!res.ok) {
                 loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">Server error ${res.status}. Try again.</p>`;
