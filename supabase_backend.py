@@ -116,6 +116,44 @@ def normalize_subscription_status(status: Optional[str]) -> Optional[str]:
     }.get(normalized, normalized)
 
 
+def normalize_daily_report_status(status: Optional[str]) -> str:
+    if status is None:
+        return "ready"
+    normalized = status.strip().lower()
+    if normalized not in {"pending", "ready", "failed", "stale"}:
+        raise ValueError("Invalid daily report status")
+    return normalized
+
+
+def normalize_context_edge_run_window(run_window: str) -> str:
+    normalized = (run_window or "").strip().lower()
+    if normalized not in {"morning", "afternoon"}:
+        raise ValueError("Invalid Context Edge run window")
+    return normalized
+
+
+def normalize_context_edge_output_key(output_key: str) -> str:
+    normalized = (output_key or "").strip().lower()
+    allowed = {
+        "mlb_value",
+        "soccer_value",
+        "top_5_plays",
+        "plus_money",
+        "mlb_lines",
+        "world_cup",
+        "game_totals",
+    }
+    if normalized not in allowed:
+        raise ValueError("Invalid Context Edge output key")
+    return normalized
+
+
+def _iso_date(value: Any) -> str:
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
 def upsert_profile_by_email(email: str, **fields: Any) -> dict[str, Any]:
     normalized_email = normalize_email(email)
     if not normalized_email or "@" not in normalized_email:
@@ -343,3 +381,154 @@ def write_context_edge_cache(
     if not cached:
         raise RuntimeError("Supabase context cache upsert returned no row")
     return cached
+
+
+def upsert_context_edge_daily_report(
+    *,
+    report_date: Any,
+    report_json: dict[str, Any],
+    board_hash: str,
+    sport_scope: str = "all",
+    status: str = "ready",
+    model: Optional[str] = None,
+    generated_at: Optional[str] = None,
+) -> dict[str, Any]:
+    if not report_date:
+        raise ValueError("report_date is required")
+    if not isinstance(report_json, dict):
+        raise ValueError("report_json must be a dict")
+    if not board_hash:
+        raise ValueError("board_hash is required")
+
+    payload = {
+        "report_date": _iso_date(report_date),
+        "sport_scope": sport_scope or "all",
+        "status": normalize_daily_report_status(status),
+        "report_json": report_json,
+        "board_hash": board_hash,
+        "updated_at": _utc_now_iso(),
+    }
+    if model is not None:
+        payload["model"] = model
+    if generated_at is not None:
+        payload["generated_at"] = generated_at
+
+    rows = _request(
+        "POST",
+        "context_edge_daily_reports",
+        params={"on_conflict": "report_date,sport_scope"},
+        json=payload,
+        prefer="resolution=merge-duplicates,return=representation",
+    )
+    report = _single_row(rows)
+    if not report:
+        raise RuntimeError("Supabase daily report upsert returned no row")
+    return report
+
+
+def read_context_edge_daily_report(
+    report_date: Optional[Any] = None,
+    sport_scope: str = "all",
+) -> Optional[dict[str, Any]]:
+    params = {
+        "select": "*",
+        "sport_scope": f"eq.{sport_scope or 'all'}",
+        "order": "report_date.desc,generated_at.desc",
+        "limit": "1",
+    }
+    if report_date is not None:
+        params["report_date"] = f"eq.{_iso_date(report_date)}"
+
+    rows = _request(
+        "GET",
+        "context_edge_daily_reports",
+        params=params,
+    )
+    return _single_row(rows)
+
+
+def upsert_context_edge_button_output(
+    *,
+    report_date: Any,
+    run_window: str,
+    output_key: str,
+    report_json: dict[str, Any],
+    board_hash: str,
+    status: str = "pending",
+    model: Optional[str] = None,
+    error_message: Optional[str] = None,
+    generated_at: Optional[str] = None,
+) -> dict[str, Any]:
+    if not report_date:
+        raise ValueError("report_date is required")
+    if not isinstance(report_json, dict):
+        raise ValueError("report_json must be a dict")
+    if not board_hash:
+        raise ValueError("board_hash is required")
+
+    payload = {
+        "report_date": _iso_date(report_date),
+        "run_window": normalize_context_edge_run_window(run_window),
+        "output_key": normalize_context_edge_output_key(output_key),
+        "status": normalize_daily_report_status(status),
+        "report_json": report_json,
+        "board_hash": board_hash,
+        "updated_at": _utc_now_iso(),
+    }
+    if model is not None:
+        payload["model"] = model
+    if error_message is not None:
+        payload["error_message"] = error_message
+    if generated_at is not None:
+        payload["generated_at"] = generated_at
+
+    rows = _request(
+        "POST",
+        "context_edge_button_outputs",
+        params={"on_conflict": "report_date,run_window,output_key"},
+        json=payload,
+        prefer="resolution=merge-duplicates,return=representation",
+    )
+    output = _single_row(rows)
+    if not output:
+        raise RuntimeError("Supabase button output upsert returned no row")
+    return output
+
+
+def read_latest_ready_context_edge_button_output(
+    output_key: str,
+) -> Optional[dict[str, Any]]:
+    rows = _request(
+        "GET",
+        "context_edge_button_outputs",
+        params={
+            "select": "*",
+            "output_key": f"eq.{normalize_context_edge_output_key(output_key)}",
+            "status": "eq.ready",
+            "order": "generated_at.desc",
+            "limit": "1",
+        },
+    )
+    return _single_row(rows)
+
+
+def read_context_edge_button_output(
+    report_date: Any,
+    run_window: str,
+    output_key: str,
+) -> Optional[dict[str, Any]]:
+    if not report_date:
+        raise ValueError("report_date is required")
+
+    rows = _request(
+        "GET",
+        "context_edge_button_outputs",
+        params={
+            "select": "*",
+            "report_date": f"eq.{_iso_date(report_date)}",
+            "run_window": f"eq.{normalize_context_edge_run_window(run_window)}",
+            "output_key": f"eq.{normalize_context_edge_output_key(output_key)}",
+            "limit": "1",
+        },
+    )
+    return _single_row(rows)
