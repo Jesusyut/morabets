@@ -28,6 +28,13 @@ def normalize_email(email: str) -> str:
     return (email or "").strip().lower()
 
 
+OWNER_EMAILS = {
+    normalize_email(email)
+    for email in os.environ.get("OWNER_EMAILS", "").split(",")
+    if normalize_email(email)
+}
+
+
 def is_configured() -> bool:
     return bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
 
@@ -323,6 +330,22 @@ def read_active_subscription_status_by_email(email: str) -> dict[str, Any]:
         "profile": profile,
         "subscription": _single_row(rows),
     }
+
+
+def user_has_context_edge_access(email: str) -> bool:
+    normalized_email = normalize_email(email)
+    if not normalized_email or "@" not in normalized_email:
+        return False
+    if normalized_email in OWNER_EMAILS:
+        return True
+
+    try:
+        status = read_active_subscription_status_by_email(normalized_email)
+    except SupabaseConfigError:
+        return False
+    except Exception:
+        return False
+    return bool(status.get("active"))
 
 
 def read_context_edge_cache(cache_key: str) -> Optional[dict[str, Any]]:
