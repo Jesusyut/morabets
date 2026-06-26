@@ -120,6 +120,7 @@ def normalize_subscription_status(status: Optional[str]) -> Optional[str]:
     return {
         "trial": "trialing",
         "day_pass": "active",
+        "canceled": "cancelled",
     }.get(normalized, normalized)
 
 
