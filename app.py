@@ -6,6 +6,10 @@ import random
 import requests
 import sys
 import csv
+from dotenv import load_dotenv
+
+load_dotenv()
+
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
                     stream=sys.stdout)
@@ -2420,6 +2424,73 @@ def send_board_email():
 # Global flag to track initialization
 app_initialized = False
 
+CONTEXT_EDGE_OUTPUT_KEYS = [
+    "mlb_value",
+    "soccer_value",
+    "top_5_plays",
+    "plus_money",
+    "mlb_lines",
+    "world_cup",
+    "game_totals",
+]
+
+
+def _context_edge_scheduler_enabled():
+    return os.environ.get("CONTEXT_EDGE_SCHEDULER_ENABLED", "").lower() == "true"
+
+
+def _run_context_edge_button_output_job(output_key, run_window):
+    logger.info(f"[CONTEXT EDGE] Started {run_window} generation for {output_key}")
+    try:
+        from context_edge_button_generator_service import generate_context_edge_button_output
+
+        result = generate_context_edge_button_output(output_key, run_window)
+        status = result.get("status") if isinstance(result, dict) else "unknown"
+        if status == "failed":
+            logger.error(f"[CONTEXT EDGE] Failed {run_window} generation for {output_key}")
+        else:
+            logger.info(
+                f"[CONTEXT EDGE] Completed {run_window} generation for {output_key} "
+                f"with status={status}"
+            )
+        return result
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE] Failed {run_window} generation for {output_key}: {e}")
+        raise
+
+
+def _register_context_edge_output_jobs():
+    if not _context_edge_scheduler_enabled():
+        logger.info("[CONTEXT EDGE] Scheduler disabled; set CONTEXT_EDGE_SCHEDULER_ENABLED=true to enable")
+        return
+
+    windows = [
+        ("morning", 9),
+        ("afternoon", 15),
+    ]
+    for run_window, hour in windows:
+        for index, output_key in enumerate(CONTEXT_EDGE_OUTPUT_KEYS):
+            minute = index * 3
+            job_id = f"context_edge_{run_window}_{output_key}"
+            scheduler.add_job(
+                func=_run_context_edge_button_output_job,
+                trigger="cron",
+                hour=hour,
+                minute=minute,
+                timezone="America/Phoenix",
+                id=job_id,
+                name=f"Context Edge {run_window} {output_key}",
+                args=[output_key, run_window],
+                replace_existing=True,
+                misfire_grace_time=1800,
+                coalesce=True,
+                max_instances=1,
+            )
+            logger.info(
+                f"[CONTEXT EDGE] Scheduled {run_window} generation for {output_key} "
+                f"at {hour:02d}:{minute:02d} America/Phoenix"
+            )
+
 def background_initializer():
     """
     Registers all scheduled jobs and primes caches on startup.
@@ -2532,6 +2603,12 @@ def background_initializer():
             logger.info("✅ Game odds job registered")
         except Exception as e:
             logger.warning(f"Odds job error: {e}")
+
+        # ── REGISTER CONTEXT EDGE CACHED OUTPUTS ───────────────────
+        try:
+            _register_context_edge_output_jobs()
+        except Exception as e:
+            logger.warning(f"Context Edge scheduler job error: {e}")
 
         # ── LOG ALL REGISTERED JOBS ──────────────────────────────
         all_jobs = scheduler.get_jobs()
@@ -3650,6 +3727,143 @@ def format_board_for_claude(board):
     return '\n'.join(lines)
 
 
+def _context_edge_admin_authorized():
+    expected = os.environ.get("ADMIN_CONTEXT_EDGE_TOKEN", "")
+    provided = request.headers.get("X-Admin-Token", "")
+    return bool(expected and provided and provided == expected)
+
+
+@app.route('/admin/context-edge/run/<output_key>', methods=['POST'])
+def admin_context_edge_run(output_key):
+    if not _context_edge_admin_authorized():
+        return jsonify({'error': 'forbidden'}), 403
+
+    try:
+        from context_edge_button_generator_service import generate_context_edge_button_output
+        from context_edge_button_output_service import (
+            get_output_config,
+            get_phoenix_run_window,
+        )
+        from supabase_backend import normalize_context_edge_run_window
+
+        try:
+            get_output_config(output_key)
+        except KeyError:
+            return jsonify({'error': 'Invalid output key'}), 400
+
+        data = request.get_json(silent=True) or {}
+        try:
+            run_window = normalize_context_edge_run_window(
+                data.get('run_window') or get_phoenix_run_window()
+            )
+        except ValueError:
+            return jsonify({'error': 'Invalid run window'}), 400
+
+        result = generate_context_edge_button_output(output_key, run_window)
+        return jsonify({
+            'success': True,
+            'output_key': output_key.strip().lower(),
+            'run_window': run_window,
+            'result': result,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE] Manual admin run failed for {output_key}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/context-edge/run-all/<run_window>', methods=['POST'])
+def admin_context_edge_run_all(run_window):
+    if not _context_edge_admin_authorized():
+        return jsonify({'error': 'forbidden'}), 403
+
+    try:
+        from context_edge_button_generator_service import generate_context_edge_button_output
+        from supabase_backend import normalize_context_edge_run_window
+
+        try:
+            normalized_run_window = normalize_context_edge_run_window(run_window)
+        except ValueError:
+            return jsonify({'error': 'Invalid run window'}), 400
+
+        results = []
+        for output_key in CONTEXT_EDGE_OUTPUT_KEYS:
+            logger.info(
+                f"[CONTEXT EDGE] Manual run-all started for {output_key} "
+                f"({normalized_run_window})"
+            )
+            result = generate_context_edge_button_output(
+                output_key,
+                normalized_run_window,
+            )
+            results.append({
+                'output_key': output_key,
+                'result': result,
+            })
+            logger.info(
+                f"[CONTEXT EDGE] Manual run-all completed for {output_key} "
+                f"({normalized_run_window})"
+            )
+
+        return jsonify({
+            'success': True,
+            'run_window': normalized_run_window,
+            'count': len(results),
+            'results': results,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE] Manual admin run-all failed for {run_window}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/context-edge/output/<output_key>', methods=['GET'])
+def context_edge_button_output(output_key):
+    """Return the latest ready cached Context Edge output for a quick button."""
+    try:
+        from context_edge_button_output_service import get_output_config
+        from supabase_backend import (
+            SupabaseConfigError,
+            read_latest_ready_context_edge_button_output,
+        )
+
+        try:
+            config = get_output_config(output_key)
+        except KeyError:
+            return jsonify({'error': 'Invalid output key'}), 404
+        normalized_output_key = output_key.strip().lower()
+
+        try:
+            cached = read_latest_ready_context_edge_button_output(normalized_output_key)
+        except SupabaseConfigError:
+            logger.warning('[CONTEXT EDGE] Supabase is not configured')
+            cached = None
+        except Exception as e:
+            logger.error(f'[CONTEXT EDGE] Cached output read failed: {e}')
+            cached = None
+
+        if cached:
+            return jsonify({
+                'status':       'ready',
+                'output_key':   normalized_output_key,
+                'label':        config['label'],
+                'generated_at': cached.get('generated_at'),
+                'run_window':   cached.get('run_window'),
+                'report':       cached.get('report_json'),
+            }), 200
+
+        return jsonify({
+            'status':     'pending',
+            'output_key': normalized_output_key,
+            'label':      config['label'],
+            'message':    "Context Edge is preparing today's scan.",
+        }), 200
+
+    except Exception as e:
+        logger.error(f'[CONTEXT EDGE] Output endpoint error: {e}')
+        return jsonify({'error': 'Context Edge output unavailable'}), 500
+
+
 @app.route('/api/context-edge', methods=['POST'])
 def context_edge_analysis():
     """
@@ -3702,150 +3916,14 @@ def context_edge_analysis():
         # Pre-build the board string BEFORE the f-string so the f-string
         # only references simple variables (no inline function calls).
         board_text = format_board_for_claude(board)
+        from context_edge_prompt_service import (
+            build_context_edge_system_prompt,
+            call_context_edge_ai,
+        )
 
-        SYSTEM_PROMPT = f"""You are Mora Bets Context Edge Analyst.
-  You are a sharp sports bettor and researcher.
-  Today's date: {today_str}
-
-  YOUR PROCESS — FOLLOW THIS EXACT ORDER:
-
-  STEP 1: RESEARCH FIRST
-  Use web search to find today's context.
-  Search for:
-  - Today's MLB starting pitchers and matchups
-  - Any relevant injury or lineup news
-  - Park and weather conditions if relevant
-  - Team recent form and momentum
-
-  Do your research before looking at
-  any board data. Build your own view
-  of which teams and players have an
-  edge today based purely on context.
-
-  STEP 2: IDENTIFY YOUR TOP PICKS
-  From your research identify 5 bets
-  where context gives one side a clear
-  probability advantage.
-
-  Think beyond player props:
-  - Team moneylines where context says
-    an underdog is actually favored
-  - Run line or spread where starter
-    and park strongly favor one side
-  - Game totals where park plus pitching
-    clearly push toward over or under
-  - Player props where specific matchup
-    creates a clear statistical edge
-
-  For each pick estimate your own
-  context-based true probability.
-  Example: Cubs moneyline — starter ERA
-  2.1 at home, opponent bullpen depleted,
-  Cubs won 7 of last 10 — context
-  probability: 62% to win outright.
-
-  STEP 3: CHECK THE NO-VIG BOARD
-  Today's no-vig reference board:
-  {board_text}
-
-  After building your 5 picks from
-  research, check the board for any
-  matching props or related lines.
-
-  The board shows the market's true
-  probability after removing bookmaker
-  margin. This is the price check.
-
-  Calculate the gap:
-  Your context probability MINUS
-  the no-vig board probability
-  = your edge
-
-  Example:
-  Your context probability: 62%
-  No-vig board shows: 54%
-  Gap: +8 percentage points
-  That gap is the edge. Show it.
-
-  If the bet you found is not on the
-  player props board (moneylines,
-  spreads, game totals) use the
-  no-vig board's environment tag
-  HIGH SCORING or LOW SCORING to
-  validate your game total thesis.
-
-  STEP 4: RANK BY EDGE SIZE
-  Sort your 5 picks by the size of
-  the gap between your context
-  probability and the market implied
-  probability from the odds.
-
-  Biggest gap = strongest play.
-
-  STEP 5: OUTPUT FORMAT
-
-  Start with one line summarizing
-  what you found in research.
-
-  Then for each pick:
-
-  ⚡ [TEAM or PLAYER] — [BET TYPE]
-  Odds: [best available]
-  Your Context Probability: [X%]
-  No-Vig Reference: [Y% from board or N/A]
-  Edge Gap: [+Z percentage points]
-  Verdict: PLAY / SMALL PLAY / PASS
-  Why: [2 sentences. Name the pitcher.
-       Name the ERA. Name the park.
-       Be specific. No vague language.]
-  Risk: [one sentence on what kills it]
-
-  ---
-
-  Sort all 5 picks edge gap largest
-  to smallest. Biggest edge at top.
-
-  RULES:
-  - Research before board. Always.
-  - Your context probability is primary.
-    No-vig is the price validation.
-  - If context and no-vig agree strongly
-    that is a PLAY
-  - If context is strong but no-vig
-    reference is unavailable still
-    recommend if odds imply value
-  - Never recommend a bet where
-    the available odds are worse than
-    your context probability implies
-  - Offseason sports have no games —
-    do not recommend bets for them
-  - 3 strong picks beat 5 forced ones
-  - A disciplined pass is good output
-  """
-
-        client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
+        SYSTEM_PROMPT = build_context_edge_system_prompt(today_str, board_text)
         try:
-            message = client.messages.create(
-                model='claude-sonnet-4-5-20250929',
-                max_tokens=1500,
-                system=SYSTEM_PROMPT,
-                tools=[
-                    {
-                        "type": "web_search_20250305",
-                        "name": "web_search",
-                        "max_uses": 4
-                    }
-                ],
-                messages=[{'role': 'user', 'content': chat_message}],
-                timeout=90.0
-            )
-            raw = ''
-            for block in message.content:
-                if hasattr(block, 'text') and block.text:
-                    raw += block.text
-            raw = raw.strip()
-            if not raw:
-                raw = 'No analysis returned. Try again.'
+            raw = call_context_edge_ai(api_key, SYSTEM_PROMPT, chat_message)
             return jsonify({'response': raw})
 
         except anthropic.APITimeoutError:

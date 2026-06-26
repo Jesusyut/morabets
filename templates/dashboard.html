@@ -1892,7 +1892,124 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
     }
 
-    function quickPrompt(text) {
+    function formatContextEdgeText(responseText) {
+        return (responseText || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/## (.*?)(<br>|$)/g, '<strong style="color:#4CBB17;font-size:14px;">$1</strong><br>')
+            .replace(/⚡/g, '<span style="color:#4CBB17">⚡</span>')
+            .replace(/\bSMALL PLAY\b/g, '<span style="color:#EAB308;font-weight:700;">SMALL PLAY</span>')
+            .replace(/\bPLAY\b/g, '<span style="color:#4CBB17;font-weight:700;">PLAY</span>')
+            .replace(/\bPASS\b/g, '<span style="color:#EF4444;font-weight:700;">PASS</span>')
+            .replace(/\n/g, '<br>');
+    }
+
+    function appendContextUserBubble(messages, text) {
+        const userBubble = document.createElement('div');
+        userBubble.style.cssText = `
+            align-self: flex-end;
+            background: rgba(76,187,23,0.15);
+            border: 1px solid rgba(76,187,23,0.3);
+            border-radius: 14px 14px 2px 14px;
+            padding: 10px 13px;
+            max-width: 90%;
+        `;
+        userBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:13px;color:#ffffff;margin:0;line-height:1.5;">${text.replace(/</g,'&lt;')}</p>`;
+        messages.appendChild(userBubble);
+    }
+
+    function appendContextLoadingBubble(messages, text) {
+        const loadBubble = document.createElement('div');
+        loadBubble.style.cssText = `
+            align-self: flex-start;
+            background: rgba(255,255,255,0.04);
+            border-radius: 14px 14px 14px 2px;
+            padding: 12px 14px;
+            max-width: 90%;
+        `;
+        loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#6B9E5A;margin:0;letter-spacing:1px;">${text}</p>`;
+        messages.appendChild(loadBubble);
+        messages.scrollTop = messages.scrollHeight;
+        return loadBubble;
+    }
+
+    function runRetroScanLoader(loadBubble, messages) {
+        const steps = [
+            "SCANNING TODAY'S BOARD...",
+            "CHECKING LINE MOVEMENT...",
+            "COMPARING TRUE PROBABILITY...",
+            "SEARCHING FOR MARKET MISTAKES...",
+            "EDGE FOUND."
+        ];
+        let index = 0;
+
+        return new Promise(function(resolve) {
+            function renderStep() {
+                const progress = Math.min(100, ((index + 1) / steps.length) * 100);
+                loadBubble.innerHTML = `
+                    <div style="font-family:'Press Start 2P',monospace;color:#4CBB17;">
+                        <div style="font-size:9px;line-height:1.8;text-shadow:0 0 8px rgba(76,187,23,0.65);">${steps[index]}</div>
+                        <div style="height:8px;background:rgba(76,187,23,0.12);border:1px solid rgba(76,187,23,0.35);margin-top:10px;overflow:hidden;">
+                            <div style="height:100%;width:${progress}%;background:#4CBB17;box-shadow:0 0 10px rgba(76,187,23,0.8);transition:width 0.2s linear;"></div>
+                        </div>
+                    </div>
+                `;
+                messages.scrollTop = messages.scrollHeight;
+                index += 1;
+                if (index < steps.length) {
+                    setTimeout(renderStep, 700);
+                } else {
+                    setTimeout(resolve, 450);
+                }
+            }
+            renderStep();
+        });
+    }
+
+    async function sendCachedContextOutput(text, outputKey) {
+        const messages = document.getElementById('ce-messages');
+        if (!messages) return;
+
+        appendContextUserBubble(messages, text);
+        const loadBubble = appendContextLoadingBubble(messages, "SCANNING TODAY'S BOARD...");
+
+        try {
+            const scanPromise = runRetroScanLoader(loadBubble, messages);
+            const res = await fetch(`/api/context-edge/output/${encodeURIComponent(outputKey)}`);
+            const data = await res.json().catch(() => ({}));
+            await scanPromise;
+
+            if (!res.ok) {
+                loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">Server error ${res.status}. Try again.</p>`;
+                return;
+            }
+
+            const report = data.report || {};
+            const responseText = data.status === 'ready'
+                ? (report.response || data.response || 'No cached response available.')
+                : (data.message || "Context Edge is preparing today's scan.");
+
+            const formatted = formatContextEdgeText(responseText);
+            loadBubble.innerHTML = `
+                <div style="
+                    font-family: 'Inter', sans-serif;
+                    font-size: 13px;
+                    color: #9CA3AF;
+                    line-height: 1.7;
+                ">${formatted}</div>
+            `;
+            messages.scrollTop = messages.scrollHeight;
+        } catch(err) {
+            loadBubble.innerHTML = `
+                <p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">
+                    Error: ${err.message}
+                </p>
+            `;
+        }
+    }
+
+    function quickPrompt(text, outputKey) {
         const input = document.getElementById('ce-input');
         if (!input) return;
 
@@ -1901,6 +2018,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (!passcode || !_ceAuthed) {
             document.getElementById('ce-input-area').style.display = 'none';
             document.getElementById('ce-passcode-gate').style.display = 'block';
+            return;
+        }
+
+        if (outputKey) {
+            sendCachedContextOutput(text, outputKey);
             return;
         }
 
@@ -2412,7 +2534,7 @@ function closeNewsletterPopup() {
   margin-top: 8px;
 ">
 
-  <button onclick="quickPrompt('best value bets today MLB — include moneylines, spreads, and player props')"
+  <button onclick="quickPrompt('best value bets today MLB — include moneylines, spreads, and player props', 'mlb_value')"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2424,7 +2546,7 @@ function closeNewsletterPopup() {
       cursor: pointer;
     ">⚾ MLB value</button>
 
-  <button onclick="quickPrompt('best value bets today Soccer World Cup — include moneylines and totals')"
+  <button onclick="quickPrompt('best value bets today Soccer World Cup — include moneylines and totals', 'soccer_value')"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2436,7 +2558,7 @@ function closeNewsletterPopup() {
       cursor: pointer;
     ">⚽ Soccer value</button>
 
-  <button onclick="quickPrompt('top 5 plays today across all sports — mix of player props, moneylines, and spreads')"
+  <button onclick="quickPrompt('top 5 plays today across all sports — mix of player props, moneylines, and spreads', 'top_5_plays')"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2448,7 +2570,7 @@ function closeNewsletterPopup() {
       cursor: pointer;
     ">⚡ Top 5 plays</button>
 
-  <button onclick="quickPrompt('best plus money plays today — any sport, odds better than +100')"
+  <button onclick="quickPrompt('best plus money plays today — any sport, odds better than +100', 'plus_money')"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2460,7 +2582,7 @@ function closeNewsletterPopup() {
       cursor: pointer;
     ">💰 Plus money</button>
 
-  <button onclick="quickPrompt('best MLB moneyline and run line bets today based on pitching matchups and park factors')"
+  <button onclick="quickPrompt('best MLB moneyline and run line bets today based on pitching matchups and park factors', 'mlb_lines')"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2472,7 +2594,7 @@ function closeNewsletterPopup() {
       cursor: pointer;
     ">📊 MLB lines</button>
 
-  <button onclick="quickPrompt('World Cup match result and total goals bets today — best context edges')"
+  <button onclick="quickPrompt('World Cup match result and total goals bets today — best context edges', 'world_cup')"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2484,7 +2606,7 @@ function closeNewsletterPopup() {
       cursor: pointer;
     ">🏆 World Cup</button>
 
-  <button onclick="quickPrompt('best high scoring game total plays today — overs with park factor and pitching context')"
+  <button onclick="quickPrompt('best high scoring game total plays today — overs with park factor and pitching context', 'game_totals')"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
