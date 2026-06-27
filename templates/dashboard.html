@@ -156,6 +156,96 @@ f.parentNode.insertBefore(j,f);
             min-height: 100vh;
             padding-bottom: 4rem;
         }
+        body.ce-context-premium-open {
+            overflow: hidden;
+        }
+        body.ce-context-premium-open #ce-chat-panel {
+            top: 50% !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: auto !important;
+            width: min(720px, calc(100vw - 32px)) !important;
+            max-width: calc(100vw - 32px) !important;
+            height: min(85vh, 820px) !important;
+            max-height: 85vh !important;
+            transform: translate(-50%, -50%) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.62), 0 0 36px rgba(76,187,23,0.35), 0 24px 80px rgba(0,0,0,0.7) !important;
+        }
+        body.ce-context-premium-open #ce-messages {
+            flex: 0 0 auto !important;
+            min-height: 0 !important;
+            max-height: 158px !important;
+            overflow-y: auto !important;
+        }
+        body.ce-context-premium-open #ce-passcode-gate {
+            flex: 1 1 auto !important;
+            overflow-y: auto !important;
+            padding: 26px !important;
+            min-height: 0 !important;
+        }
+        body.ce-context-premium-open #ce-premium-card {
+            max-width: 620px;
+            margin: 0 auto;
+            padding: 30px !important;
+        }
+        body.ce-context-premium-open #ce-premium-title {
+            font-size: 14px !important;
+            margin-bottom: 18px !important;
+        }
+        body.ce-context-premium-open #ce-premium-headline {
+            font-size: 40px !important;
+            margin-bottom: 10px !important;
+        }
+        body.ce-context-premium-open #ce-premium-subcopy {
+            font-size: 15px !important;
+            margin-bottom: 24px !important;
+        }
+        body.ce-context-premium-open #ce-premium-unlock-label {
+            font-size: 13px !important;
+            margin-bottom: 12px !important;
+        }
+        body.ce-context-premium-open #ce-premium-feature-grid {
+            gap: 10px !important;
+            margin-bottom: 24px !important;
+        }
+        body.ce-context-premium-open .ce-premium-feature {
+            font-size: 14px !important;
+            padding: 12px 13px !important;
+        }
+        body.ce-context-premium-open #ce-checkout-email {
+            font-size: 15px !important;
+            padding: 14px 15px !important;
+            margin-bottom: 12px !important;
+        }
+        body.ce-context-premium-open #ce-checkout-btn {
+            padding: 16px 14px !important;
+        }
+        @media (max-width: 640px) {
+            body.ce-context-premium-open #ce-chat-panel {
+                width: calc(100vw - 18px) !important;
+                max-width: calc(100vw - 18px) !important;
+                height: calc(100vh - 18px) !important;
+                max-height: calc(100vh - 18px) !important;
+                border-radius: 14px !important;
+            }
+            body.ce-context-premium-open #ce-messages {
+                max-height: 126px !important;
+                padding: 12px !important;
+            }
+            body.ce-context-premium-open #ce-passcode-gate {
+                padding: 16px !important;
+            }
+            body.ce-context-premium-open #ce-premium-card {
+                padding: 20px !important;
+            }
+            body.ce-context-premium-open #ce-premium-headline {
+                font-size: 32px !important;
+            }
+            body.ce-context-premium-open #ce-premium-feature-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
 
         /* ── Sticky Back Header ── */
         #sticky-back-header {
@@ -1820,6 +1910,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     let _ceChatOpen = false;
     let _ceAuthed = false;
 
+    function setContextEdgePremiumMode(active) {
+        document.body.classList.toggle('ce-context-premium-open', !!active);
+    }
+
     function toggleContextChat() {
         const panel = document.getElementById('ce-chat-panel');
         const tooltip = document.getElementById('ce-tooltip');
@@ -1835,6 +1929,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             // Show premium offer or input area depending on auth state
             document.getElementById(_ceAuthed ? 'ce-input-area' : 'ce-passcode-gate').style.display = 'block';
+            setContextEdgePremiumMode(!_ceAuthed);
 
             if (_ceAuthed) {
                 document.getElementById('ce-passcode-gate').style.display = 'none';
@@ -1842,6 +1937,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             }
         } else {
             panel.style.display = 'none';
+            setContextEdgePremiumMode(false);
         }
     }
 
@@ -1884,6 +1980,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             error.style.display = 'none';
             document.getElementById('ce-passcode-gate').style.display = 'none';
             document.getElementById('ce-input-area').style.display = 'block';
+            setContextEdgePremiumMode(false);
             setTimeout(() => { document.getElementById('ce-input').focus(); }, 100);
 
         } catch (e) {
@@ -2075,6 +2172,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (!passcode || !_ceAuthed) {
             document.getElementById('ce-input-area').style.display = 'none';
             document.getElementById('ce-passcode-gate').style.display = 'block';
+            setContextEdgePremiumMode(true);
             return;
         }
 
@@ -2105,6 +2203,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (!passcode) {
             document.getElementById('ce-input-area').style.display = 'none';
             document.getElementById('ce-passcode-gate').style.display = 'block';
+            setContextEdgePremiumMode(true);
             return;
         }
 
@@ -2165,6 +2264,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">Session expired. Re-enter passcode.</p>`;
                 document.getElementById('ce-input-area').style.display = 'none';
                 document.getElementById('ce-passcode-gate').style.display = 'block';
+                setContextEdgePremiumMode(true);
                 btn.disabled = false;
                 btn.textContent = 'Analyze Context Edge →';
                 return;
@@ -2681,18 +2781,18 @@ function closeNewsletterPopup() {
 
   <!-- CONTEXT EDGE PREMIUM OFFER — shown if not authed -->
   <div id="ce-passcode-gate" style="display: none; padding: 16px; border-top: 1px solid rgba(76,187,23,0.25); flex-shrink: 0; background: radial-gradient(circle at top, rgba(76,187,23,0.14), rgba(15,36,6,0) 58%);">
-    <div style="border: 1px solid rgba(76,187,23,0.45); background: rgba(0,0,0,0.22); box-shadow: inset 0 0 22px rgba(76,187,23,0.08), 0 0 18px rgba(76,187,23,0.12); padding: 14px; border-radius: 12px;">
-      <div style="font-family: 'Press Start 2P', monospace; font-size: 11px; line-height: 1.6; color: #4CBB17; text-shadow: 0 0 8px rgba(76,187,23,0.75); margin-bottom: 10px;">CONTEXT EDGE PREMIUM</div>
-      <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1;">Start for only $7</div>
-      <div style="font-family: 'Inter', sans-serif; font-size: 12px; color: #9CA3AF; margin: 6px 0 12px;">7-day access · Then $49/month</div>
-      <div style="font-family: 'Inter', sans-serif; font-size: 12px; color: #6B9E5A; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Unlock cached scans for:</div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
-        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Top 5 Plays</div>
-        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• MLB Value</div>
-        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Plus Money</div>
-        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Market Mistakes</div>
-        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Line Movement</div>
-        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Game Totals</div>
+    <div id="ce-premium-card" style="border: 1px solid rgba(76,187,23,0.45); background: rgba(0,0,0,0.22); box-shadow: inset 0 0 22px rgba(76,187,23,0.08), 0 0 18px rgba(76,187,23,0.12); padding: 14px; border-radius: 12px;">
+      <div id="ce-premium-title" style="font-family: 'Press Start 2P', monospace; font-size: 11px; line-height: 1.6; color: #4CBB17; text-shadow: 0 0 8px rgba(76,187,23,0.75); margin-bottom: 10px;">CONTEXT EDGE PREMIUM</div>
+      <div id="ce-premium-headline" style="font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1;">Start for only $7</div>
+      <div id="ce-premium-subcopy" style="font-family: 'Inter', sans-serif; font-size: 12px; color: #9CA3AF; margin: 6px 0 12px;">7-day access · Then $49/month</div>
+      <div id="ce-premium-unlock-label" style="font-family: 'Inter', sans-serif; font-size: 12px; color: #6B9E5A; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Unlock cached scans for:</div>
+      <div id="ce-premium-feature-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
+        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Top 5 Plays</div>
+        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• MLB Value</div>
+        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Plus Money</div>
+        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Market Mistakes</div>
+        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Line Movement</div>
+        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Game Totals</div>
       </div>
       <input id="ce-checkout-email" type="email" placeholder="email@example.com" autocomplete="email" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.06); border: 1px solid rgba(76,187,23,0.42); border-radius: 9px; padding: 11px 12px; font-family: 'Inter', sans-serif; font-size: 13px; color: #ffffff; outline: none; margin-bottom: 8px;" onkeydown="if(event.key==='Enter')startContextEdgeCheckout()">
       <button id="ce-checkout-btn" onclick="startContextEdgeCheckout()" style="width: 100%; background: #4CBB17; border: none; border-radius: 9px; padding: 12px 14px; color: #0F2406; font-family: 'Press Start 2P', monospace; font-size: 10px; font-weight: 900; cursor: pointer; box-shadow: 0 0 18px rgba(76,187,23,0.35);">START FOR $7</button>
