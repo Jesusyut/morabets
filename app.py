@@ -4087,6 +4087,23 @@ def context_edge_button_output(output_key):
         return jsonify({'error': 'Context Edge output unavailable'}), 500
 
 
+@app.route('/api/context-edge/check-access', methods=['POST'])
+def context_edge_check_access():
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+
+    if not email or '@' not in email:
+        return jsonify({'access': False, 'error': 'A valid email is required'}), 400
+
+    try:
+        from supabase_backend import user_has_context_edge_access
+
+        return jsonify({'access': bool(user_has_context_edge_access(email))}), 200
+    except Exception as e:
+        logger.error(f'[CONTEXT EDGE] Access check failed for {email}: {e}')
+        return jsonify({'access': False}), 200
+
+
 @app.route('/api/context-edge', methods=['POST'])
 def context_edge_analysis():
     """
@@ -4113,9 +4130,19 @@ def context_edge_analysis():
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
-        # Passcode gate — feature is in private testing; only the owner has the code.
+        # Passcode gate remains available; paid/owner email access can also unlock.
         expected_passcode = os.environ.get('CONTEXT_EDGE_PASSCODE', '4774')
-        if str(data.get('passcode', '')).strip() != expected_passcode:
+        passcode_valid = str(data.get('passcode', '')).strip() == expected_passcode
+        email_access_valid = False
+        if not passcode_valid:
+            try:
+                from supabase_backend import user_has_context_edge_access
+
+                email_access_valid = user_has_context_edge_access(data.get('email', ''))
+            except Exception as access_err:
+                logger.warning(f'[CONTEXT EDGE] Email access check failed: {access_err}')
+
+        if not passcode_valid and not email_access_valid:
             return jsonify({'error': 'Invalid passcode.'}), 403
 
         # validate_only: passcode check passed above, so just confirm access. No Claude call.
