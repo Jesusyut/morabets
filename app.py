@@ -3082,6 +3082,7 @@ from mora_assists import run_daily_assists
 def _context_edge_stripe_required_env():
     required = {
         "STRIPE_SECRET_KEY": os.environ.get("STRIPE_SECRET_KEY", ""),
+        "STRIPE_CONTEXT_EDGE_INTRO_PRICE_ID": os.environ.get("STRIPE_CONTEXT_EDGE_INTRO_PRICE_ID", ""),
         "STRIPE_CONTEXT_EDGE_PRICE_ID": os.environ.get("STRIPE_CONTEXT_EDGE_PRICE_ID", ""),
         "CONTEXT_EDGE_SUCCESS_URL": os.environ.get("CONTEXT_EDGE_SUCCESS_URL", ""),
         "CONTEXT_EDGE_CANCEL_URL": os.environ.get("CONTEXT_EDGE_CANCEL_URL", ""),
@@ -3239,6 +3240,10 @@ def create_context_edge_checkout_session():
             customer_email=email,
             line_items=[
                 {
+                    "price": env["STRIPE_CONTEXT_EDGE_INTRO_PRICE_ID"],
+                    "quantity": 1,
+                },
+                {
                     "price": env["STRIPE_CONTEXT_EDGE_PRICE_ID"],
                     "quantity": 1,
                 }
@@ -3252,6 +3257,7 @@ def create_context_edge_checkout_session():
                 "email": email,
             },
             subscription_data={
+                "trial_period_days": 7,
                 "metadata": {
                     "product": "context_edge",
                     "email": email,
