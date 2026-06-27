@@ -1,5 +1,6 @@
 """Generate and store cached Context Edge outputs for quick buttons."""
 
+import json
 import os
 from datetime import datetime
 from typing import Any
@@ -31,17 +32,26 @@ def _load_context_edge_board() -> list[dict[str, Any]]:
 
 
 def _format_context_edge_board(board: list[dict[str, Any]]) -> str:
-    from app import format_board_for_claude
+    if not board:
+        return "No qualifying props on board today."
 
-    return format_board_for_claude(board)
+    return "Complete cached no-vig board JSON:\n" + json.dumps(
+        board,
+        sort_keys=True,
+        indent=2,
+        ensure_ascii=True,
+        default=str,
+    )
 
 
 def generate_context_edge_button_output(output_key: str, run_window: str) -> dict[str, Any]:
     """
     Generate one cached Context Edge quick-button output.
 
-    This uses the same board loader/formatter, system prompt, model, and
-    quick-button prompt text as the existing live Context Edge path.
+    This uses the same board loader, system prompt, model, and quick-button
+    prompt text as the existing live Context Edge path. The cached generator
+    passes the full loaded board JSON into the existing board prompt slot so
+    Claude can see all available prop, odds, and enrichment fields.
     """
     config = get_output_config(output_key)
     normalized_output_key = (output_key or "").strip().lower()

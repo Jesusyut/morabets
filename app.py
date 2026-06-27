@@ -3079,6 +3079,229 @@ import stripe as stripe_lib
 from mora_assists import run_daily_assists
 
 
+def _context_edge_stripe_required_env():
+    required = {
+        "STRIPE_SECRET_KEY": os.environ.get("STRIPE_SECRET_KEY", ""),
+        "STRIPE_CONTEXT_EDGE_INTRO_PRICE_ID": os.environ.get("STRIPE_CONTEXT_EDGE_INTRO_PRICE_ID", ""),
+        "STRIPE_CONTEXT_EDGE_PRICE_ID": os.environ.get("STRIPE_CONTEXT_EDGE_PRICE_ID", ""),
+        "CONTEXT_EDGE_SUCCESS_URL": os.environ.get("CONTEXT_EDGE_SUCCESS_URL", ""),
+        "CONTEXT_EDGE_CANCEL_URL": os.environ.get("CONTEXT_EDGE_CANCEL_URL", ""),
+    }
+    missing = [key for key, value in required.items() if not value]
+    if missing:
+        raise RuntimeError(f"Missing required Stripe env vars: {', '.join(missing)}")
+    return required
+
+
+def _stripe_ts_to_iso(value):
+    if not value:
+        return None
+    try:
+        return datetime.utcfromtimestamp(int(value)).isoformat()
+    except (TypeError, ValueError):
+        return None
+
+
+def _stripe_object_get(obj, key, default=None):
+    if not obj:
+        return default
+    try:
+        return obj.get(key, default)
+    except AttributeError:
+        return getattr(obj, key, default)
+
+
+def _context_edge_get_customer(customer_id):
+    if not customer_id:
+        return None
+    try:
+        stripe_lib.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+        return stripe_lib.Customer.retrieve(customer_id)
+    except Exception as e:
+        logger.warning(f"[CONTEXT EDGE STRIPE] Could not retrieve customer {customer_id}: {e}")
+        return None
+
+
+def _context_edge_customer_email(customer_id, fallback_email=""):
+    email = (fallback_email or "").strip().lower()
+    if email:
+        return email
+
+    customer = _context_edge_get_customer(customer_id)
+    return (_stripe_object_get(customer, "email", "") or "").strip().lower()
+
+
+def _context_edge_subscription_price_id(subscription):
+    items = _stripe_object_get(subscription, "items", {}) or {}
+    item_data = _stripe_object_get(items, "data", []) or []
+    if not item_data:
+        return os.environ.get("STRIPE_CONTEXT_EDGE_PRICE_ID", "")
+
+    price = _stripe_object_get(item_data[0], "price", {}) or {}
+    return _stripe_object_get(price, "id", "") or os.environ.get("STRIPE_CONTEXT_EDGE_PRICE_ID", "")
+
+
+def _upsert_context_edge_subscription_from_stripe(subscription, fallback_email=""):
+    from supabase_backend import upsert_profile_by_email, upsert_subscription
+
+    customer_id = _stripe_object_get(subscription, "customer", "")
+    email = _context_edge_customer_email(customer_id, fallback_email)
+    if not email or "@" not in email:
+        raise ValueError("Stripe customer email is required for Context Edge subscription sync")
+
+    profile = upsert_profile_by_email(
+        email,
+        stripe_customer_id=customer_id,
+    )
+
+    status = _stripe_object_get(subscription, "status", "inactive")
+    cancelled_at = _stripe_ts_to_iso(
+        _stripe_object_get(subscription, "canceled_at")
+        or _stripe_object_get(subscription, "ended_at")
+    )
+
+    return upsert_subscription(
+        profile=profile,
+        stripe_subscription_id=_stripe_object_get(subscription, "id", ""),
+        stripe_price_id=_context_edge_subscription_price_id(subscription),
+        stripe_customer_id=customer_id,
+        plan="monthly",
+        status=status,
+        current_period_start=_stripe_ts_to_iso(_stripe_object_get(subscription, "current_period_start")),
+        current_period_end=_stripe_ts_to_iso(_stripe_object_get(subscription, "current_period_end")),
+        trial_ends_at=_stripe_ts_to_iso(_stripe_object_get(subscription, "trial_end")),
+        cancelled_at=cancelled_at,
+    )
+
+
+def _handle_context_edge_stripe_event(event):
+    event_type = event.get("type")
+    data_obj = event.get("data", {}).get("object", {})
+
+    if event_type == "checkout.session.completed":
+        customer_id = _stripe_object_get(data_obj, "customer", "")
+        fallback_email = (
+            _stripe_object_get(data_obj, "customer_email", "")
+            or _stripe_object_get(_stripe_object_get(data_obj, "customer_details", {}), "email", "")
+        )
+        subscription_id = _stripe_object_get(data_obj, "subscription", "")
+
+        if subscription_id:
+            stripe_lib.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+            subscription = stripe_lib.Subscription.retrieve(subscription_id)
+            result = _upsert_context_edge_subscription_from_stripe(
+                subscription,
+                fallback_email=fallback_email,
+            )
+        else:
+            from supabase_backend import upsert_profile_by_email, upsert_subscription
+
+            email = _context_edge_customer_email(customer_id, fallback_email)
+            profile = upsert_profile_by_email(email, stripe_customer_id=customer_id)
+            result = upsert_subscription(
+                profile=profile,
+                stripe_customer_id=customer_id,
+                stripe_price_id=os.environ.get("STRIPE_CONTEXT_EDGE_PRICE_ID", ""),
+                plan="monthly",
+                status="active",
+            )
+
+        logger.info(f"[CONTEXT EDGE STRIPE] Checkout completed: {subscription_id}")
+        return result
+
+    if event_type in (
+        "customer.subscription.created",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+    ):
+        result = _upsert_context_edge_subscription_from_stripe(data_obj)
+        logger.info(
+            "[CONTEXT EDGE STRIPE] Subscription synced: "
+            f"{_stripe_object_get(data_obj, 'id', '')} ({_stripe_object_get(data_obj, 'status', '')})"
+        )
+        return result
+
+    logger.info(f"[CONTEXT EDGE STRIPE] Ignored event: {event_type}")
+    return None
+
+
+@app.route('/api/context-edge/create-checkout-session', methods=['POST'])
+def create_context_edge_checkout_session():
+    try:
+        env = _context_edge_stripe_required_env()
+        data = request.get_json(silent=True) or {}
+        email = (data.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            return jsonify({"error": "A valid email is required"}), 400
+
+        stripe_lib.api_key = env["STRIPE_SECRET_KEY"]
+        session_obj = stripe_lib.checkout.Session.create(
+            mode="subscription",
+            customer_email=email,
+            line_items=[
+                {
+                    "price": env["STRIPE_CONTEXT_EDGE_INTRO_PRICE_ID"],
+                    "quantity": 1,
+                },
+                {
+                    "price": env["STRIPE_CONTEXT_EDGE_PRICE_ID"],
+                    "quantity": 1,
+                }
+            ],
+            success_url=env["CONTEXT_EDGE_SUCCESS_URL"],
+            cancel_url=env["CONTEXT_EDGE_CANCEL_URL"],
+            allow_promotion_codes=True,
+            client_reference_id=email,
+            metadata={
+                "product": "context_edge",
+                "email": email,
+            },
+            subscription_data={
+                "trial_period_days": 7,
+                "metadata": {
+                    "product": "context_edge",
+                    "email": email,
+                }
+            },
+        )
+        return jsonify({
+            "checkout_url": session_obj.url,
+            "session_id": session_obj.id,
+        })
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE STRIPE] Checkout session error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/stripe/context-edge/webhook', methods=['POST'])
+def context_edge_stripe_webhook():
+    payload = request.get_data()
+    sig_header = request.headers.get("Stripe-Signature", "")
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
+    if not webhook_secret:
+        logger.error("[CONTEXT EDGE STRIPE] STRIPE_WEBHOOK_SECRET is not configured")
+        return jsonify({"error": "Webhook secret is not configured"}), 500
+
+    try:
+        stripe_lib.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+        event = stripe_lib.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except stripe_lib.error.SignatureVerificationError as e:
+        logger.warning(f"[CONTEXT EDGE STRIPE] Signature verification failed: {e}")
+        return jsonify({"error": "Invalid signature"}), 400
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE STRIPE] Webhook parse error: {e}")
+        return jsonify({"error": str(e)}), 400
+
+    try:
+        _handle_context_edge_stripe_event(event)
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE STRIPE] Event handler error: {e}")
+        return jsonify({"error": str(e)}), 400
+
+    return jsonify({"status": "ok"}), 200
+
+
 def _save_subscriber(data):
     """Append or update a subscriber row in mora_assists_subscribers.csv."""
     FILE = "/var/data/mora_assists_subscribers.csv"

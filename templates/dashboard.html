@@ -1833,7 +1833,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             panel.style.display = 'flex';
             panel.style.flexDirection = 'column';
 
-            // Show passcode gate or input area depending on auth state
+            // Show premium offer or input area depending on auth state
             document.getElementById(_ceAuthed ? 'ce-input-area' : 'ce-passcode-gate').style.display = 'block';
 
             if (_ceAuthed) {
@@ -1889,6 +1889,63 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         } catch (e) {
             error.textContent = 'Connection error.';
             error.style.display = 'block';
+        }
+    }
+
+    function showContextEdgeDevAccessCode() {
+        const fallback = document.getElementById('ce-dev-passcode-fallback');
+        const input = document.getElementById('ce-passcode-input');
+        if (fallback) fallback.style.display = 'block';
+        if (input) setTimeout(() => { input.focus(); }, 50);
+    }
+
+    async function startContextEdgeCheckout() {
+        const emailInput = document.getElementById('ce-checkout-email');
+        const error = document.getElementById('ce-checkout-error');
+        const btn = document.getElementById('ce-checkout-btn');
+        const email = (emailInput && emailInput.value ? emailInput.value : '').trim().toLowerCase();
+
+        if (error) {
+            error.style.display = 'none';
+            error.textContent = '';
+        }
+
+        if (!email || !email.includes('@')) {
+            if (error) {
+                error.textContent = 'Enter a valid email to start checkout.';
+                error.style.display = 'block';
+            }
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'LOADING...';
+        }
+
+        try {
+            const res = await fetch('/api/context-edge/create-checkout-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await res.json().catch(() => ({}));
+            const checkoutUrl = data.checkout_url || data.url;
+
+            if (!res.ok || !checkoutUrl) {
+                throw new Error(data.error || 'Checkout failed.');
+            }
+
+            window.location.href = checkoutUrl;
+        } catch (err) {
+            if (error) {
+                error.textContent = 'Checkout failed. Try again.';
+                error.style.display = 'block';
+            }
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'START FOR $7';
+            }
         }
     }
 
@@ -2622,14 +2679,33 @@ function closeNewsletterPopup() {
     </div>
   </div>
 
-  <!-- PASSCODE GATE — shown if not authed -->
-  <div id="ce-passcode-gate" style="display: none; padding: 16px; border-top: 1px solid rgba(107,158,90,0.2); flex-shrink: 0;">
-    <p style="font-family: 'Inter', sans-serif; font-size: 12px; color: #6B9E5A; margin: 0 0 8px;">Enter access code to use Context Edge:</p>
-    <div style="display:flex;gap:8px;">
-      <input id="ce-passcode-input" type="password" placeholder="Enter code" style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(107,158,90,0.4); border-radius: 10px; padding: 10px 12px; font-family: 'Inter', sans-serif; font-size: 14px; color: #ffffff; outline: none;" onkeydown="if(event.key==='Enter')submitPasscode()">
-      <button onclick="submitPasscode()" style="background: #4CBB17; border: none; border-radius: 10px; padding: 10px 14px; color: #0F2406; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 900; cursor: pointer;">→</button>
+  <!-- CONTEXT EDGE PREMIUM OFFER — shown if not authed -->
+  <div id="ce-passcode-gate" style="display: none; padding: 16px; border-top: 1px solid rgba(76,187,23,0.25); flex-shrink: 0; background: radial-gradient(circle at top, rgba(76,187,23,0.14), rgba(15,36,6,0) 58%);">
+    <div style="border: 1px solid rgba(76,187,23,0.45); background: rgba(0,0,0,0.22); box-shadow: inset 0 0 22px rgba(76,187,23,0.08), 0 0 18px rgba(76,187,23,0.12); padding: 14px; border-radius: 12px;">
+      <div style="font-family: 'Press Start 2P', monospace; font-size: 11px; line-height: 1.6; color: #4CBB17; text-shadow: 0 0 8px rgba(76,187,23,0.75); margin-bottom: 10px;">CONTEXT EDGE PREMIUM</div>
+      <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1;">Start for only $7</div>
+      <div style="font-family: 'Inter', sans-serif; font-size: 12px; color: #9CA3AF; margin: 6px 0 12px;">7-day access · Then $49/month</div>
+      <div style="font-family: 'Inter', sans-serif; font-size: 12px; color: #6B9E5A; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Unlock cached scans for:</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
+        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Top 5 Plays</div>
+        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• MLB Value</div>
+        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Plus Money</div>
+        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Market Mistakes</div>
+        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Line Movement</div>
+        <div style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Game Totals</div>
+      </div>
+      <input id="ce-checkout-email" type="email" placeholder="email@example.com" autocomplete="email" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.06); border: 1px solid rgba(76,187,23,0.42); border-radius: 9px; padding: 11px 12px; font-family: 'Inter', sans-serif; font-size: 13px; color: #ffffff; outline: none; margin-bottom: 8px;" onkeydown="if(event.key==='Enter')startContextEdgeCheckout()">
+      <button id="ce-checkout-btn" onclick="startContextEdgeCheckout()" style="width: 100%; background: #4CBB17; border: none; border-radius: 9px; padding: 12px 14px; color: #0F2406; font-family: 'Press Start 2P', monospace; font-size: 10px; font-weight: 900; cursor: pointer; box-shadow: 0 0 18px rgba(76,187,23,0.35);">START FOR $7</button>
+      <p id="ce-checkout-error" style="display: none; font-family: 'Inter', sans-serif; font-size: 11px; color: #EF4444; margin: 8px 0 0;">Checkout failed. Try again.</p>
     </div>
-    <p id="ce-passcode-error" style="display: none; font-family: 'Inter', sans-serif; font-size: 11px; color: #EF4444; margin: 6px 0 0;">Incorrect code. Try again.</p>
+
+    <div id="ce-dev-passcode-fallback" style="display: none; margin-top: 12px;">
+      <div style="display:flex;gap:8px;">
+        <input id="ce-passcode-input" type="password" placeholder="Dev access code" style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(107,158,90,0.4); border-radius: 10px; padding: 10px 12px; font-family: 'Inter', sans-serif; font-size: 14px; color: #ffffff; outline: none;" onkeydown="if(event.key==='Enter')submitPasscode()">
+        <button onclick="submitPasscode()" style="background: #4CBB17; border: none; border-radius: 10px; padding: 10px 14px; color: #0F2406; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 900; cursor: pointer;">→</button>
+      </div>
+      <p id="ce-passcode-error" style="display: none; font-family: 'Inter', sans-serif; font-size: 11px; color: #EF4444; margin: 6px 0 0;">Incorrect code. Try again.</p>
+    </div>
   </div>
 
   <!-- INPUT AREA — shown when authed -->
