@@ -145,11 +145,8 @@ def normalize_context_edge_output_key(output_key: str) -> str:
     allowed = {
         "mlb_value",
         "soccer_value",
-        "top_5_plays",
         "plus_money",
-        "mlb_lines",
-        "world_cup",
-        "game_totals",
+        "nfl_value",
     }
     if normalized not in allowed:
         raise ValueError("Invalid Context Edge output key")
@@ -529,6 +526,22 @@ def read_latest_ready_context_edge_button_output(
             "select": "*",
             "output_key": f"eq.{normalize_context_edge_output_key(output_key)}",
             "status": "eq.ready",
+            "order": "generated_at.desc",
+            "limit": "1",
+        },
+    )
+    return _single_row(rows)
+
+
+def read_latest_context_edge_button_output(
+    output_key: str,
+) -> Optional[dict[str, Any]]:
+    rows = _request(
+        "GET",
+        "context_edge_button_outputs",
+        params={
+            "select": "*",
+            "output_key": f"eq.{normalize_context_edge_output_key(output_key)}",
             "order": "generated_at.desc",
             "limit": "1",
         },

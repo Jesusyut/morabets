@@ -6,6 +6,7 @@ import random
 import requests
 import sys
 import csv
+import threading
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -2427,11 +2428,8 @@ app_initialized = False
 CONTEXT_EDGE_OUTPUT_KEYS = [
     "mlb_value",
     "soccer_value",
-    "top_5_plays",
     "plus_money",
-    "mlb_lines",
-    "world_cup",
-    "game_totals",
+    "nfl_value",
 ]
 
 
@@ -3956,13 +3954,48 @@ def _context_edge_admin_authorized():
     return bool(expected and provided and provided == expected)
 
 
+def _queue_context_edge_generation(output_key, run_window, source="admin"):
+    normalized_output_key = (output_key or "").strip().lower()
+
+    def _run_generation():
+        try:
+            from context_edge_button_generator_service import generate_context_edge_button_output
+
+            logger.info(
+                f"[CONTEXT EDGE] {source} generation started for "
+                f"{normalized_output_key} ({run_window})"
+            )
+            result = generate_context_edge_button_output(normalized_output_key, run_window)
+            status = result.get("status") if isinstance(result, dict) else "unknown"
+            logger.info(
+                f"[CONTEXT EDGE] {source} generation completed for "
+                f"{normalized_output_key} ({run_window}) status={status}"
+            )
+        except Exception as e:
+            logger.error(
+                f"[CONTEXT EDGE] {source} generation failed for "
+                f"{normalized_output_key} ({run_window}): {e}",
+                exc_info=True,
+            )
+
+    thread = threading.Thread(
+        target=_run_generation,
+        name=f"context-edge-{source}-{normalized_output_key}-{run_window}",
+        daemon=True,
+    )
+    thread.start()
+    logger.info(
+        f"[CONTEXT EDGE] {source} generation queued for "
+        f"{normalized_output_key} ({run_window})"
+    )
+
+
 @app.route('/admin/context-edge/run/<output_key>', methods=['POST'])
 def admin_context_edge_run(output_key):
     if not _context_edge_admin_authorized():
         return jsonify({'error': 'forbidden'}), 403
 
     try:
-        from context_edge_button_generator_service import generate_context_edge_button_output
         from context_edge_button_output_service import (
             get_output_config,
             get_phoenix_run_window,
@@ -3982,16 +4015,16 @@ def admin_context_edge_run(output_key):
         except ValueError:
             return jsonify({'error': 'Invalid run window'}), 400
 
-        result = generate_context_edge_button_output(output_key, run_window)
+        normalized_output_key = output_key.strip().lower()
+        _queue_context_edge_generation(normalized_output_key, run_window, source="manual-admin")
         return jsonify({
-            'success': True,
-            'output_key': output_key.strip().lower(),
+            'status': 'queued',
+            'output_key': normalized_output_key,
             'run_window': run_window,
-            'result': result,
         }), 200
 
     except Exception as e:
-        logger.error(f"[CONTEXT EDGE] Manual admin run failed for {output_key}: {e}")
+        logger.error(f"[CONTEXT EDGE] Manual admin queue failed for {output_key}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -4001,7 +4034,6 @@ def admin_context_edge_run_all(run_window):
         return jsonify({'error': 'forbidden'}), 403
 
     try:
-        from context_edge_button_generator_service import generate_context_edge_button_output
         from supabase_backend import normalize_context_edge_run_window
 
         try:
@@ -4009,45 +4041,33 @@ def admin_context_edge_run_all(run_window):
         except ValueError:
             return jsonify({'error': 'Invalid run window'}), 400
 
-        results = []
         for output_key in CONTEXT_EDGE_OUTPUT_KEYS:
-            logger.info(
-                f"[CONTEXT EDGE] Manual run-all started for {output_key} "
-                f"({normalized_run_window})"
-            )
-            result = generate_context_edge_button_output(
+            _queue_context_edge_generation(
                 output_key,
                 normalized_run_window,
-            )
-            results.append({
-                'output_key': output_key,
-                'result': result,
-            })
-            logger.info(
-                f"[CONTEXT EDGE] Manual run-all completed for {output_key} "
-                f"({normalized_run_window})"
+                source="manual-admin-run-all",
             )
 
         return jsonify({
-            'success': True,
+            'status': 'queued',
             'run_window': normalized_run_window,
-            'count': len(results),
-            'results': results,
+            'count': len(CONTEXT_EDGE_OUTPUT_KEYS),
+            'output_keys': CONTEXT_EDGE_OUTPUT_KEYS,
         }), 200
 
     except Exception as e:
-        logger.error(f"[CONTEXT EDGE] Manual admin run-all failed for {run_window}: {e}")
+        logger.error(f"[CONTEXT EDGE] Manual admin run-all queue failed for {run_window}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/context-edge/output/<output_key>', methods=['GET'])
 def context_edge_button_output(output_key):
-    """Return the latest ready cached Context Edge output for a quick button."""
+    """Return the latest cached Context Edge output for a quick button."""
     try:
         from context_edge_button_output_service import get_output_config
         from supabase_backend import (
             SupabaseConfigError,
-            read_latest_ready_context_edge_button_output,
+            read_latest_context_edge_button_output,
         )
 
         try:
@@ -4057,7 +4077,7 @@ def context_edge_button_output(output_key):
         normalized_output_key = output_key.strip().lower()
 
         try:
-            cached = read_latest_ready_context_edge_button_output(normalized_output_key)
+            cached = read_latest_context_edge_button_output(normalized_output_key)
         except SupabaseConfigError:
             logger.warning('[CONTEXT EDGE] Supabase is not configured')
             cached = None
@@ -4065,7 +4085,7 @@ def context_edge_button_output(output_key):
             logger.error(f'[CONTEXT EDGE] Cached output read failed: {e}')
             cached = None
 
-        if cached:
+        if cached and cached.get('status') == 'ready':
             return jsonify({
                 'status':       'ready',
                 'output_key':   normalized_output_key,
@@ -4075,11 +4095,25 @@ def context_edge_button_output(output_key):
                 'report':       cached.get('report_json'),
             }), 200
 
+        if cached and cached.get('status') == 'failed':
+            return jsonify({
+                'status':       'failed',
+                'output_key':   normalized_output_key,
+                'label':        config['label'],
+                'generated_at': cached.get('generated_at'),
+                'run_window':   cached.get('run_window'),
+                'message':      'Context Edge scan failed. Please try again later.',
+            }), 200
+
         return jsonify({
             'status':     'pending',
             'output_key': normalized_output_key,
             'label':      config['label'],
-            'message':    "Context Edge is preparing today's scan.",
+            'message':    (
+                "NFL scan not active yet."
+                if normalized_output_key == "nfl_value"
+                else "Context Edge is preparing today's scan."
+            ),
         }), 200
 
     except Exception as e:

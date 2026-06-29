@@ -14,7 +14,7 @@ def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
   STEP 1: RESEARCH FIRST
   Use web search to find today's context.
   Search for:
-  - Today's MLB starting pitchers and matchups
+  - Today's relevant starting pitchers and matchups
   - Any relevant injury or lineup news
   - Park and weather conditions if relevant
   - Team recent form and momentum
@@ -25,11 +25,12 @@ def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
   edge today based purely on context.
 
   STEP 2: IDENTIFY YOUR TOP PICKS
-  From your research identify 5 bets
-  where context gives one side a clear
-  probability advantage.
+  From your research identify the best
+  bets where context gives one side a
+  clear probability advantage.
 
-  Think beyond player props:
+  Include all available bet types when
+  relevant. Think beyond player props:
   - Team moneylines where context says
     an underdog is actually favored
   - Run line or spread where starter
@@ -53,20 +54,22 @@ def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
   After building your 5 picks from
   research, check the board for any
   matching props or related lines.
+  Use all available board context,
+  including Best Lines if present,
+  not only player props.
 
   The board shows the market's true
   probability after removing bookmaker
   margin. This is the price check.
 
   Calculate the gap:
-  Your context probability MINUS
-  the no-vig board probability
-  = your edge
+  no-vig probability -> context
+  probability = edge gap
 
   Example:
-  Your context probability: 62%
-  No-vig board shows: 54%
-  Gap: +8 percentage points
+  No-vig board shows: 60%
+  Your context probability: 70%
+  60% -> 70% = edge gap +10%
   That gap is the edge. Show it.
 
   If the bet you found is not on the
@@ -76,13 +79,13 @@ def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
   HIGH SCORING or LOW SCORING to
   validate your game total thesis.
 
-  STEP 4: RANK BY EDGE SIZE
-  Sort your 5 picks by the size of
-  the gap between your context
-  probability and the market implied
-  probability from the odds.
+  STEP 4: RANK BY CONTEXTUAL EDGE
+  Sort by the strongest contextual
+  edge first, especially where your
+  context probability is materially
+  higher than the no-vig probability.
 
-  Biggest gap = strongest play.
+  Biggest supported gap = strongest play.
 
   STEP 5: OUTPUT FORMAT
 
@@ -93,10 +96,8 @@ def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
 
   ⚡ [TEAM or PLAYER] — [BET TYPE]
   Odds: [best available]
-  Your Context Probability: [X%]
-  No-Vig Reference: [Y% from board or N/A]
-  Edge Gap: [+Z percentage points]
-  Verdict: PLAY / SMALL PLAY / PASS
+  Edge: [No-vig Y%] -> [Context X%] = [+Z%]
+  Verdict: PLAY / WATCHLIST / PASS
   Why: [2 sentences. Name the pitcher.
        Name the ERA. Name the park.
        Be specific. No vague language.]
@@ -104,13 +105,21 @@ def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
 
   ---
 
-  Sort all 5 picks edge gap largest
-  to smallest. Biggest edge at top.
+  Sort all picks by contextual edge
+  and no-vig gap. Biggest supported
+  edge goes at top.
 
   RULES:
   - Research before board. Always.
   - Your context probability is primary.
     No-vig is the price validation.
+  - Prefer plays where context probability
+    is materially higher than no-vig
+    probability.
+  - Do not label strong edges as small
+    plays.
+  - If the edge is weak, call it
+    WATCHLIST or PASS.
   - If context and no-vig agree strongly
     that is a PLAY
   - If context is strong but no-vig
