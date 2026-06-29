@@ -18,31 +18,19 @@ PHOENIX_TZ = ZoneInfo("America/Phoenix")
 OUTPUT_CONFIGS = {
     "mlb_value": {
         "label": "⚾ MLB value",
-        "prompt": "best value bets today MLB — include moneylines, spreads, and player props",
+        "prompt": "Find the best MLB value edges across props, moneylines, spreads, and totals. Prioritize the highest context edge gap.",
     },
     "soccer_value": {
         "label": "⚽ Soccer value",
-        "prompt": "best value bets today Soccer World Cup — include moneylines and totals",
-    },
-    "top_5_plays": {
-        "label": "⚡ Top 5 plays",
-        "prompt": "top 5 plays today across all sports — mix of player props, moneylines, and spreads",
+        "prompt": "Find the best soccer value edges across moneylines, spreads/handicaps, totals, and props if available. Prioritize the highest context edge gap.",
     },
     "plus_money": {
         "label": "💰 Plus money",
-        "prompt": "best plus money plays today — any sport, odds better than +100",
+        "prompt": "Find plus-money or underdog prices where the underlying context edge supports the payout. This does not mean reckless longshots. Use plus money only when context supports it.",
     },
-    "mlb_lines": {
-        "label": "📊 MLB lines",
-        "prompt": "best MLB moneyline and run line bets today based on pitching matchups and park factors",
-    },
-    "world_cup": {
-        "label": "🏆 World Cup",
-        "prompt": "World Cup match result and total goals bets today — best context edges",
-    },
-    "game_totals": {
-        "label": "📈 Game totals",
-        "prompt": "best high scoring game total plays today — overs with park factor and pitching context",
+    "nfl_value": {
+        "label": "🏈 NFL value",
+        "prompt": "If NFL board exists, find the best NFL value edges across spreads, moneylines, totals, and props. If no NFL board exists, return \"NFL scan not active yet\" cleanly.",
     },
 }
 

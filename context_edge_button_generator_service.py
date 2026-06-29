@@ -35,13 +35,28 @@ def _format_context_edge_board(board: list[dict[str, Any]]) -> str:
     if not board:
         return "No qualifying props on board today."
 
-    return "Complete cached no-vig board JSON:\n" + json.dumps(
+    guidance = (
+        "Board selection guidance:\n"
+        "- Prioritize paths of least resistance first.\n"
+        "- If games or props are labeled High Scoring, inspect edge candidates there first.\n"
+        "- Especially for Plus Money, look for plus-money plays where environment, matchup, and no-vig math already support the bet.\n"
+        "- Do not force longshots.\n"
+        "- Use contextual layering to strengthen an existing no-vig edge.\n"
+        "- Best edge = no-vig math points one way, and context confirms or improves it.\n\n"
+    )
+
+    return guidance + "Complete cached no-vig board JSON:\n" + json.dumps(
         board,
         sort_keys=True,
         indent=2,
         ensure_ascii=True,
         default=str,
     )
+
+
+def _has_sport_board(board: list[dict[str, Any]], sport: str) -> bool:
+    target = (sport or "").strip().lower()
+    return any((prop.get("sport") or "").strip().lower() == target for prop in board or [])
 
 
 def generate_context_edge_button_output(output_key: str, run_window: str) -> dict[str, Any]:
@@ -72,7 +87,9 @@ def generate_context_edge_button_output(output_key: str, run_window: str) -> dic
             generated_at=generated_at,
         )
 
-        if not board:
+        if normalized_output_key == "nfl_value" and not _has_sport_board(board, "NFL"):
+            response_text = "NFL scan not active yet. Check back when NFL markets are live on the board."
+        elif not board:
             response_text = "No props on the board right now. Check back after 7 AM PHX when the daily fetch runs."
         else:
             api_key = os.environ.get("ANTHROPIC_API_KEY")

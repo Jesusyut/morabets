@@ -17,11 +17,8 @@ class ContextEdgeButtonOutputServiceTest(unittest.TestCase):
             [
                 "mlb_value",
                 "soccer_value",
-                "top_5_plays",
                 "plus_money",
-                "mlb_lines",
-                "world_cup",
-                "game_totals",
+                "nfl_value",
             ],
         )
 
@@ -31,8 +28,8 @@ class ContextEdgeButtonOutputServiceTest(unittest.TestCase):
             "best value bets today MLB — include moneylines, spreads, and player props",
         )
         self.assertEqual(
-            get_output_config("world_cup")["label"],
-            "🏆 World Cup",
+            get_output_config("nfl_value")["label"],
+            "🏈 NFL value",
         )
 
     def test_board_hash_is_deterministic_for_key_order(self):

@@ -159,6 +159,60 @@ f.parentNode.insertBefore(j,f);
         body.ce-context-premium-open {
             overflow: hidden;
         }
+        body.ce-context-unlocked-open {
+            overflow: hidden;
+        }
+        body.ce-context-unlocked-open #ce-chat-panel {
+            inset: 0 !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+            border-radius: 0 !important;
+            border: none !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        body.ce-context-unlocked-open #ce-messages {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow-y: auto !important;
+            padding: 24px !important;
+        }
+        body.ce-context-unlocked-open #ce-passcode-gate,
+        body.ce-context-unlocked-open #ce-input-area {
+            display: none !important;
+        }
+        body.ce-context-unlocked-open .ce-welcome-card {
+            max-width: 980px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 22px !important;
+            border-left: none !important;
+            border: 1px solid rgba(76,187,23,0.32);
+            border-radius: 12px !important;
+        }
+        body.ce-context-unlocked-open .ce-quick-tabs {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px !important;
+            margin-top: 14px !important;
+        }
+        body.ce-context-unlocked-open .ce-quick-tab {
+            border-radius: 8px !important;
+            padding: 13px 10px !important;
+            font-family: 'Press Start 2P', monospace !important;
+            font-size: 9px !important;
+            text-transform: uppercase;
+            min-height: 44px;
+        }
+        body.ce-context-unlocked-open #ce-messages > div:not(.ce-welcome-card) {
+            max-width: 980px !important;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+        }
         body.ce-context-premium-open #ce-chat-panel {
             top: 50% !important;
             left: 50% !important;
@@ -222,6 +276,16 @@ f.parentNode.insertBefore(j,f);
             padding: 16px 14px !important;
         }
         @media (max-width: 640px) {
+            body.ce-context-unlocked-open #ce-messages {
+                padding: 14px !important;
+            }
+            body.ce-context-unlocked-open .ce-quick-tabs {
+                grid-template-columns: 1fr 1fr;
+            }
+            body.ce-context-unlocked-open .ce-quick-tab {
+                font-size: 8px !important;
+                padding: 12px 8px !important;
+            }
             body.ce-context-premium-open #ce-chat-panel {
                 width: calc(100vw - 18px) !important;
                 max-width: calc(100vw - 18px) !important;
@@ -1922,6 +1986,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     function setContextEdgePremiumMode(active) {
         document.body.classList.toggle('ce-context-premium-open', !!active);
+        if (active) document.body.classList.remove('ce-context-unlocked-open');
+    }
+
+    function setContextEdgeUnlockedMode(active) {
+        document.body.classList.toggle('ce-context-unlocked-open', !!active);
+        if (active) document.body.classList.remove('ce-context-premium-open');
     }
 
     function hasContextEdgeAccess() {
@@ -1939,6 +2009,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (gate) gate.style.display = 'none';
         if (inputArea) inputArea.style.display = 'block';
         setContextEdgePremiumMode(false);
+        if (_ceChatOpen) setContextEdgeUnlockedMode(true);
     }
 
     function showContextEdgePremiumOffer() {
@@ -1957,6 +2028,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (inputArea) inputArea.style.display = 'none';
         gate.style.display = 'block';
         setContextEdgePremiumMode(true);
+        setContextEdgeUnlockedMode(false);
     }
 
     function closeContextChat(markDismissed) {
@@ -1967,6 +2039,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         _ceChatOpen = false;
         if (panel) panel.style.display = 'none';
         setContextEdgePremiumMode(false);
+        setContextEdgeUnlockedMode(false);
     }
 
     function contextEdgeReturnedFromCheckout() {
@@ -1994,6 +2067,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             // Show premium offer or input area depending on auth state
             document.getElementById(hasContextEdgeAccess() ? 'ce-input-area' : 'ce-passcode-gate').style.display = 'block';
             setContextEdgePremiumMode(!hasContextEdgeAccess());
+            setContextEdgeUnlockedMode(hasContextEdgeAccess());
 
             if (hasContextEdgeAccess()) {
                 document.getElementById('ce-passcode-gate').style.display = 'none';
@@ -2303,6 +2377,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             document.getElementById('ce-input-area').style.display = 'none';
             document.getElementById('ce-passcode-gate').style.display = 'block';
             setContextEdgePremiumMode(true);
+            setContextEdgeUnlockedMode(false);
             return;
         }
 
@@ -2334,6 +2409,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             document.getElementById('ce-input-area').style.display = 'none';
             document.getElementById('ce-passcode-gate').style.display = 'block';
             setContextEdgePremiumMode(true);
+            setContextEdgeUnlockedMode(false);
             return;
         }
 
@@ -2396,6 +2472,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 document.getElementById('ce-input-area').style.display = 'none';
                 document.getElementById('ce-passcode-gate').style.display = 'block';
                 setContextEdgePremiumMode(true);
+                setContextEdgeUnlockedMode(false);
                 btn.disabled = false;
                 btn.textContent = 'Analyze Context Edge →';
                 return;
@@ -2792,6 +2869,22 @@ function closeNewsletterPopup() {
 </script>
 
 {% include '_sticky_affiliate_footer.html' %}
+<style>
+  @media (max-width: 640px) {
+    #saf-root {
+      position: fixed !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    body.saf-visible {
+      padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
+</style>
 
 <!-- CONTEXT EDGE CHAT BUBBLE -->
 <div id="ce-bubble-wrap" style="position: fixed; bottom: 80px; right: 20px; z-index: 99990; display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
@@ -2825,9 +2918,9 @@ function closeNewsletterPopup() {
   <!-- CHAT MESSAGES AREA -->
   <div id="ce-messages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-height: 200px; max-height: 360px;">
     <!-- Welcome message — always shown -->
-    <div style="background: rgba(76,187,23,0.08); border-left: 2px solid #4CBB17; border-radius: 0 10px 10px 0; padding: 12px 14px;">
-      <p style="font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; margin: 0 0 8px; line-height: 1.6;">I have today's no-vig board loaded. Just tell me what you want.</p>
-      <div style="
+    <div class="ce-welcome-card" style="background: rgba(76,187,23,0.08); border-left: 2px solid #4CBB17; border-radius: 0 10px 10px 0; padding: 12px 14px;">
+      <p style="font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; margin: 0 0 8px; line-height: 1.6;">Select a cached Context Edge scan.</p>
+      <div class="ce-quick-tabs" style="
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -2835,6 +2928,7 @@ function closeNewsletterPopup() {
 ">
 
   <button onclick="quickPrompt('best value bets today MLB — include moneylines, spreads, and player props', 'mlb_value')"
+    class="ce-quick-tab"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2844,9 +2938,10 @@ function closeNewsletterPopup() {
       font-size: 11px;
       color: #4CBB17;
       cursor: pointer;
-    ">⚾ MLB value</button>
+    ">MLB Value</button>
 
   <button onclick="quickPrompt('best value bets today Soccer World Cup — include moneylines and totals', 'soccer_value')"
+    class="ce-quick-tab"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2856,21 +2951,10 @@ function closeNewsletterPopup() {
       font-size: 11px;
       color: #4CBB17;
       cursor: pointer;
-    ">⚽ Soccer value</button>
-
-  <button onclick="quickPrompt('top 5 plays today across all sports — mix of player props, moneylines, and spreads', 'top_5_plays')"
-    style="
-      background: rgba(76,187,23,0.1);
-      border: 1px solid rgba(76,187,23,0.3);
-      border-radius: 100px;
-      padding: 4px 10px;
-      font-family: 'Inter', sans-serif;
-      font-size: 11px;
-      color: #4CBB17;
-      cursor: pointer;
-    ">⚡ Top 5 plays</button>
+    ">Soccer Value</button>
 
   <button onclick="quickPrompt('best plus money plays today — any sport, odds better than +100', 'plus_money')"
+    class="ce-quick-tab"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2880,9 +2964,10 @@ function closeNewsletterPopup() {
       font-size: 11px;
       color: #4CBB17;
       cursor: pointer;
-    ">💰 Plus money</button>
+    ">Plus Money</button>
 
-  <button onclick="quickPrompt('best MLB moneyline and run line bets today based on pitching matchups and park factors', 'mlb_lines')"
+  <button onclick="quickPrompt('best value bets today NFL — include moneylines, spreads, and player props', 'nfl_value')"
+    class="ce-quick-tab"
     style="
       background: rgba(76,187,23,0.1);
       border: 1px solid rgba(76,187,23,0.3);
@@ -2892,31 +2977,7 @@ function closeNewsletterPopup() {
       font-size: 11px;
       color: #4CBB17;
       cursor: pointer;
-    ">📊 MLB lines</button>
-
-  <button onclick="quickPrompt('World Cup match result and total goals bets today — best context edges', 'world_cup')"
-    style="
-      background: rgba(76,187,23,0.1);
-      border: 1px solid rgba(76,187,23,0.3);
-      border-radius: 100px;
-      padding: 4px 10px;
-      font-family: 'Inter', sans-serif;
-      font-size: 11px;
-      color: #4CBB17;
-      cursor: pointer;
-    ">🏆 World Cup</button>
-
-  <button onclick="quickPrompt('best high scoring game total plays today — overs with park factor and pitching context', 'game_totals')"
-    style="
-      background: rgba(76,187,23,0.1);
-      border: 1px solid rgba(76,187,23,0.3);
-      border-radius: 100px;
-      padding: 4px 10px;
-      font-family: 'Inter', sans-serif;
-      font-size: 11px;
-      color: #4CBB17;
-      cursor: pointer;
-    ">📈 Game totals</button>
+    ">NFL Value</button>
 
 </div>
     </div>
