@@ -44,6 +44,11 @@ def _format_context_edge_board(board: list[dict[str, Any]]) -> str:
     )
 
 
+def _has_sport_board(board: list[dict[str, Any]], sport: str) -> bool:
+    target = (sport or "").strip().lower()
+    return any((prop.get("sport") or "").strip().lower() == target for prop in board or [])
+
+
 def generate_context_edge_button_output(output_key: str, run_window: str) -> dict[str, Any]:
     """
     Generate one cached Context Edge quick-button output.
@@ -72,7 +77,9 @@ def generate_context_edge_button_output(output_key: str, run_window: str) -> dic
             generated_at=generated_at,
         )
 
-        if not board:
+        if normalized_output_key == "nfl_value" and not _has_sport_board(board, "NFL"):
+            response_text = "NFL scan not active yet. Check back when NFL markets are live on the board."
+        elif not board:
             response_text = "No props on the board right now. Check back after 7 AM PHX when the daily fetch runs."
         else:
             api_key = os.environ.get("ANTHROPIC_API_KEY")
