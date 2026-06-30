@@ -235,45 +235,45 @@ f.parentNode.insertBefore(j,f);
         body.ce-context-premium-open #ce-passcode-gate {
             flex: 1 1 auto !important;
             overflow-y: auto !important;
-            padding: 26px !important;
+            padding: 14px !important;
             min-height: 0 !important;
         }
         body.ce-context-premium-open #ce-premium-card {
-            max-width: 620px;
+            max-width: 520px;
             margin: 0 auto;
-            padding: 30px !important;
+            padding: 16px !important;
         }
         body.ce-context-premium-open #ce-premium-title {
-            font-size: 14px !important;
-            margin-bottom: 18px !important;
+            font-size: 24px !important;
+            margin-bottom: 7px !important;
         }
         body.ce-context-premium-open #ce-premium-headline {
-            font-size: 40px !important;
-            margin-bottom: 10px !important;
+            font-size: 18px !important;
+            margin-bottom: 6px !important;
         }
         body.ce-context-premium-open #ce-premium-subcopy {
-            font-size: 15px !important;
-            margin-bottom: 24px !important;
-        }
-        body.ce-context-premium-open #ce-premium-unlock-label {
             font-size: 13px !important;
             margin-bottom: 12px !important;
         }
+        body.ce-context-premium-open #ce-premium-unlock-label {
+            font-size: 12px !important;
+            margin-bottom: 8px !important;
+        }
         body.ce-context-premium-open #ce-premium-feature-grid {
-            gap: 10px !important;
-            margin-bottom: 24px !important;
-        }
-        body.ce-context-premium-open .ce-premium-feature {
-            font-size: 14px !important;
-            padding: 12px 13px !important;
-        }
-        body.ce-context-premium-open #ce-checkout-email {
-            font-size: 15px !important;
-            padding: 14px 15px !important;
+            gap: 6px !important;
             margin-bottom: 12px !important;
         }
+        body.ce-context-premium-open .ce-premium-feature {
+            font-size: 12px !important;
+            padding: 7px 8px !important;
+        }
+        body.ce-context-premium-open #ce-checkout-email {
+            font-size: 13px !important;
+            padding: 10px 11px !important;
+            margin-bottom: 8px !important;
+        }
         body.ce-context-premium-open #ce-checkout-btn {
-            padding: 16px 14px !important;
+            padding: 12px 14px !important;
         }
         .ce-board-upsell-card {
             background:
@@ -285,7 +285,7 @@ f.parentNode.insertBefore(j,f);
             color: #FFFFFF;
             margin-bottom: 0.75rem;
             overflow: hidden;
-            padding: 14px 16px;
+            padding: 10px 12px;
             position: sticky;
             top: 64px;
             z-index: 40;
@@ -293,9 +293,9 @@ f.parentNode.insertBefore(j,f);
         .ce-board-upsell-inner {
             align-items: center;
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             justify-content: space-between;
-            min-height: 42px;
+            min-height: 38px;
         }
         .ce-board-upsell-copy {
             flex: 1;
@@ -304,7 +304,7 @@ f.parentNode.insertBefore(j,f);
         .ce-board-upsell-title {
             color: #FFFFFF;
             font-family: 'Barlow Condensed', sans-serif;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 900;
             letter-spacing: 0.08em;
             line-height: 1;
@@ -313,10 +313,10 @@ f.parentNode.insertBefore(j,f);
         .ce-board-upsell-status {
             color: rgba(229,231,235,0.82);
             font-family: 'Inter', sans-serif;
-            font-size: 12.5px;
+            font-size: 11.5px;
             font-weight: 500;
             line-height: 1.4;
-            margin-top: 7px;
+            margin-top: 4px;
         }
         .ce-board-upsell-status strong {
             color: #4CBB17;
@@ -331,10 +331,10 @@ f.parentNode.insertBefore(j,f);
             cursor: pointer;
             flex-shrink: 0;
             font-family: 'Barlow Condensed', sans-serif;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 900;
             letter-spacing: 0.06em;
-            padding: 10px 16px;
+            padding: 8px 13px;
             text-transform: uppercase;
             white-space: nowrap;
         }
@@ -342,15 +342,18 @@ f.parentNode.insertBefore(j,f);
             box-shadow: 0 10px 26px rgba(76,187,23,0.34);
             transform: translateY(-1px);
         }
+        .ce-board-upsell-cta-mobile {
+            display: none;
+        }
         .ce-board-locked-card {
             background: linear-gradient(180deg, rgba(15,36,6,0.98), rgba(8,18,4,0.98));
             border: 1px solid rgba(76,187,23,0.24);
             border-radius: 8px;
             color: #FFFFFF;
-            min-height: 118px;
+            min-height: 0;
         }
         .ce-board-locked-card .card-body {
-            padding: 0.9rem 1rem;
+            padding: 0.65rem 0.8rem;
         }
         .ce-board-locked-card button {
             background: rgba(76,187,23,0.12);
@@ -361,8 +364,10 @@ f.parentNode.insertBefore(j,f);
             font-family: 'Inter', sans-serif;
             font-size: 0.75rem;
             font-weight: 700;
-            padding: 0.35rem 0.55rem;
+            padding: 0;
             text-align: left;
+            background: transparent;
+            border: none;
         }
         body.ce-context-access .ce-locked-upsell {
             display: none !important;
@@ -371,29 +376,40 @@ f.parentNode.insertBefore(j,f);
             .ce-board-upsell-card {
                 position: relative !important;
                 top: auto !important;
-                padding: 13px !important;
+                padding: 8px 9px !important;
             }
             .ce-board-upsell-inner {
-                align-items: stretch;
-                flex-direction: column;
-                gap: 0.7rem;
-                min-height: auto;
+                align-items: center;
+                flex-direction: row;
+                gap: 0.55rem;
+                min-height: 46px;
             }
             .ce-board-upsell-cta {
-                font-size: 14px;
-                padding: 11px 12px;
+                font-size: 10px;
+                padding: 7px 8px;
                 text-align: center;
-                width: 100%;
-                white-space: normal;
+                width: auto;
+                white-space: nowrap;
+            }
+            .ce-board-upsell-cta-desktop {
+                display: none;
+            }
+            .ce-board-upsell-cta-mobile {
+                display: inline;
             }
             .ce-board-upsell-status {
-                font-size: 12px;
+                font-size: 10.5px;
+                line-height: 1.25;
+                margin-top: 3px;
             }
             .ce-board-upsell-title {
-                font-size: 17px;
+                font-size: 13px;
             }
             .ce-board-locked-card {
-                min-height: 106px;
+                min-height: 64px;
+            }
+            .ce-board-locked-card .card-body {
+                padding: 0.55rem 0.65rem;
             }
             body.ce-context-unlocked-open #ce-messages {
                 padding: 14px !important;
@@ -417,13 +433,13 @@ f.parentNode.insertBefore(j,f);
                 padding: 12px !important;
             }
             body.ce-context-premium-open #ce-passcode-gate {
-                padding: 16px !important;
+                padding: 10px !important;
             }
             body.ce-context-premium-open #ce-premium-card {
-                padding: 20px !important;
+                padding: 14px !important;
             }
             body.ce-context-premium-open #ce-premium-headline {
-                font-size: 32px !important;
+                font-size: 17px !important;
             }
             body.ce-context-premium-open #ce-premium-feature-grid {
                 grid-template-columns: 1fr !important;
@@ -888,7 +904,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 	                <div class="ce-board-upsell-title">TODAY'S EDGE SCAN</div>
 	                <div class="ce-board-upsell-status">Status: <strong>COMPLETE</strong> • 7 Premium Picks Hidden • Updated 9:03 AM</div>
 	            </div>
-	            <button class="ce-board-upsell-cta" onclick="showContextEdgePremiumOffer()">UNLOCK TODAY'S SCAN — $7 TRIAL</button>
+	            <button class="ce-board-upsell-cta" onclick="showContextEdgePremiumOffer()"><span class="ce-board-upsell-cta-desktop">UNLOCK TODAY'S SCAN — $7 TRIAL</span><span class="ce-board-upsell-cta-mobile">UNLOCK — $7</span></button>
 	        </div>
 	    </div>
 
@@ -1347,17 +1363,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     function renderLockedEdgeScanCard(kind) {
         const variants = {
             plus: {
-                title: "🔒 PLUS MONEY EDGE HIDDEN",
+                title: "PLUS MONEY EDGE HIDDEN",
                 body: "Underdog opportunity found.",
-                cta: "Unlock today's scan →"
+                cta: "Unlock →"
             },
             scoring: {
-                title: "🔒 HIGH-SCORING GAME SCANNED",
+                title: "HIGH-SCORING GAME SCANNED",
                 body: "Premium pick hidden.",
-                cta: "Reveal with Edge Scan →"
+                cta: "Unlock →"
             },
             slate: {
-                title: "🔒 TODAY'S EDGE SCAN",
+                title: "LOCKED EDGE SCAN",
                 body: "Premium opportunity hidden for this slate.",
                 cta: "Unlock →"
             }
@@ -1366,9 +1382,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         return `
             <div class="ce-board-locked-card ce-locked-upsell">
                 <div class="card-body">
-                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:900;color:#4CBB17;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.35rem;">${item.title}</div>
-                    <div style="font-family:'Inter',sans-serif;font-size:0.78rem;color:#D1D5DB;line-height:1.5;margin-bottom:0.75rem;">${item.body}</div>
-                    <button onclick="showContextEdgePremiumOffer()">${item.cta}</button>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:0.65rem;">
+                        <div style="min-width:0;">
+                            <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;font-weight:900;color:#4CBB17;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.title}</div>
+                            <div style="font-family:'Inter',sans-serif;font-size:0.72rem;color:#D1D5DB;line-height:1.35;margin-top:0.15rem;">${item.body}</div>
+                        </div>
+                        <button onclick="showContextEdgePremiumOffer()">${item.cta}</button>
+                    </div>
                 </div>
             </div>`;
     }
@@ -2310,6 +2330,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (input) setTimeout(() => { input.focus(); }, 50);
     }
 
+    function showContextEdgeAccessCheck() {
+        const row = document.getElementById('ce-returning-access');
+        const input = document.getElementById('ce-access-email');
+        if (row) row.style.display = 'block';
+        if (input) setTimeout(() => { input.focus(); }, 50);
+    }
+
     async function startContextEdgeCheckout() {
         const emailInput = document.getElementById('ce-checkout-email');
         const error = document.getElementById('ce-checkout-error');
@@ -2356,7 +2383,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             }
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = "UNLOCK TODAY'S SCAN — $7 TRIAL";
+                btn.innerHTML = "UNLOCK TODAY'S 7 OPPORTUNITIES<br><span style=\"font-family:'Inter',sans-serif;font-size:10px;font-weight:800;letter-spacing:0;text-transform:none;\">Start 7-Day Trial — $7</span>";
             }
         }
     }
@@ -3162,31 +3189,37 @@ function closeNewsletterPopup() {
   </div>
 
   <!-- CONTEXT EDGE PREMIUM OFFER — shown if not authed -->
-  <div id="ce-passcode-gate" style="display: none; padding: 16px; border-top: 1px solid rgba(76,187,23,0.25); flex-shrink: 0; background: radial-gradient(circle at top, rgba(76,187,23,0.14), rgba(15,36,6,0) 58%);">
-    <div id="ce-premium-card" style="border: 1px solid rgba(76,187,23,0.45); background: rgba(0,0,0,0.22); box-shadow: inset 0 0 22px rgba(76,187,23,0.08), 0 0 18px rgba(76,187,23,0.12); padding: 14px; border-radius: 12px;">
-      <div id="ce-premium-title" style="font-family: 'Press Start 2P', monospace; font-size: 11px; line-height: 1.6; color: #4CBB17; text-shadow: 0 0 8px rgba(76,187,23,0.75); margin-bottom: 10px;">TODAY'S EDGE SCAN</div>
-      <div id="ce-premium-headline" style="font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1;">Premium opportunities found</div>
-      <div id="ce-premium-subcopy" style="font-family: 'Inter', sans-serif; font-size: 12px; color: #9CA3AF; margin: 6px 0 12px;">We analyzed today's no-vig board. Picks stay hidden until unlock.</div>
-      <div id="ce-premium-unlock-label" style="font-family: 'Inter', sans-serif; font-size: 12px; color: #6B9E5A; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Unlock today's scan:</div>
-      <div id="ce-premium-feature-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
-        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Board scanned</div>
-        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Premium opportunities found</div>
-        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• MLB Value hidden</div>
-        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Plus Money opportunity hidden</div>
-        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Soccer edge hidden</div>
-        <div class="ce-premium-feature" style="font-family:'Inter',sans-serif;font-size:12px;color:#ffffff;background:rgba(76,187,23,0.08);border:1px solid rgba(76,187,23,0.2);padding:7px 8px;border-radius:7px;">• Unlock today's scan</div>
+  <div id="ce-passcode-gate" style="display: none; padding: 10px 12px; border-top: 1px solid rgba(76,187,23,0.25); flex-shrink: 0; background: radial-gradient(circle at top, rgba(76,187,23,0.12), rgba(15,36,6,0) 58%);">
+    <div id="ce-premium-card" style="border: 1px solid rgba(76,187,23,0.34); background: rgba(0,0,0,0.2); box-shadow: inset 0 0 18px rgba(76,187,23,0.06), 0 0 14px rgba(76,187,23,0.1); padding: 13px; border-radius: 12px;">
+      <div id="ce-premium-title" style="font-family: 'Barlow Condensed', sans-serif; font-size: 23px; font-weight: 900; line-height: 0.95; color: #ffffff; text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 7px;">UNLOCK TODAY'S EDGE SCAN</div>
+      <div id="ce-premium-subcopy" style="font-family: 'Inter', sans-serif; font-size: 12px; color: #D1D5DB; line-height: 1.45; margin: 0 0 10px;">Mora Bets already shows no-vig value. Edge Scan finds the bets where math and context point the same direction.</div>
+      <div id="ce-premium-headline" style="font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 900; color: #4CBB17; text-transform: uppercase; letter-spacing: 0.8px; line-height: 1; margin-bottom: 6px;">7 Premium Opportunities Found Today</div>
+      <div id="ce-premium-unlock-label" style="font-family: 'Inter', sans-serif; font-size: 11px; color: #FFFFFF; line-height: 1.5; margin-bottom: 10px;">MLB Value • Plus Money • Soccer Value • NFL Value</div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: 8px; margin-bottom: 10px;">
+        <div style="border: 1px solid rgba(107,158,90,0.24); border-radius: 9px; padding: 8px; background: rgba(255,255,255,0.035);">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:900;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Free Board</div>
+          <div style="font-family:'Inter',sans-serif;font-size:11px;color:#D1D5DB;line-height:1.45;">No-vig probabilities<br>Best available lines</div>
+        </div>
+        <div style="border: 1px solid rgba(76,187,23,0.34); border-radius: 9px; padding: 8px; background: rgba(76,187,23,0.07);">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:900;color:#4CBB17;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Edge Scan</div>
+          <div style="font-family:'Inter',sans-serif;font-size:11px;color:#FFFFFF;line-height:1.45;">Context-layered picks<br>Hidden market mistakes<br>Ranked opportunities</div>
+        </div>
       </div>
-      <input id="ce-checkout-email" type="email" placeholder="email@example.com" autocomplete="email" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.06); border: 1px solid rgba(76,187,23,0.42); border-radius: 9px; padding: 11px 12px; font-family: 'Inter', sans-serif; font-size: 13px; color: #ffffff; outline: none; margin-bottom: 8px;" onkeydown="if(event.key==='Enter')startContextEdgeCheckout()">
-      <button id="ce-checkout-btn" onclick="startContextEdgeCheckout()" style="width: 100%; background: #4CBB17; border: none; border-radius: 9px; padding: 12px 14px; color: #0F2406; font-family: 'Press Start 2P', monospace; font-size: 10px; font-weight: 900; cursor: pointer; box-shadow: 0 0 18px rgba(76,187,23,0.35);">UNLOCK TODAY'S SCAN — $7 TRIAL</button>
+      <div style="font-family:'Inter',sans-serif;font-size:11px;color:#9CA3AF;line-height:1.45;margin-bottom:9px;">Today's scan refreshes every morning. Once the slate ends, these opportunities are gone.</div>
+      <input id="ce-checkout-email" type="email" placeholder="Enter email to unlock today's scan" autocomplete="email" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.06); border: 1px solid rgba(76,187,23,0.34); border-radius: 8px; padding: 9px 10px; font-family: 'Inter', sans-serif; font-size: 12px; color: #ffffff; outline: none; margin-bottom: 7px;" onkeydown="if(event.key==='Enter')startContextEdgeCheckout()">
+      <button id="ce-checkout-btn" onclick="startContextEdgeCheckout()" style="width: 100%; background: #4CBB17; border: none; border-radius: 9px; padding: 11px 12px; color: #0F2406; font-family: 'Barlow Condensed', sans-serif; font-size: 15px; line-height: 1.05; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; box-shadow: 0 0 16px rgba(76,187,23,0.3);">UNLOCK TODAY'S 7 OPPORTUNITIES<br><span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:800;letter-spacing:0;text-transform:none;">Start 7-Day Trial — $7</span></button>
+      <div style="font-family:'Inter',sans-serif;font-size:10.5px;color:#9CA3AF;text-align:center;margin-top:7px;">Instant access. Cancel anytime. New scans daily.</div>
       <p id="ce-checkout-error" style="display: none; font-family: 'Inter', sans-serif; font-size: 11px; color: #EF4444; margin: 8px 0 0;">Checkout failed. Try again.</p>
 
-      <div style="margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(76,187,23,0.22);">
-        <div style="font-family: 'Inter', sans-serif; font-size: 12px; color: #9CA3AF; font-weight: 700; margin-bottom: 8px;">Already subscribed? Enter email</div>
+      <div style="margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(76,187,23,0.18);">
+        <button type="button" onclick="showContextEdgeAccessCheck()" style="background: transparent; border: none; color: #4CBB17; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 800; padding: 0; text-decoration: underline; text-underline-offset: 3px;">Already subscribed? Enter email →</button>
+        <div id="ce-returning-access" style="display: none; margin-top: 8px;">
         <div id="ce-access-row" style="display: flex; gap: 8px;">
           <input id="ce-access-email" type="email" placeholder="subscriber@email.com" autocomplete="email" style="flex: 1; min-width: 0; background: rgba(255,255,255,0.06); border: 1px solid rgba(76,187,23,0.32); border-radius: 9px; padding: 10px 11px; font-family: 'Inter', sans-serif; font-size: 12px; color: #ffffff; outline: none;" onkeydown="if(event.key==='Enter')checkContextEdgeAccess()">
           <button id="ce-access-btn" onclick="checkContextEdgeAccess()" style="background: rgba(76,187,23,0.14); border: 1px solid rgba(76,187,23,0.42); border-radius: 9px; padding: 10px 11px; color: #4CBB17; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 900; letter-spacing: 0.8px; cursor: pointer; white-space: nowrap;">VERIFY ACCESS</button>
         </div>
         <p id="ce-access-status" style="display: none; font-family: 'Inter', sans-serif; font-size: 11px; color: #EF4444; margin: 8px 0 0;">No active subscription found.</p>
+        </div>
       </div>
     </div>
 
