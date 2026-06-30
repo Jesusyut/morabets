@@ -27,14 +27,17 @@ OUTPUT_CONFIGS = {
     "plus_money": {
         "label": "💰 Plus money",
         "prompt": (
-            "Find true Plus Money edges, not normal safe no-vig board plays. "
-            "Use the no-vig board as the starting signal, then look for upside markets where matchup, environment, and context support a higher payout. "
-            "For player props, if a player is strongly supported by no-vig plus context for an offensive day, do not simply repeat a heavy negative odds play like over 0.5 hits at -200. "
-            "Ask whether today's context supports upgrading to a higher-payout market such as over 1.5 hits, over 1.5 total bases, runs + RBIs, 0.5 home runs, or available alternate bases/hits/RBI markets. "
-            "Across sports, prioritize underdog moneylines with real context support, alternate spreads or handicaps with better payout, and player/team upside props where no-vig plus matchup context points toward a ceiling outcome. "
-            "Avoid reckless longshots. Only suggest plus-money or near-plus-money plays when no-vig math gives a strong starting point, the game environment or matchup supports upside, and the contextual layer improves or confirms the edge. "
-            "Do not label heavy negative odds as Plus Money. If no true plus-money edge exists, say PASS / no qualified plus-money edge today. "
-            "Use language like: No-vig signal identified the player/team. Context supports upgrading to the higher-payout market."
+            "Run a context-first Plus Money upside scan. "
+            "Use the no-vig board only as a loose starting map for strong players, strong teams, favorable offensive environments, high-scoring games, and matchup clusters worth researching. "
+            "Do not require the exact plus-money market to already exist on the no-vig board, and do not simply repeat safe 0.5 hit props or other heavy negative odds board plays. "
+            "Research and infer higher-payout alternatives from context. For MLB hitters with a strong 0.5 hit no-vig signal, inspect whether matchup and environment support over 1.5 total bases, over 1.5 hits, HR 0.5, RBI, runs + RBI, hit + run + RBI, or available team/player alternate markets. "
+            "For teams, if a spread/run line has a strong probability signal, ask whether the team can win outright at plus money or whether an alternate spread/handicap offers a better payout with real context support. "
+            "Prioritize paths of least resistance: high-scoring game labels, weak pitcher or defense, bullpen vulnerability, hitter-friendly park/weather, player form, role and lineup position, injury/travel/rest advantages, and team motivation/context. "
+            "Prefer plus-money or near-plus-money plays. Avoid heavy negative odds unless briefly explaining why they are not Plus Money. "
+            "If the board lacks alt markets, still use web/context research and the cached board context to identify likely upside alternatives. "
+            "Do not write a long board-structure essay. If no qualified plus-money edge exists, give a short PASS, but first show the closest researched candidates. "
+            "Output in a betting-desk style with: Pick, Market, Target price range, Why context supports upside, Risk, Verdict. "
+            "Do not force reckless longshots; the play still needs a credible no-vig/context signal."
         ),
     },
     "nfl_value": {
