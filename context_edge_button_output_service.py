@@ -26,7 +26,16 @@ OUTPUT_CONFIGS = {
     },
     "plus_money": {
         "label": "💰 Plus money",
-        "prompt": "Find plus-money or underdog prices where the underlying context edge supports the payout. This does not mean reckless longshots. Use plus money only when context supports it.",
+        "prompt": (
+            "Find true Plus Money edges, not normal safe no-vig board plays. "
+            "Use the no-vig board as the starting signal, then look for upside markets where matchup, environment, and context support a higher payout. "
+            "For player props, if a player is strongly supported by no-vig plus context for an offensive day, do not simply repeat a heavy negative odds play like over 0.5 hits at -200. "
+            "Ask whether today's context supports upgrading to a higher-payout market such as over 1.5 hits, over 1.5 total bases, runs + RBIs, 0.5 home runs, or available alternate bases/hits/RBI markets. "
+            "Across sports, prioritize underdog moneylines with real context support, alternate spreads or handicaps with better payout, and player/team upside props where no-vig plus matchup context points toward a ceiling outcome. "
+            "Avoid reckless longshots. Only suggest plus-money or near-plus-money plays when no-vig math gives a strong starting point, the game environment or matchup supports upside, and the contextual layer improves or confirms the edge. "
+            "Do not label heavy negative odds as Plus Money. If no true plus-money edge exists, say PASS / no qualified plus-money edge today. "
+            "Use language like: No-vig signal identified the player/team. Context supports upgrading to the higher-payout market."
+        ),
     },
     "nfl_value": {
         "label": "🏈 NFL value",
