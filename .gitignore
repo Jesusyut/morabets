@@ -1,2 +1,12 @@
-.env
+.env*
 .DS_Store
+
+cookies.txt
+*_cache.json
+*subscribers*.csv
+license_keys.json
+valid_keys.json
+clv_log.json
+assists_picks_*.json
+attached_assets/
+tmp/
