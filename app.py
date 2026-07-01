@@ -2848,20 +2848,44 @@ def _load_emails():
     return emails
 
 
-def _save_email(email: str, name: str = '') -> bool:
+def _save_email(email: str, name: str = '', source: str = 'mora_bets_gate') -> bool:
     """Append a new email row to the CSV file. Returns True on success."""
     try:
         os.makedirs(os.path.dirname(EMAIL_LIST_FILE), exist_ok=True)
         file_exists = os.path.exists(EMAIL_LIST_FILE)
+
+        fieldnames = ['email', 'name', 'source', 'signed_up_at']
+        if file_exists:
+            try:
+                with open(EMAIL_LIST_FILE, 'r', newline='') as existing_file:
+                    reader = csv.DictReader(existing_file)
+                    existing_rows = list(reader)
+                    existing_fields = reader.fieldnames or []
+
+                if existing_fields and 'source' not in existing_fields:
+                    with open(EMAIL_LIST_FILE, 'w', newline='') as rewrite_file:
+                        writer = csv.DictWriter(rewrite_file, fieldnames=fieldnames)
+                        writer.writeheader()
+                        for row in existing_rows:
+                            writer.writerow({
+                                'email':        row.get('email', ''),
+                                'name':         row.get('name', ''),
+                                'source':       row.get('source', 'unknown'),
+                                'signed_up_at': row.get('signed_up_at', '')
+                            })
+            except Exception as migrate_err:
+                logger.warning(f"[GATE] CSV source-column migration failed: {migrate_err}")
+
         with open(EMAIL_LIST_FILE, 'a', newline='') as f:
             writer = csv.DictWriter(
-                f, fieldnames=['email', 'name', 'signed_up_at']
+                f, fieldnames=fieldnames
             )
             if not file_exists:
                 writer.writeheader()
             writer.writerow({
                 'email':        email,
                 'name':         name,
+                'source':       source,
                 'signed_up_at': datetime.utcnow().isoformat()
             })
 
@@ -2870,7 +2894,7 @@ def _save_email(email: str, name: str = '') -> bool:
         try:
             with open(backup, 'a') as b:
                 b.write(
-                    f"{datetime.utcnow().isoformat()}|{email}|{name}\n"
+                    f"{datetime.utcnow().isoformat()}|{email}|{name}|{source}\n"
                 )
         except Exception as backup_err:
             logger.warning(f"[GATE] Backup write failed: {backup_err}")
@@ -2906,6 +2930,7 @@ def gate_signup():
         data  = request.json or {}
         email = data.get('email', '').strip().lower()
         name  = data.get('name',  '').strip()
+        source = str(data.get('source', 'mora_bets_gate')).strip() or 'mora_bets_gate'
 
         if not email or '@' not in email:
             return jsonify({"success": False, "error": "Invalid email"}), 400
@@ -2921,7 +2946,7 @@ def gate_signup():
                     json={
                         "email":     email,
                         "name":      name,
-                        "source":    "mora_bets_gate",
+                        "source":    source,
                         "signed_up": datetime.utcnow().isoformat(),
                         "url":       "morabets.com"
                     },
@@ -2941,7 +2966,7 @@ def gate_signup():
             logger.info(f"[GATE] Returning user: {email}")
             return jsonify({"success": True, "existing": True})
 
-        saved = _save_email(email, name)
+        saved = _save_email(email, name, source)
         count = len(_load_emails())
         if saved:
             logger.info(f"[GATE] ✅ Email saved: {email} to {EMAIL_LIST_FILE} (total: {count})")

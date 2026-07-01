@@ -2857,14 +2857,13 @@ async function submitNewsletter() {
   }
 
   try {
-    await fetch('https://hooks.zapier.com/hooks/catch/22797974/uj2zhly/', {
+    await fetch('/api/gate-signup', {
       method: 'POST',
-      mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: email,
-        source: 'newsletter_popup',
-        timestamp: new Date().toISOString()
+        name: '',
+        source: 'newsletter_popup'
       })
     });
   } catch(e) {
