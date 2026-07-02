@@ -216,8 +216,7 @@
     }
 
     .receipt-image {
-      aspect-ratio: 0.72;
-      max-height: 620px;
+      height: clamp(380px, 44vw, 560px);
       object-fit: cover;
       object-position: top center;
     }
@@ -670,6 +669,9 @@
       .faq-item {
         padding: 18px;
       }
+      .receipt-image {
+        height: clamp(390px, 118vw, 540px);
+      }
       .offer-box { padding: 22px; }
     }
   </style>
@@ -1017,6 +1019,13 @@
       memberAccessEmail.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') accessMembership();
       });
+    }
+
+    const pageParams = new URLSearchParams(window.location.search);
+    if (pageParams.get('access') === 'required' && memberAccessStatus) {
+      memberAccessStatus.style.color = 'var(--green)';
+      memberAccessStatus.textContent = 'Already subscribed? Enter your email to open the dashboard.';
+      if (memberAccessEmail) memberAccessEmail.focus();
     }
 
     function shouldSuppressNewsletter() {

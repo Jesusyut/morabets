@@ -59,6 +59,50 @@ CORS(app)
 
 
 SUBSCRIBERS_FILE = 'email_subscribers.json'
+CONTEXT_EDGE_SESSION_EMAIL_KEY = "context_edge_verified_email"
+CONTEXT_EDGE_SESSION_VERIFIED_AT_KEY = "context_edge_verified_at"
+
+
+def _normalize_context_edge_email(email):
+    return (email or "").strip().lower()
+
+
+def _context_edge_access_allowed(email):
+    normalized_email = _normalize_context_edge_email(email)
+    if not normalized_email or "@" not in normalized_email:
+        return False
+
+    try:
+        from supabase_backend import user_has_context_edge_access
+
+        return bool(user_has_context_edge_access(normalized_email))
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE] Access check failed for {normalized_email}: {e}")
+        return False
+
+
+def _set_context_edge_session(email):
+    normalized_email = _normalize_context_edge_email(email)
+    session[CONTEXT_EDGE_SESSION_EMAIL_KEY] = normalized_email
+    session[CONTEXT_EDGE_SESSION_VERIFIED_AT_KEY] = datetime.utcnow().isoformat()
+    session.permanent = True
+
+
+def _clear_context_edge_session():
+    session.pop(CONTEXT_EDGE_SESSION_EMAIL_KEY, None)
+    session.pop(CONTEXT_EDGE_SESSION_VERIFIED_AT_KEY, None)
+
+
+def _session_has_context_edge_access():
+    email = _normalize_context_edge_email(session.get(CONTEXT_EDGE_SESSION_EMAIL_KEY))
+    if not email:
+        return False
+
+    if _context_edge_access_allowed(email):
+        return True
+
+    _clear_context_edge_session()
+    return False
 
 
 def save_subscriber(email):
@@ -438,10 +482,10 @@ def robots_txt():
     from flask import Response as _Response
     content = """User-agent: *
 Allow: /
-Allow: /dashboard
 Allow: /how-it-works
 
 Disallow: /api/
+Disallow: /dashboard
 Disallow: /api/debug/
 Disallow: /admin/
 
@@ -457,13 +501,16 @@ def add_cache_headers(response):
     elif request.path in ["/sitemap.xml", "/robots.txt"]:
         response.headers["Cache-Control"] = "public, max-age=86400"
     elif request.path == "/dashboard":
-        response.headers["Cache-Control"] = "public, max-age=300"
+        response.headers["Cache-Control"] = "private, no-store"
     return response
 
 
 @app.route("/dashboard")
 def dashboard():
-    """Main Mora Bets dashboard — open to all users"""
+    """Main Mora Bets dashboard for verified members."""
+    if not _session_has_context_edge_access():
+        return redirect(url_for("home", access="required"))
+
     try:
         hits = cache_incr("hits")
         return render_template("dashboard.html", hits=hits)
@@ -474,7 +521,7 @@ def dashboard():
 
 @app.before_request
 def before_request():
-    """Allow all requests — no paywall"""
+    """Request hook reserved for lightweight app-wide concerns."""
     pass
 
 @app.route("/health")
@@ -4152,18 +4199,18 @@ def context_edge_button_output(output_key):
 @app.route('/api/context-edge/check-access', methods=['POST'])
 def context_edge_check_access():
     data = request.get_json(silent=True) or {}
-    email = (data.get('email') or '').strip().lower()
+    email = _normalize_context_edge_email(data.get('email'))
 
     if not email or '@' not in email:
         return jsonify({'access': False, 'error': 'A valid email is required'}), 400
 
-    try:
-        from supabase_backend import user_has_context_edge_access
+    access = _context_edge_access_allowed(email)
+    if access:
+        _set_context_edge_session(email)
+    elif session.get(CONTEXT_EDGE_SESSION_EMAIL_KEY) == email:
+        _clear_context_edge_session()
 
-        return jsonify({'access': bool(user_has_context_edge_access(email))}), 200
-    except Exception as e:
-        logger.error(f'[CONTEXT EDGE] Access check failed for {email}: {e}')
-        return jsonify({'access': False}), 200
+    return jsonify({'access': access}), 200
 
 
 @app.route('/api/context-edge', methods=['POST'])
@@ -4197,12 +4244,7 @@ def context_edge_analysis():
         passcode_valid = str(data.get('passcode', '')).strip() == expected_passcode
         email_access_valid = False
         if not passcode_valid:
-            try:
-                from supabase_backend import user_has_context_edge_access
-
-                email_access_valid = user_has_context_edge_access(data.get('email', ''))
-            except Exception as access_err:
-                logger.warning(f'[CONTEXT EDGE] Email access check failed: {access_err}')
+            email_access_valid = _context_edge_access_allowed(data.get('email', ''))
 
         if not passcode_valid and not email_access_valid:
             return jsonify({'error': 'Invalid passcode.'}), 403
