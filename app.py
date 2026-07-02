@@ -242,8 +242,8 @@ def cache_exists(key, timeout=3):
 
 @app.route("/")
 def home():
-    """Permanent redirect to dashboard — 301 passes SEO value to /dashboard."""
-    return redirect(url_for("dashboard"), code=301)
+    """Public Mora Bets landing page."""
+    return render_template("index.html")
 
 @app.route('/mora-assists')
 def mora_assists_page():
@@ -3254,14 +3254,13 @@ def create_context_edge_checkout_session():
         env = _context_edge_stripe_required_env()
         data = request.get_json(silent=True) or {}
         email = (data.get("email") or "").strip().lower()
-        if not email or "@" not in email:
+        if email and "@" not in email:
             return jsonify({"error": "A valid email is required"}), 400
 
         stripe_lib.api_key = env["STRIPE_SECRET_KEY"]
-        session_obj = stripe_lib.checkout.Session.create(
-            mode="subscription",
-            customer_email=email,
-            line_items=[
+        session_args = {
+            "mode": "subscription",
+            "line_items": [
                 {
                     "price": env["STRIPE_CONTEXT_EDGE_INTRO_PRICE_ID"],
                     "quantity": 1,
@@ -3271,22 +3270,26 @@ def create_context_edge_checkout_session():
                     "quantity": 1,
                 }
             ],
-            success_url=env["CONTEXT_EDGE_SUCCESS_URL"],
-            cancel_url=env["CONTEXT_EDGE_CANCEL_URL"],
-            allow_promotion_codes=True,
-            client_reference_id=email,
-            metadata={
+            "success_url": env["CONTEXT_EDGE_SUCCESS_URL"],
+            "cancel_url": env["CONTEXT_EDGE_CANCEL_URL"],
+            "allow_promotion_codes": True,
+            "metadata": {
                 "product": "context_edge",
-                "email": email,
             },
-            subscription_data={
+            "subscription_data": {
                 "trial_period_days": 7,
                 "metadata": {
                     "product": "context_edge",
-                    "email": email,
                 }
             },
-        )
+        }
+        if email:
+            session_args["customer_email"] = email
+            session_args["client_reference_id"] = email
+            session_args["metadata"]["email"] = email
+            session_args["subscription_data"]["metadata"]["email"] = email
+
+        session_obj = stripe_lib.checkout.Session.create(**session_args)
         return jsonify({
             "checkout_url": session_obj.url,
             "session_id": session_obj.id,
