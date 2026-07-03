@@ -395,6 +395,92 @@ f.parentNode.insertBefore(j,f);
         .prop-card:hover { border-color: rgba(76,187,23,0.5); box-shadow: 0 4px 16px rgba(76,187,23,0.12); }
         .prop-card .card-body { padding: 0.9rem 1rem; }
 
+        /* ── Context Edge positioning ── */
+        .context-edge-ribbon {
+            align-items: center;
+            background: #F8FCF6;
+            border: 1px solid rgba(76,187,23,0.24);
+            border-left: 3px solid #4CBB17;
+            border-radius: 0.65rem;
+            display: flex;
+            gap: 0.75rem;
+            justify-content: space-between;
+            margin: 0 0 0.75rem;
+            padding: 0.7rem 0.85rem;
+        }
+        .context-edge-ribbon-copy {
+            min-width: 0;
+        }
+        .context-edge-ribbon-title {
+            color: #0F2406;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.98rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            line-height: 1.1;
+            text-transform: uppercase;
+        }
+        .context-edge-ribbon-text,
+        .context-edge-helper {
+            color: #6B9E5A;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75rem;
+            line-height: 1.45;
+        }
+        .context-edge-helper {
+            margin: -0.35rem 0 0.75rem;
+        }
+        .context-edge-ribbon-btn {
+            background: rgba(76,187,23,0.12);
+            border: 1px solid rgba(76,187,23,0.35);
+            border-radius: 999px;
+            color: #2D6E0F;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            padding: 0.42rem 0.75rem;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .context-edge-ribbon-btn:hover {
+            background: rgba(76,187,23,0.18);
+            border-color: rgba(76,187,23,0.5);
+        }
+        .context-edge-card-indicator {
+            align-items: center;
+            color: #2D6E0F;
+            display: inline-flex;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.68rem;
+            font-weight: 700;
+            gap: 0.28rem;
+            margin-bottom: 0.45rem;
+            margin-top: 0.55rem;
+        }
+        .context-edge-card-indicator::before {
+            background: rgba(76,187,23,0.22);
+            border: 1px solid rgba(76,187,23,0.38);
+            border-radius: 999px;
+            content: "";
+            height: 0.42rem;
+            width: 0.42rem;
+        }
+        @media (max-width: 640px) {
+            .context-edge-ribbon {
+                align-items: stretch;
+                flex-direction: column;
+                gap: 0.55rem;
+                padding: 0.68rem 0.75rem;
+            }
+            .context-edge-ribbon-btn {
+                align-self: flex-start;
+                padding: 0.38rem 0.68rem;
+            }
+        }
+
         /* ── Matchup Card ── */
         .matchup-card {
             background: #FFFFFF;
@@ -574,14 +660,26 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 	════════════════════════════════════════════════════ -->
 	<div id="player-props" style="max-width:1280px;margin:0 auto;padding:0.75rem 1rem;">
 
-		    <!-- Sport Tabs + View Mode Row -->
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+    <!-- Sport Tabs -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.55rem;">
         <div id="sport-tabs" style="background:#E8F5E1;border:1px solid rgba(76,187,23,0.2);border-radius:1px;padding:0.25rem;display:inline-flex;gap:0.25rem;">
             <button class="sport-tab active-tab" data-sport="mlb" type="button">⚾ MLB</button>
             <button class="sport-tab" data-sport="nfl" type="button">🏈 NFL</button>
             <button class="sport-tab" data-sport="nhl" type="button">🏒 NHL</button>
             <button class="sport-tab" data-sport="soccer" type="button">⚽ Soccer</button>
         </div>
+    </div>
+
+    <div class="context-edge-ribbon">
+        <div class="context-edge-ribbon-copy">
+            <div class="context-edge-ribbon-title">⚡ Context Edge Ready</div>
+            <div class="context-edge-ribbon-text">The board finds value. Edge Scan is the final matchup layer before placing today's bets.</div>
+        </div>
+        <button class="context-edge-ribbon-btn" type="button" onclick="openContextEdgeScan()">Open Edge Scan</button>
+    </div>
+
+    <!-- View Mode Row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">
         <div style="display:flex;gap:0.4rem;align-items:center;" id="view-mode-toggle">
             <button id="mode-lines-btn" onclick="switchMode('lines')" class="view-btn active-view">🎯 Best Lines</button>
             <button id="mode-props-btn" onclick="switchMode('props')" class="view-btn">📊 Player Props</button>
@@ -608,8 +706,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <input type="text" id="player-search" class="form-control" placeholder="Search players or stats..." onkeyup="applyFilters()" style="flex:1;min-width:180px;">
         <select id="confidence-filter" class="form-select" onchange="applyFilters()" style="min-width:160px;max-width:220px;">
             <option value="">All Tiers</option>
-            <option value="high">🔒 LOCK (≥70% true prob)</option>
-            <option value="medium">🔥 FIRE (50–69%)</option>
+            <option value="high">High (≥70% true prob)</option>
+            <option value="medium">Medium (50–69%)</option>
             <option value="low">— LOW (52-54%)</option>
         </select>
     </div>
@@ -638,7 +736,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div>
                     <h6 style="color:#2D6E0F;font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;"><i class="fas fa-check-circle" style="margin-right:0.3rem;color:#4CBB17;"></i>PLAY IT WHEN...</h6>
                     <ul style="font-size:0.8rem;color:#6B9E5A;padding-left:1rem;line-height:1.7;">
-                        <li>True probability ≥ 65% (LOCK tier)</li>
+                        <li>True probability ≥ 65% (high-confidence tier)</li>
                         <li>Best book offers +100 or better</li>
                         <li>At least 2 books have the line</li>
                         <li>Player is confirmed in the lineup</li>
@@ -655,7 +753,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
             </div>
             <div style="background:#E8F5E1;border-left:3px solid #4CBB17;padding:0.75rem 1rem;border-radius:0 0.5rem 0.5rem 0;margin-top:0.75rem;font-size:0.8rem;color:#1A3D0A;">
-                <strong style="color:#2D6E0F;">Bankroll Rule:</strong> Never risk more than 5% of your roll on a single leg. LOCK = up to 3 units. FIRE = 1–2 units. EDGE = 0–1 unit (or skip).
+                <strong style="color:#2D6E0F;">Bankroll Rule:</strong> Never risk more than 5% of your roll on a single leg. High confidence = up to 3 units. Medium = 1–2 units. Edge = 0–1 unit (or skip).
             </div>
         </div>
     </div>
@@ -720,7 +818,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <footer style="background:#F5FAF2;border-top:1px solid rgba(76,187,23,0.15);padding:1.25rem 1rem;margin-top:2rem;">
     <div style="max-width:1280px;margin:0 auto;text-align:center;font-family:'Inter',sans-serif;font-size:0.72rem;color:#6B9E5A;">
         <p style="margin:0;">© 2026 Mora Bets. For informational and entertainment purposes only. Please bet responsibly.</p>
-        <p style="margin:0.25rem 0 0;color:#A0BF96;">Free sports analytics — no account required</p>
+        <p style="margin:0.25rem 0 0;color:#A0BF96;">Member sports analytics dashboard</p>
     </div>
 </footer>
 
@@ -985,7 +1083,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <span class="section-header-title">⚡ Edge Picks</span>
                     <span class="pill-badge" style="background:#4CBB17;color:#FFFFFF;">${edgePicks.length} today</span>
                     ${avgEv ? `<span class="pill-badge" style="background:#E8F5E1;color:#2D6E0F;border:1px solid rgba(76,187,23,0.35);">avg EV +${avgEv}%</span>` : ''}
-                    <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;">Lines where the math shows real edge vs the market</span>
+                    <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;">Lines where the math shows real edge vs the market — confirm context before betting</span>
                     <span title="These picks passed the EV threshold — the offered odds are better than the fair market price. Positive EV means value over the long run." style="cursor:help;font-size:0.85rem;">ℹ️</span>
                 </div>
                 <div class="picks-grid" id="edge-cards-row"></div>`;
@@ -1006,6 +1104,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <span class="pill-badge" style="background:#E8F5E1;color:#3A9012;border:1px solid rgba(76,187,23,0.3);">${noVigPicks.length} picks · 52%+</span>
                 <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;">True no-vig probability ≥52% — vig stripped</span>
             </div>
+            <div class="context-edge-helper">The board finds mathematical value. Context Edge is the final betting filter before placing today's wagers.</div>
             <div class="picks-grid" id="novig-cards-row"></div>`;
         container.appendChild(noVigSection);
 
@@ -1099,6 +1198,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 ${bookCount > 1 ? `<span style="color:#6B9E5A;margin-left:0.5rem;font-size:0.85em;">${bookCount} books</span>` : ''}
             </div>
             ${ppEdgeHtml}
+            <div class="context-edge-card-indicator">Confirm with Edge Scan</div>
             ${lineShopHtml}
         </div>`;
     }
@@ -1183,6 +1283,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <span style="color:#2D6E0F;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;color:#4CBB17;"></i>Best: ${pick.best_book || '—'} <strong>${fmtOdds(pick.best_over_price)}</strong></span>
             </div>
             ${ppEdgeHtml}
+            <div class="context-edge-card-indicator">Confirm with Edge Scan</div>
             ${isImplied ? '' : lineShopHtml}
         </div>`;
     }
@@ -1560,8 +1661,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <span title="Only picks with positive expected value (+EV) vs the fair market price are shown." style="cursor:help;">ℹ️</span>
             </div>
             <div style="display:flex;justify-content:center;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
-                <span style="background:#4CBB17;color:#FFFFFF;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;padding:0.2rem 0.7rem;border-radius:0.35rem;">🔒 Lock: ${lockCount}</span>
-                <span style="background:#f97316;color:#FFFFFF;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;padding:0.2rem 0.7rem;border-radius:0.35rem;">🔥 Fire: ${fireCount}</span>
+                <span style="background:#4CBB17;color:#FFFFFF;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;padding:0.2rem 0.7rem;border-radius:0.35rem;">High: ${lockCount}</span>
+                <span style="background:#f97316;color:#FFFFFF;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;padding:0.2rem 0.7rem;border-radius:0.35rem;">Medium: ${fireCount}</span>
                 <span style="background:#E8F5E1;color:#2D6E0F;border:1px solid #4CBB17;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.85rem;padding:0.2rem 0.7rem;border-radius:0.35rem;">⚡ Edge: ${edgeCount}</span>
             </div>`;
 
@@ -1643,6 +1744,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <span style="color:#2D6E0F;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;color:#4CBB17;"></i>Best: ${bestBook} <strong>${fmtOdds(prop.best_over_price)}</strong></span>
                     </div>
                     ${ppEdgeHtml}
+                    <div class="context-edge-card-indicator">Confirm with Edge Scan</div>
                     ${lineShopHtml}
                 </div>`;
         }).join('');
@@ -1685,6 +1787,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             ${sportIcon} <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${envBadge}
                         </h5>
                         <p style="font-family:'Inter',sans-serif;font-size:0.78rem;color:#6B9E5A;margin:0 0 0.6rem;">${propCount} props available</p>
+                        <div class="context-edge-card-indicator">Confirm with Edge Scan</div>
                         <button style="width:100%;background:rgba(76,187,23,0.1);border:1px solid rgba(76,187,23,0.25);color:#4CBB17;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;padding:0.35rem 0.75rem;border-radius:0.4rem;cursor:pointer;">View Props →</button>
                     </div>
                 </div>`;
@@ -1891,6 +1994,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         } else {
             closeContextChat(true);
         }
+    }
+
+    function openContextEdgeScan() {
+        const tooltip = document.getElementById('ce-tooltip');
+        if (tooltip) tooltip.style.display = 'none';
+        if (!_ceChatOpen) {
+            toggleContextChat();
+            return;
+        }
+
+        const panel = document.getElementById('ce-chat-panel');
+        if (panel) panel.style.display = 'flex';
     }
 
     async function submitPasscode() {
@@ -2535,7 +2650,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- TOOLTIP — shows on first load, hides after first click -->
   <div id="ce-tooltip" style="background: #ffffff; color: #0F2406; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; padding: 10px 14px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-width: 200px; line-height: 1.4; position: relative;">
     <strong style="display:block; font-size:14px; margin-bottom:2px;">Context Edge</strong>
-    Ask me about any line on the board.
+    Final filter before placing today's bets.
     <div style="position: absolute; bottom: -8px; right: 22px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid #ffffff;"></div>
   </div>
 
@@ -2562,7 +2677,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div id="ce-messages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-height: 200px; max-height: 360px;">
     <!-- Welcome message — always shown -->
     <div class="ce-welcome-card" style="background: rgba(76,187,23,0.08); border-left: 2px solid #4CBB17; border-radius: 0 10px 10px 0; padding: 12px 14px;">
-      <p style="font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; margin: 0 0 8px; line-height: 1.6;">Select a cached Context Edge scan.</p>
+      <p style="font-family: 'Inter', sans-serif; font-size: 13px; color: #9CA3AF; margin: 0 0 8px; line-height: 1.6;">Use the cached scan as the final matchup layer before placing today's bets.</p>
       <div class="ce-quick-tabs" style="
   display: flex;
   flex-wrap: wrap;
