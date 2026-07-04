@@ -140,3 +140,27 @@ def track_lead(request,
     }
 
     return send_event("Lead", user_data, custom_data, event_id)
+
+
+def track_purchase(customer_email: str = None,
+                   event_id: str = None,
+                   value: float = 7,
+                   currency: str = "USD",
+                   content_name: str = "Context Edge $7 Trial") -> bool:
+    """
+    Fire a Purchase event server-side via Meta Conversions API.
+    Uses the Stripe Checkout Session ID as event_id for browser/server dedupe.
+    """
+    user_data = {}
+
+    if customer_email:
+        user_data["em"] = _hash(customer_email)
+
+    custom_data = {
+        "content_name": content_name,
+        "content_category": "Sports Betting Tool",
+        "value": value,
+        "currency": currency,
+    }
+
+    return send_event("Purchase", user_data, custom_data, event_id)

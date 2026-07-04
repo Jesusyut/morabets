@@ -301,6 +301,58 @@ def mora_assists_welcome():
     return render_template('mora_assists_welcome.html')
 
 
+@app.route('/context-edge/success')
+def context_edge_success():
+    """Context Edge checkout success page. Verifies Stripe session before tracking Purchase."""
+    session_id = (request.args.get("session_id") or "").strip()
+    if not session_id:
+        return redirect(url_for("home", checkout="missing_session"))
+
+    stripe_secret_key = os.environ.get("STRIPE_SECRET_KEY", "")
+    if not stripe_secret_key:
+        logger.error("[CONTEXT EDGE STRIPE] STRIPE_SECRET_KEY is not configured for success page")
+        return render_template(
+            "context_edge_success.html",
+            verified=False,
+            session_id="",
+            email="",
+            meta_pixel_id=os.environ.get("META_PIXEL_ID", "1688269505510635"),
+            error="We could not verify your checkout yet. Please contact support if this continues.",
+        ), 500
+
+    try:
+        stripe_lib.api_key = stripe_secret_key
+        checkout_session = stripe_lib.checkout.Session.retrieve(session_id)
+        product = _stripe_object_get(_stripe_object_get(checkout_session, "metadata", {}), "product", "")
+        status = _stripe_object_get(checkout_session, "status", "")
+        verified = product == "context_edge" and status == "complete"
+        email = (
+            _stripe_object_get(checkout_session, "customer_email", "")
+            or _stripe_object_get(_stripe_object_get(checkout_session, "customer_details", {}), "email", "")
+        )
+        if verified and email:
+            _set_context_edge_session(email)
+
+        return render_template(
+            "context_edge_success.html",
+            verified=verified,
+            session_id=session_id if verified else "",
+            email=(email or "").strip().lower(),
+            meta_pixel_id=os.environ.get("META_PIXEL_ID", "1688269505510635"),
+            error="" if verified else "We could not verify your checkout yet. Please contact support if this continues.",
+        )
+    except Exception as e:
+        logger.error(f"[CONTEXT EDGE STRIPE] Success verification error: {e}")
+        return render_template(
+            "context_edge_success.html",
+            verified=False,
+            session_id="",
+            email="",
+            meta_pixel_id=os.environ.get("META_PIXEL_ID", "1688269505510635"),
+            error="We could not verify your checkout yet. Please contact support if this continues.",
+        ), 400
+
+
 @app.route('/mora-assists-setup')
 def mora_assists_setup():
     """Onboarding instructions page — linked from welcome page. No pixel fires here."""
@@ -3154,7 +3206,6 @@ def _context_edge_stripe_required_env():
         "STRIPE_SECRET_KEY": os.environ.get("STRIPE_SECRET_KEY", ""),
         "STRIPE_CONTEXT_EDGE_INTRO_PRICE_ID": os.environ.get("STRIPE_CONTEXT_EDGE_INTRO_PRICE_ID", ""),
         "STRIPE_CONTEXT_EDGE_PRICE_ID": os.environ.get("STRIPE_CONTEXT_EDGE_PRICE_ID", ""),
-        "CONTEXT_EDGE_SUCCESS_URL": os.environ.get("CONTEXT_EDGE_SUCCESS_URL", ""),
         "CONTEXT_EDGE_CANCEL_URL": os.environ.get("CONTEXT_EDGE_CANCEL_URL", ""),
     }
     missing = [key for key, value in required.items() if not value]
@@ -3276,6 +3327,24 @@ def _handle_context_edge_stripe_event(event):
                 status="active",
             )
 
+        try:
+            from meta_pixel import track_purchase
+
+            session_id = _stripe_object_get(data_obj, "id", "")
+            purchase_email = (
+                fallback_email
+                or _context_edge_customer_email(customer_id)
+            )
+            track_purchase(
+                customer_email=purchase_email,
+                event_id=session_id,
+                value=7,
+                currency="USD",
+                content_name="Context Edge $7 Trial",
+            )
+        except Exception as e:
+            logger.warning(f"[META CAPI] Context Edge Purchase tracking failed: {e}")
+
         logger.info(f"[CONTEXT EDGE STRIPE] Checkout completed: {subscription_id}")
         return result
 
@@ -3317,7 +3386,7 @@ def create_context_edge_checkout_session():
                     "quantity": 1,
                 }
             ],
-            "success_url": env["CONTEXT_EDGE_SUCCESS_URL"],
+            "success_url": url_for("context_edge_success", _external=True) + "?session_id={CHECKOUT_SESSION_ID}",
             "cancel_url": env["CONTEXT_EDGE_CANCEL_URL"],
             "allow_promotion_codes": True,
             "metadata": {
