@@ -468,6 +468,29 @@ f.parentNode.insertBefore(j,f);
             height: 0.42rem;
             width: 0.42rem;
         }
+        .member-announcement-bar {
+            align-items: center;
+            background: linear-gradient(135deg, #0F2406 0%, #14320A 100%);
+            border: 1px solid rgba(76,187,23,0.35);
+            border-radius: 0.65rem;
+            color: #DDF5D4;
+            display: flex;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 700;
+            gap: 0.45rem;
+            line-height: 1.35;
+            margin: 0 0 0.65rem;
+            padding: 0.55rem 0.75rem;
+        }
+        .member-announcement-bar strong {
+            color: #4CBB17;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.86rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
         @media (max-width: 640px) {
             .context-edge-ribbon {
                 align-items: stretch;
@@ -478,6 +501,12 @@ f.parentNode.insertBefore(j,f);
             .context-edge-ribbon-btn {
                 align-self: flex-start;
                 padding: 0.38rem 0.68rem;
+            }
+            .member-announcement-bar {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 0.18rem;
+                padding: 0.52rem 0.65rem;
             }
         }
 
@@ -659,6 +688,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 	     PLAYER PROPS TAB
 	════════════════════════════════════════════════════ -->
 	<div id="player-props" style="max-width:1280px;margin:0 auto;padding:0.75rem 1rem;">
+
+    <div class="member-announcement-bar" role="status">
+        <strong>Member Update</strong>
+        <span>Edge Scan updates daily at 9:15 AM MST and 3:15 PM MST.</span>
+    </div>
 
     <!-- Sport Tabs -->
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.55rem;">
