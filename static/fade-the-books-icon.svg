@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Fade the Books">
+  <defs>
+    <linearGradient id="bg" x1="92" y1="54" x2="420" y2="458" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#57d824"/>
+      <stop offset="1" stop-color="#31a90f"/>
+    </linearGradient>
+  </defs>
+  <rect x="34" y="34" width="444" height="444" rx="98" fill="url(#bg)"/>
+  <rect x="34" y="34" width="444" height="444" rx="98" fill="none" stroke="#0f2406" stroke-opacity=".18" stroke-width="16"/>
+  <path d="M122 334 L211 226 L282 282 L390 152" fill="none" stroke="#ffffff" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="390" cy="152" r="26" fill="#ffffff"/>
+</svg>

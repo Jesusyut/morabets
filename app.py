@@ -286,7 +286,7 @@ def cache_exists(key, timeout=3):
 
 @app.route("/")
 def home():
-    """Public Mora Bets landing page."""
+    """Public Fade the Books landing page."""
     return render_template("index.html")
 
 @app.route('/mora-assists')
@@ -405,9 +405,9 @@ def download_cheatsheet():
 def pwa_manifest():
     """PWA web app manifest for home screen install."""
     return jsonify({
-        "name": "Mora Bets",
-        "short_name": "Mora Bets",
-        "description": "Free daily no-vig picks",
+        "name": "Fade the Books",
+        "short_name": "Fade Books",
+        "description": "No-vig board and Context Edge scans",
         "start_url": "/dashboard",
         "display": "standalone",
         "background_color": "#ffffff",
@@ -460,67 +460,67 @@ def sitemap():
     sitemap_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://morabets.com/dashboard</loc>
+    <loc>https://fadethebooks.com/dashboard</loc>
     <lastmod>{today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://morabets.com/how-it-works</loc>
+    <loc>https://fadethebooks.com/how-it-works</loc>
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://morabets.com/</loc>
+    <loc>https://fadethebooks.com/</loc>
     <lastmod>{today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://morabets.com/mora-assists-welcome</loc>
+    <loc>https://fadethebooks.com/mora-assists-welcome</loc>
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://morabets.com/mora-assists</loc>
+    <loc>https://fadethebooks.com/mora-assists</loc>
     <lastmod>{today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://morabets.com/no-vig-calculator</loc>
+    <loc>https://fadethebooks.com/no-vig-calculator</loc>
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://morabets.com/what-is-vig-sports-betting</loc>
+    <loc>https://fadethebooks.com/what-is-vig-sports-betting</loc>
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://morabets.com/mlb-player-props-explained</loc>
+    <loc>https://fadethebooks.com/mlb-player-props-explained</loc>
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://morabets.com/how-to-find-value-bets-mlb</loc>
+    <loc>https://fadethebooks.com/how-to-find-value-bets-mlb</loc>
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://morabets.com/casino</loc>
+    <loc>https://fadethebooks.com/casino</loc>
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://morabets.com/crypto-guide</loc>
+    <loc>https://fadethebooks.com/crypto-guide</loc>
     <lastmod>{today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -541,7 +541,7 @@ Disallow: /dashboard
 Disallow: /api/debug/
 Disallow: /admin/
 
-Sitemap: https://morabets.com/sitemap.xml"""
+Sitemap: https://fadethebooks.com/sitemap.xml"""
     return _Response(content, mimetype="text/plain")
 
 
@@ -559,7 +559,7 @@ def add_cache_headers(response):
 
 @app.route("/dashboard")
 def dashboard():
-    """Main Mora Bets dashboard for verified members."""
+    """Main Fade the Books dashboard for verified members."""
     if not _session_has_context_edge_access():
         return redirect(url_for("home", access="required"))
 
@@ -568,7 +568,7 @@ def dashboard():
         return render_template("dashboard.html", hits=hits)
     except Exception as e:
         logger.error(f"Error in dashboard route: {e}")
-        return f'<h1>Mora Bets</h1><p>Error: {str(e)}</p><p><a href="/health">Health Check</a></p>'
+        return f'<h1>Fade the Books</h1><p>Error: {str(e)}</p><p><a href="/health">Health Check</a></p>'
 
 
 @app.before_request
@@ -1006,7 +1006,7 @@ def api_status():
         initialization_status = "complete" if app_initialized else "in_progress"
         
         return jsonify({
-            "message": "Welcome to Mora Bets API!",
+            "message": "Welcome to Fade the Books API!",
             "status": "ok",
             "initialization": initialization_status,
             "redis_connected": redis_healthy,
@@ -3047,7 +3047,7 @@ def gate_signup():
                         "name":      name,
                         "source":    source,
                         "signed_up": datetime.utcnow().isoformat(),
-                        "url":       "morabets.com"
+                        "url":       "fadethebooks.com"
                     },
                     timeout=5
                 )
@@ -3141,7 +3141,7 @@ def admin_emails():
             )
 
         html = (
-            '<html><head><title>Mora Bets Emails</title><style>'
+            '<html><head><title>Fade the Books Emails</title><style>'
             'body{font-family:Inter,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;background:#f5faf2;}'
             'h1{color:#0f2406;}'
             '.count{font-size:48px;font-weight:900;color:#4cbb17;}'
@@ -3150,7 +3150,7 @@ def admin_emails():
             'td{padding:10px 12px;border-bottom:1px solid #e8f5e1;font-size:13px;}'
             '.export{display:inline-block;background:#4cbb17;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px;}'
             '</style></head><body>'
-            '<h1>Mora Bets Email List</h1>'
+            '<h1>Fade the Books Email List</h1>'
             '<div class="count">' + str(total) + '</div>'
             '<p>total signups &middot; ' + str(10000 - total) + ' spots remaining</p>'
             '<a href="/api/subscribers/export" class="export">Export CSV</a>'
