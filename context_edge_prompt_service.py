@@ -1,7 +1,8 @@
 """Shared prompt and AI-call helpers for Context Edge."""
 
+import os
 
-CONTEXT_EDGE_MODEL = "claude-sonnet-4-5-20250929"
+CONTEXT_EDGE_MODEL = os.environ.get("CONTEXT_EDGE_MODEL", "gpt-5")
 
 
 def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
@@ -309,27 +310,29 @@ def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
 
 
 def call_context_edge_ai(api_key: str, system_prompt: str, user_message: str) -> str:
-    import anthropic
+    from openai import OpenAI
 
-    client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
-    message = client.messages.create(
+    client = OpenAI(api_key=api_key, timeout=90.0)
+    response = client.responses.create(
         model=CONTEXT_EDGE_MODEL,
-        max_tokens=1500,
-        system=system_prompt,
+        instructions=system_prompt,
+        input=user_message,
+        max_output_tokens=1500,
         tools=[
             {
-                "type": "web_search_20250305",
-                "name": "web_search",
-                "max_uses": 4
+                "type": "web_search_preview",
+                "search_context_size": "medium"
             }
         ],
-        messages=[{'role': 'user', 'content': user_message}],
-        timeout=90.0
     )
-    raw = ''
-    for block in message.content:
-        if hasattr(block, 'text') and block.text:
-            raw += block.text
+
+    raw = getattr(response, "output_text", "") or ""
+    if not raw:
+        for item in getattr(response, "output", []) or []:
+            for content in getattr(item, "content", []) or []:
+                text = getattr(content, "text", "")
+                if text:
+                    raw += text
     raw = raw.strip()
     if not raw:
         raw = 'No analysis returned. Try again.'

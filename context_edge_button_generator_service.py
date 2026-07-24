@@ -66,7 +66,7 @@ def generate_context_edge_button_output(output_key: str, run_window: str) -> dic
     This uses the same board loader, system prompt, model, and quick-button
     prompt text as the existing live Context Edge path. The cached generator
     passes the full loaded board JSON into the existing board prompt slot so
-    Claude can see all available prop, odds, and enrichment fields.
+    the model can see all available prop, odds, and enrichment fields.
     """
     config = get_output_config(output_key)
     normalized_output_key = (output_key or "").strip().lower()
@@ -92,9 +92,9 @@ def generate_context_edge_button_output(output_key: str, run_window: str) -> dic
         elif not board:
             response_text = "No props on the board right now. Check back after 7 AM PHX when the daily fetch runs."
         else:
-            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            api_key = os.environ.get("OPENAI_API_KEY")
             if not api_key:
-                raise RuntimeError("ANTHROPIC_API_KEY is not configured")
+                raise RuntimeError("OPENAI_API_KEY is not configured")
 
             today_str = datetime.now().strftime('%A %B %d %Y')
             board_text = _format_context_edge_board(board)

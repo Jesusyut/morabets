@@ -4033,7 +4033,7 @@ def unsubscribe_assists():
 
 
 # In-memory per-IP throttle for the (public) Context Edge endpoint. Each request
-# triggers a paid Anthropic call, so cap bursts to limit cost-exhaustion abuse.
+# triggers a paid AI call, so cap bursts to limit cost-exhaustion abuse.
 _CE_RATE_BUCKETS = {}
 _CE_RATE_MAX = 10        # requests
 _CE_RATE_WINDOW = 3600   # seconds (per hour)
@@ -4068,7 +4068,7 @@ def load_board_for_context():
     return board
 
 
-def format_board_for_claude(board):
+def format_board_for_context_ai(board):
     """Render the board as a compact one-line-per-prop string for the prompt."""
     if not board:
         return "No qualifying props on board today."
@@ -4285,13 +4285,13 @@ def context_edge_check_access():
 @app.route('/api/context-edge', methods=['POST'])
 def context_edge_analysis():
     """
-    Receives a betting line from the frontend and returns Claude's
+    Receives a betting line from the frontend and returns Context Edge's
     Context Edge analysis as JSON. Additive feature — does not affect
     any existing route or data pipeline.
     """
     raw = None
     try:
-        import anthropic
+        from openai import APITimeoutError
         from datetime import datetime as _dt
         today_str = _dt.now().strftime('%A %B %d %Y')
         # Lightweight per-IP rate limit
@@ -4318,11 +4318,11 @@ def context_edge_analysis():
         if not passcode_valid and not email_access_valid:
             return jsonify({'error': 'Invalid passcode.'}), 403
 
-        # validate_only: passcode check passed above, so just confirm access. No Claude call.
+        # validate_only: passcode check passed above, so just confirm access. No AI call.
         if data.get('validate_only'):
             return jsonify({'valid': True}), 200
 
-        api_key = os.environ.get('ANTHROPIC_API_KEY')
+        api_key = os.environ.get('OPENAI_API_KEY')
         if not api_key:
             return jsonify({'error': 'Context Edge is not configured.'}), 503
 
@@ -4331,14 +4331,14 @@ def context_edge_analysis():
         if not board:
             return jsonify({'response': "No props on the board right now. Check back after 7 AM PHX when the daily fetch runs."})
 
-        # New chat flow: the user types free text; the board is supplied to Claude below.
+        # New chat flow: the user types free text; the board is supplied to the model below.
         chat_message = (data.get('user_message') or '').strip()
         if not chat_message:
             return jsonify({'error': 'No input'}), 400
 
         # Pre-build the board string BEFORE the f-string so the f-string
         # only references simple variables (no inline function calls).
-        board_text = format_board_for_claude(board)
+        board_text = format_board_for_context_ai(board)
         from context_edge_prompt_service import (
             build_context_edge_system_prompt,
             call_context_edge_ai,
@@ -4349,14 +4349,14 @@ def context_edge_analysis():
             raw = call_context_edge_ai(api_key, SYSTEM_PROMPT, chat_message)
             return jsonify({'response': raw})
 
-        except anthropic.APITimeoutError:
+        except APITimeoutError:
             logger.warning('Context edge timeout')
             return jsonify({
                 'response': 'Research is taking longer than usual. Try asking about a specific team or game instead of the full slate.'
             }), 200
 
-        except Exception as claude_err:
-            logger.error(f'Claude call failed: {claude_err}')
+        except Exception as ai_err:
+            logger.error(f'Context Edge AI call failed: {ai_err}')
             return jsonify({
                 'response': 'Analysis failed. Try again.'
             }), 500
