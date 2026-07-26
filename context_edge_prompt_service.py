@@ -1,8 +1,12 @@
 """Shared prompt and AI-call helpers for Context Edge."""
 
+import logging
 import os
 
 CONTEXT_EDGE_MODEL = os.environ.get("CONTEXT_EDGE_MODEL", "gpt-5")
+CONTEXT_EDGE_MAX_OUTPUT_TOKENS = int(os.environ.get("CONTEXT_EDGE_MAX_OUTPUT_TOKENS", "4000"))
+
+logger = logging.getLogger(__name__)
 
 
 def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
@@ -309,6 +313,36 @@ def build_context_edge_system_prompt(today_str: str, board_text: str) -> str:
   """
 
 
+def _extract_openai_text(response) -> str:
+    raw = getattr(response, "output_text", "") or ""
+    if raw:
+        return raw
+
+    output = getattr(response, "output", None) or []
+    for item in output:
+        content_items = getattr(item, "content", None)
+        if content_items is None and isinstance(item, dict):
+            content_items = item.get("content", [])
+        for content in content_items or []:
+            text = getattr(content, "text", "")
+            if not text and isinstance(content, dict):
+                text = content.get("text", "")
+            if text:
+                raw += text
+
+    if raw:
+        return raw
+
+    if hasattr(response, "model_dump"):
+        payload = response.model_dump()
+        for item in payload.get("output", []) or []:
+            for content in item.get("content", []) or []:
+                text = content.get("text", "")
+                if text:
+                    raw += text
+    return raw
+
+
 def call_context_edge_ai(api_key: str, system_prompt: str, user_message: str) -> str:
     from openai import OpenAI
 
@@ -317,7 +351,9 @@ def call_context_edge_ai(api_key: str, system_prompt: str, user_message: str) ->
         model=CONTEXT_EDGE_MODEL,
         instructions=system_prompt,
         input=user_message,
-        max_output_tokens=1500,
+        max_output_tokens=CONTEXT_EDGE_MAX_OUTPUT_TOKENS,
+        reasoning={"effort": "low"},
+        text={"verbosity": "medium"},
         tools=[
             {
                 "type": "web_search_preview",
@@ -326,13 +362,14 @@ def call_context_edge_ai(api_key: str, system_prompt: str, user_message: str) ->
         ],
     )
 
-    raw = getattr(response, "output_text", "") or ""
+    raw = _extract_openai_text(response)
     if not raw:
-        for item in getattr(response, "output", []) or []:
-            for content in getattr(item, "content", []) or []:
-                text = getattr(content, "text", "")
-                if text:
-                    raw += text
+        logger.warning(
+            "Context Edge OpenAI response had no text: id=%s status=%s incomplete=%s",
+            getattr(response, "id", None),
+            getattr(response, "status", None),
+            getattr(response, "incomplete_details", None),
+        )
     raw = raw.strip()
     if not raw:
         raw = 'No analysis returned. Try again.'
