@@ -105,21 +105,99 @@ def _session_has_context_edge_access():
     return False
 
 
-def save_subscriber(email):
-    """Append an email address to the subscribers file."""
+def save_subscriber(email, name="", phone="", source="daily_dashboard_trial"):
+    """Append or update a subscriber record in the local JSON backup."""
     try:
         if os.path.exists(SUBSCRIBERS_FILE):
             with open(SUBSCRIBERS_FILE, 'r') as f:
                 subs = json.load(f)
         else:
             subs = []
-        if email not in subs:
-            subs.append(email)
-            with open(SUBSCRIBERS_FILE, 'w') as f:
-                json.dump(subs, f, indent=2)
-            logger.info(f'[SUBSCRIBE] Added {email}')
+
+        normalized_email = (email or "").strip().lower()
+        now = datetime.utcnow().isoformat()
+
+        # Preserve compatibility with older backups that stored plain email strings.
+        existing = None
+        for record in subs:
+            if isinstance(record, str) and record.strip().lower() == normalized_email:
+                existing = record
+                break
+            if isinstance(record, dict) and record.get('email', '').strip().lower() == normalized_email:
+                existing = record
+                break
+
+        subscriber_record = {
+            'email': normalized_email,
+            'name': (name or '').strip(),
+            'phone': (phone or '').strip(),
+            'source': (source or 'daily_dashboard_trial').strip(),
+            'signed_up_at': now,
+        }
+
+        if isinstance(existing, dict):
+            existing.update({k: v for k, v in subscriber_record.items() if v})
+        elif existing is not None:
+            subs[subs.index(existing)] = subscriber_record
+        else:
+            subs.append(subscriber_record)
+
+        with open(SUBSCRIBERS_FILE, 'w') as f:
+            json.dump(subs, f, indent=2)
+        logger.info(f'[SUBSCRIBE] Added/updated {normalized_email} source={subscriber_record["source"]}')
     except Exception as e:
         logger.error(f'[SUBSCRIBE] Error saving subscriber {email}: {e}')
+
+
+def _sync_to_brevo_contact(email, name="", phone="", source="daily_dashboard_trial"):
+    """Create/update a Brevo contact if BREVO_API_KEY is configured."""
+    brevo_key = os.environ.get('BREVO_API_KEY', '').strip()
+    if not brevo_key:
+        logger.warning('[LEAD] BREVO_API_KEY not set - skipping Brevo sync')
+        return False
+
+    normalized_email = (email or '').strip().lower()
+    full_name = (name or '').strip()
+    first_name = full_name.split(' ', 1)[0] if full_name else ''
+    last_name = full_name.split(' ', 1)[1] if ' ' in full_name else ''
+    attributes = {
+        'SOURCE': (source or 'daily_dashboard_trial').strip(),
+    }
+    if first_name:
+        attributes['FNAME'] = first_name
+    if last_name:
+        attributes['LNAME'] = last_name
+    cleaned_phone = (phone or '').strip()
+    if cleaned_phone.startswith('+') or cleaned_phone.startswith('00'):
+        attributes['SMS'] = cleaned_phone
+
+    payload = {
+        'email': normalized_email,
+        'attributes': attributes,
+        'updateEnabled': True,
+    }
+    brevo_list_id = os.environ.get('BREVO_LIST_ID', '').strip()
+    if brevo_list_id.isdigit():
+        payload['listIds'] = [int(brevo_list_id)]
+
+    try:
+        resp = requests.post(
+            'https://api.brevo.com/v3/contacts',
+            headers={
+                'accept': 'application/json',
+                'api-key': brevo_key,
+                'content-type': 'application/json',
+            },
+            json=payload,
+            timeout=8,
+        )
+        if resp.status_code in (200, 201, 204):
+            logger.info(f'[LEAD] Brevo contact synced for {normalized_email}')
+            return True
+        logger.warning(f'[LEAD] Brevo sync failed status={resp.status_code} body={resp.text[:200]}')
+    except Exception as e:
+        logger.error(f'[LEAD] Brevo sync error for {normalized_email}: {e}')
+    return False
 
 
 # Redis configuration with robust stability features
@@ -978,14 +1056,23 @@ def analytics():
 
 @app.route("/api/subscribe", methods=['POST'])
 def api_subscribe():
-    """Save email subscriber to JSON file"""
+    """Capture landing-page leads and sync to Brevo with local backup."""
     try:
         data = request.get_json(force=True) or {}
         email = (data.get('email') or '').strip().lower()
+        name = (data.get('name') or '').strip()
+        phone = (data.get('phone') or '').strip()
+        source = (data.get('source') or 'daily_dashboard_trial').strip()
         if not email or '@' not in email:
             return jsonify({'error': 'Invalid email'}), 400
-        save_subscriber(email)
-        return jsonify({'status': 'ok', 'message': 'Subscribed'}), 200
+
+        brevo_synced = _sync_to_brevo_contact(email, name=name, phone=phone, source=source)
+        save_subscriber(email, name=name, phone=phone, source=source)
+        return jsonify({
+            'status': 'ok',
+            'message': 'Subscribed',
+            'external': {'brevo': brevo_synced},
+        }), 200
     except Exception as e:
         logger.error(f'[SUBSCRIBE] Error: {e}')
         return jsonify({'error': 'Server error'}), 500
