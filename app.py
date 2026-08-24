@@ -164,12 +164,12 @@ def _sync_to_brevo_contact(email, name="", phone="", source="daily_dashboard_tri
         'SOURCE': (source or 'daily_dashboard_trial').strip(),
     }
     if first_name:
-        attributes['FNAME'] = first_name
+        attributes['FIRSTNAME'] = first_name
     if last_name:
-        attributes['LNAME'] = last_name
+        attributes['LASTNAME'] = last_name
     cleaned_phone = (phone or '').strip()
-    if cleaned_phone.startswith('+') or cleaned_phone.startswith('00'):
-        attributes['SMS'] = cleaned_phone
+    if cleaned_phone:
+        attributes['PHONE'] = cleaned_phone
 
     payload = {
         'email': normalized_email,
