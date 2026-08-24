@@ -15,8 +15,8 @@ f.parentNode.insertBefore(j,f);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4CBB17">
 
-    <title>Fade the Books Dashboard — No-Vig Sports Betting Board &amp; Context Edge</title>
-    <meta name="description" content="Fade the Books member dashboard with no-vig true probability calculations, best available lines, and cached Context Edge scans for active subscribers and trial members.">
+    <title>Fade the Books Dashboard — No-Vig Sports Betting Board</title>
+    <meta name="description" content="Fade the Books member dashboard with no-vig true probability calculations and best available lines for active subscribers and trial members.">
     <meta name="keywords" content="no vig betting, sports betting probability, MLB picks today, NHL picks today, remove vig odds, true probability calculator, sports betting math, line shopping tool, free betting picks, no vig odds calculator">
     <meta name="robots" content="index, follow">
     <meta name="author" content="Fade the Books">
@@ -24,13 +24,13 @@ f.parentNode.insertBefore(j,f);
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Fade the Books">
     <meta property="og:title" content="Fade the Books Dashboard">
-    <meta property="og:description" content="Member dashboard for no-vig probabilities, best available lines, and Context Edge scans.">
+    <meta property="og:description" content="Member dashboard for no-vig probabilities and best available lines.">
     <meta property="og:url" content="https://fadethebooks.com/dashboard">
     <meta property="og:image" content="https://fadethebooks.com/static/og-image.png">
 
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Fade the Books Dashboard">
-    <meta name="twitter:description" content="No-vig probabilities, best lines, and Context Edge scans for Fade the Books members.">
+    <meta name="twitter:description" content="No-vig probabilities and best lines for Fade the Books members.">
     <meta name="twitter:image" content="https://fadethebooks.com/static/og-image.png">
 
     <link rel="canonical" href="https://fadethebooks.com/dashboard">
@@ -59,7 +59,7 @@ f.parentNode.insertBefore(j,f);
       "@type": "WebApplication",
       "name": "Fade the Books",
       "url": "https://fadethebooks.com",
-	      "description": "Sports betting analytics dashboard that calculates no-vig true probability, surfaces the best available odds, and provides Context Edge scans for Fade the Books members.",
+	      "description": "Sports betting analytics dashboard that calculates no-vig true probability and surfaces the best available odds for Fade the Books members.",
       "applicationCategory": "SportsApplication",
       "operatingSystem": "Web",
       "offers": {
@@ -395,7 +395,7 @@ f.parentNode.insertBefore(j,f);
         .prop-card:hover { border-color: rgba(76,187,23,0.5); box-shadow: 0 4px 16px rgba(76,187,23,0.12); }
         .prop-card .card-body { padding: 0.9rem 1rem; }
 
-        /* ── Context Edge positioning ── */
+        /* ── Dashboard positioning ── */
         .context-edge-ribbon {
             align-items: center;
             background: #F8FCF6;
@@ -467,6 +467,16 @@ f.parentNode.insertBefore(j,f);
             content: "";
             height: 0.42rem;
             width: 0.42rem;
+        }
+
+        /* Dashboard UI is disabled while the dashboard product is simplified. */
+        .context-edge-ribbon,
+        .context-edge-helper,
+        .context-edge-card-indicator,
+        #edge-scan-footer,
+        #ce-bubble-wrap,
+        #ce-chat-panel {
+            display: none !important;
         }
         .member-announcement-bar {
             align-items: center;
@@ -691,7 +701,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <div class="member-announcement-bar" role="status">
         <strong>Member Update</strong>
-        <span>Edge Scan updates daily at 9:15 AM MST and 3:15 PM MST.</span>
+        <span>Dashboard lines refresh throughout the day as markets update.</span>
     </div>
 
     <!-- Sport Tabs -->
@@ -706,10 +716,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <div class="context-edge-ribbon">
         <div class="context-edge-ribbon-copy">
-            <div class="context-edge-ribbon-title">⚡ Context Edge Ready</div>
-            <div class="context-edge-ribbon-text">The board finds value. Edge Scan is the final matchup layer before placing today's bets.</div>
+            <div class="context-edge-ribbon-title"></div>
+            <div class="context-edge-ribbon-text"></div>
         </div>
-        <button class="context-edge-ribbon-btn" type="button" onclick="openContextEdgeScan()">Open Edge Scan</button>
+        <button class="context-edge-ribbon-btn" type="button" onclick="openContextEdgeScan()"></button>
     </div>
 
     <!-- View Mode Row -->
@@ -1117,7 +1127,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <span class="section-header-title">⚡ Edge Picks</span>
                     <span class="pill-badge" style="background:#4CBB17;color:#FFFFFF;">${edgePicks.length} today</span>
                     ${avgEv ? `<span class="pill-badge" style="background:#E8F5E1;color:#2D6E0F;border:1px solid rgba(76,187,23,0.35);">avg EV +${avgEv}%</span>` : ''}
-                    <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;">Lines where the math shows real edge vs the market — confirm context before betting</span>
+                    <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;">Lines where the math shows real edge vs the market</span>
                     <span title="These picks passed the EV threshold — the offered odds are better than the fair market price. Positive EV means value over the long run." style="cursor:help;font-size:0.85rem;">ℹ️</span>
                 </div>
                 <div class="picks-grid" id="edge-cards-row"></div>`;
@@ -1138,7 +1148,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <span class="pill-badge" style="background:#E8F5E1;color:#3A9012;border:1px solid rgba(76,187,23,0.3);">${noVigPicks.length} picks · 52%+</span>
                 <span style="font-family:'Inter',sans-serif;font-size:0.75rem;color:#6B9E5A;">True no-vig probability ≥52% — vig stripped</span>
             </div>
-            <div class="context-edge-helper">The board finds mathematical value. Context Edge is the final betting filter before placing today's wagers.</div>
+            <div class="context-edge-helper" aria-hidden="true"></div>
             <div class="picks-grid" id="novig-cards-row"></div>`;
         container.appendChild(noVigSection);
 
@@ -1226,7 +1236,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <span style="color:#2D6E0F;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;color:#4CBB17;"></i>Best: <strong>${pick.best_book || '—'}</strong> ${fmtOdds(pick.best_over_price)}</span>
                 ${bookCount > 1 ? `<span style="color:#6B9E5A;margin-left:0.5rem;font-size:0.85em;">${bookCount} books</span>` : ''}
             </div>
-            <div class="context-edge-card-indicator">Confirm with Edge Scan</div>
+            <div class="context-edge-card-indicator" aria-hidden="true"></div>
             ${lineShopHtml}
         </div>`;
     }
@@ -1305,7 +1315,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
                 <span style="color:#2D6E0F;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;color:#4CBB17;"></i>Best: ${pick.best_book || '—'} <strong>${fmtOdds(pick.best_over_price)}</strong></span>
             </div>
-            <div class="context-edge-card-indicator">Confirm with Edge Scan</div>
+            <div class="context-edge-card-indicator" aria-hidden="true"></div>
             ${isImplied ? '' : lineShopHtml}
         </div>`;
     }
@@ -1760,7 +1770,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <div style="text-align:center;font-family:'Inter',sans-serif;font-size:0.75rem;">
                         <span style="color:#2D6E0F;"><i class="fas fa-star" style="margin-right:0.2rem;font-size:0.8em;color:#4CBB17;"></i>Best: ${bestBook} <strong>${fmtOdds(prop.best_over_price)}</strong></span>
                     </div>
-                    <div class="context-edge-card-indicator">Confirm with Edge Scan</div>
+                    <div class="context-edge-card-indicator" aria-hidden="true"></div>
                     ${lineShopHtml}
                 </div>`;
         }).join('');
@@ -1803,7 +1813,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             ${sportIcon} <span class="${awayClass}">${awayTeam}</span> @ <span class="${homeClass}">${homeTeam}</span>${envBadge}
                         </h5>
                         <p style="font-family:'Inter',sans-serif;font-size:0.78rem;color:#6B9E5A;margin:0 0 0.6rem;">${propCount} props available</p>
-                        <div class="context-edge-card-indicator">Confirm with Edge Scan</div>
+                        <div class="context-edge-card-indicator" aria-hidden="true"></div>
                         <button style="width:100%;background:rgba(76,187,23,0.1);border:1px solid rgba(76,187,23,0.25);color:#4CBB17;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;padding:0.35rem 0.75rem;border-radius:0.4rem;cursor:pointer;">View Props →</button>
                     </div>
                 </div>`;
@@ -1909,7 +1919,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     })();
 
     // ─────────────────────────────────────────────
-    //  Context Edge Analyst — floating chat bubble logic
+    //  Dashboard Analyst — floating chat bubble logic
     // ─────────────────────────────────────────────
     const CE_ACCESS_KEY = 'ce_context_edge_access';
     const CE_DISMISS_KEY = 'ce_premium_dismissed';
@@ -2248,7 +2258,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             const report = data.report || {};
             const responseText = data.status === 'ready'
                 ? (report.response || data.response || 'No cached response available.')
-                : (data.message || "Context Edge is preparing today's scan.");
+                : (data.message || "Dashboard is preparing today's scan.");
 
             const formatted = formatContextEdgeText(responseText);
             loadBubble.innerHTML = `
@@ -2376,14 +2386,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 setContextEdgePremiumMode(true);
                 setContextEdgeUnlockedMode(false);
                 btn.disabled = false;
-                btn.textContent = 'Analyze Context Edge →';
+                btn.textContent = 'Analyze →';
                 return;
             }
 
             if (!res.ok) {
                 loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">Server error ${res.status}. Try again.</p>`;
                 btn.disabled = false;
-                btn.textContent = 'Analyze Context Edge →';
+                btn.textContent = 'Analyze →';
                 return;
             }
 
@@ -2394,7 +2404,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 console.error('CE: JSON parse failed', parseErr, raw);
                 loadBubble.innerHTML = `<p style="font-family:'Inter',sans-serif;font-size:12px;color:#EF4444;margin:0;">Parse error. Raw: ${raw.substring(0,100)}</p>`;
                 btn.disabled = false;
-                btn.textContent = 'Analyze Context Edge →';
+                btn.textContent = 'Analyze →';
                 return;
             }
 
@@ -2437,7 +2447,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
 
         btn.disabled = false;
-        btn.textContent = 'Analyze Context Edge →';
+        btn.textContent = 'Analyze →';
     }
 
     // Auto-hide tooltip after 6 seconds
@@ -2650,22 +2660,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   }
 </style>
 
-<div id="edge-scan-footer" role="complementary" aria-label="Today's Edge Scan offer">
+<div id="edge-scan-footer" role="complementary" aria-label=" offer">
   <div class="edge-scan-footer-inner">
     <div style="min-width:0;">
-      <div class="edge-scan-footer-title">Today's Edge Scan</div>
-      <div class="edge-scan-footer-subtitle">7 premium picks hidden</div>
+      <div class="edge-scan-footer-title"></div>
+      <div class="edge-scan-footer-subtitle"></div>
     </div>
-    <button type="button" class="edge-scan-footer-cta" onclick="showContextEdgePremiumOffer()">Unlock $7 Trial →</button>
+    <button type="button" class="edge-scan-footer-cta" onclick="showContextEdgePremiumOffer()"></button>
   </div>
 </div>
 
-<!-- CONTEXT EDGE CHAT BUBBLE -->
+<!-- DISABLED DASHBOARD TOOL BUBBLE -->
 <div id="ce-bubble-wrap" style="position: fixed; bottom: 80px; right: 20px; z-index: 99990; display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
 
   <!-- TOOLTIP — shows on first load, hides after first click -->
   <div id="ce-tooltip" style="background: #ffffff; color: #0F2406; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; padding: 10px 14px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-width: 200px; line-height: 1.4; position: relative;">
-    <strong style="display:block; font-size:14px; margin-bottom:2px;">Context Edge</strong>
+    <strong style="display:block; font-size:14px; margin-bottom:2px;">Dashboard</strong>
     Final filter before placing today's bets.
     <div style="position: absolute; bottom: -8px; right: 22px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid #ffffff;"></div>
   </div>
@@ -2677,14 +2687,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 </div>
 
-<!-- CONTEXT EDGE CHAT PANEL -->
+<!-- DISABLED DASHBOARD TOOL PANEL -->
 <div id="ce-chat-panel" style="display: none; position: fixed; bottom: 148px; right: 20px; width: 360px; max-width: calc(100vw - 40px); max-height: 580px; background: #0F2406; border: 1px solid rgba(76,187,23,0.3); border-radius: 20px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); z-index: 99989; flex-direction: column; overflow: hidden;">
 
   <!-- PANEL HEADER -->
   <div style="padding: 16px 18px 14px; border-bottom: 1px solid rgba(107,158,90,0.2); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
     <div>
       <div style="font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #4CBB17; margin-bottom: 2px;">FADE THE BOOKS</div>
-      <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 900; color: #ffffff; text-transform: uppercase; line-height: 1;">Context Edge Analyst</div>
+      <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 900; color: #ffffff; text-transform: uppercase; line-height: 1;">Dashboard Analyst</div>
     </div>
     <button onclick="toggleContextChat()" style="background: none; border: none; color: #6B9E5A; font-size: 22px; cursor: pointer; line-height: 1; padding: 0;">×</button>
   </div>
@@ -2761,7 +2771,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div id="ce-passcode-gate" style="display: none; padding: 14px; border-top: 1px solid rgba(76,187,23,0.25); flex-shrink: 0;">
     <div style="border: 1px solid rgba(76,187,23,0.3); background: rgba(0,0,0,0.2); padding: 16px; border-radius: 12px;">
       <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;">Member Access</div>
-      <div style="font-family: 'Inter', sans-serif; font-size: 13px; color: #D1D5DB; line-height: 1.5; margin-bottom: 12px;">Enter the email used at checkout to unlock Context Edge on this device.</div>
+      <div style="font-family: 'Inter', sans-serif; font-size: 13px; color: #D1D5DB; line-height: 1.5; margin-bottom: 12px;">Enter the email used at checkout to unlock Dashboard on this device.</div>
       <div id="ce-returning-access" style="display: block;">
         <div id="ce-access-row" style="display: flex; gap: 8px;">
           <input id="ce-access-email" type="email" placeholder="subscriber@email.com" autocomplete="email" style="flex: 1; min-width: 0; background: rgba(255,255,255,0.06); border: 1px solid rgba(76,187,23,0.32); border-radius: 9px; padding: 10px 11px; font-family: 'Inter', sans-serif; font-size: 12px; color: #ffffff; outline: none;" onkeydown="if(event.key==='Enter')checkContextEdgeAccess()">
@@ -2783,11 +2793,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- INPUT AREA — shown when authed -->
   <div id="ce-input-area" style="display: none; padding: 12px 14px; border-top: 1px solid rgba(107,158,90,0.2); flex-shrink: 0;">
     <textarea id="ce-input" placeholder="best bets today, top 5 plays, Josh Naylor, hits props over 60%..." rows="3" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(107,158,90,0.3); border-radius: 12px; padding: 10px 12px; font-family: 'Inter', sans-serif; font-size: 13px; color: #ffffff; resize: none; box-sizing: border-box; outline: none; margin-bottom: 8px;" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendContextMessage();}"></textarea>
-    <button onclick="sendContextMessage()" id="ce-send-btn" style="width: 100%; background: #4CBB17; border: none; border-radius: 10px; padding: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 900; color: #0F2406; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;">Analyze Context Edge →</button>
+    <button onclick="sendContextMessage()" id="ce-send-btn" style="width: 100%; background: #4CBB17; border: none; border-radius: 10px; padding: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 900; color: #0F2406; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;">Analyze →</button>
   </div>
 
 </div>
-<!-- END CONTEXT EDGE CHAT -->
+<!-- END DISABLED DASHBOARD TOOL -->
 
 
 </body>
