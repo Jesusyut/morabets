@@ -709,6 +709,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div id="sport-tabs" style="background:#E8F5E1;border:1px solid rgba(76,187,23,0.2);border-radius:1px;padding:0.25rem;display:inline-flex;gap:0.25rem;">
             <button class="sport-tab active-tab" data-sport="mlb" type="button">⚾ MLB</button>
             <button class="sport-tab" data-sport="nfl" type="button">🏈 NFL</button>
+            <button class="sport-tab" data-sport="nba" type="button">🏀 NBA</button>
             <button class="sport-tab" data-sport="nhl" type="button">🏒 NHL</button>
             <button class="sport-tab" data-sport="soccer" type="button">⚽ Soccer</button>
         </div>
@@ -907,6 +908,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     function sportLabel() {
         if (currentSport === 'mlb') return 'MLB';
         if (currentSport === 'nfl') return 'NFL';
+        if (currentSport === 'nba') return 'NBA';
         if (currentSport === 'nhl') return 'NHL';
         if (currentSport === 'soccer') return 'Soccer';
         return 'MLB';
@@ -1024,11 +1026,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (currentMode === 'lines') {
             if (currentSport === 'mlb') loadMLBLines();
             else if (currentSport === 'nfl') loadNFLProps();
+            else if (currentSport === 'nba') loadNBALines();
             else if (currentSport === 'soccer') loadSoccerLines();
             else loadNHLLines();
         } else {
             if (currentSport === 'mlb') loadMLBProps();
             else if (currentSport === 'nfl') loadNFLProps();
+            else if (currentSport === 'nba') loadNBAProps();
             else if (currentSport === 'soccer') loadSoccerProps();
             else loadNHLProps();
         }
@@ -1076,6 +1080,37 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         } catch(e) {
             console.error('[MLB] Error loading best lines:', e);
             document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">MLB lines temporarily unavailable.</div>`;
+        }
+    }
+
+
+    async function loadNBALines() {
+        showSkeleton();
+        try {
+            const res = await fetch('/api/nba/odds?t=' + Date.now());
+            const data = await res.json();
+            const noVigPicks = data.no_vig_picks || data.picks || [];
+            const edgePicks = data.edge_picks || [];
+            const counts = data.counts || { no_vig: noVigPicks.length, edge: edgePicks.length, implied: 0 };
+            if (noVigPicks.length === 0 && edgePicks.length === 0) {
+                document.getElementById('player-props-container').innerHTML = `
+                    <div style="text-align:center;padding:4rem 0;">
+                        <div style="font-size:3rem;margin-bottom:1rem;">🏀</div>
+                        <p style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;color:#0F2406;margin:0 0 0.5rem;">No NBA lines available right now.</p>
+                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:#6B9E5A;">NBA lines refresh when games are scheduled and sportsbooks post markets.</p>
+                    </div>`;
+                document.getElementById('prop-count-display').textContent = '0 picks';
+                return;
+            }
+            const impliedCount = counts.implied || noVigPicks.filter(p => p.implied_only).length;
+            const twoSidedCount = noVigPicks.length - impliedCount;
+            document.getElementById('prop-count-display').textContent = impliedCount > 0
+                ? `${twoSidedCount} two-sided · ${impliedCount} implied · ${edgePicks.length} edge`
+                : `${noVigPicks.length} lines · ${edgePicks.length} edge`;
+            renderLinesBoard(noVigPicks, edgePicks, counts, 'NBA');
+        } catch(e) {
+            console.error('[NBA] Error loading best lines:', e);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NBA lines temporarily unavailable.</div>`;
         }
     }
 
@@ -1188,7 +1223,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const mt = pick.market_type || '';
         let marketBadge = '';
         if (mt === 'moneyline') marketBadge = `<span style="background:#E8F5E1;color:#2D6E0F;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">💰 ML</span>`;
-        else if (mt === 'spread') marketBadge = `<span style="background:#E8F5E1;color:#2D6E0F;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
+        else if (mt === 'spread') marketBadge = `<span style="background:#E8F5E1;color:#2D6E0F;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">📐 ${pick.sport==='NHL'?'PL':pick.sport==='MLB'?'RL':'SP'}</span>`;
         else if (mt === 'total')  marketBadge = `<span style="background:#E8F5E1;color:#3A9012;font-size:0.65em;padding:0.15rem 0.45rem;border-radius:0.3rem;font-family:'Inter',sans-serif;">📊 O/U</span>`;
 
         let gameTimeHtml = '';
@@ -1260,7 +1295,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const mt = pick.market_type || '';
         let marketBadge = '';
         if (mt === 'moneyline') marketBadge = `<span style="background:#E8F5E1;color:#2D6E0F;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">💰 ML</span>`;
-        else if (mt === 'spread') marketBadge = `<span style="background:#E8F5E1;color:#2D6E0F;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">📐 ${pick.sport==='NHL'?'PL':'RL'}</span>`;
+        else if (mt === 'spread') marketBadge = `<span style="background:#E8F5E1;color:#2D6E0F;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">📐 ${pick.sport==='NHL'?'PL':pick.sport==='MLB'?'RL':'SP'}</span>`;
         else if (mt === 'total')  marketBadge = `<span style="background:#E8F5E1;color:#3A9012;font-size:0.62em;padding:0.15rem 0.4rem;border-radius:0.3rem;">📊 O/U</span>`;
 
         let gameTimeHtml = '';
@@ -1484,6 +1519,67 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         } catch(e) {
             console.error('[Soccer] Error loading props:', e);
             document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">Soccer props unavailable — no games scheduled.</div>`;
+        }
+    }
+
+
+    async function loadNBAProps() {
+        setPropsLabel();
+        showSkeleton();
+        try {
+            const [propsRes, envRes] = await Promise.all([
+                fetch('/api/nba/props?t=' + Date.now()),
+                fetch('/api/nba/environment?t=' + Date.now()).catch(() => ({ json: async () => ({}) }))
+            ]);
+            const data = await propsRes.json();
+            const envData = await envRes.json().catch(() => ({}));
+            const rawProps = Array.isArray(data) ? data : (data.props || []);
+            console.log(`[BOARD] NBA props received:`, rawProps.length);
+            allProps = rawProps;
+            environmentData = envData.environments || {};
+            matchupData = {};
+            if (allProps.length === 0) {
+                try {
+                    const oddsRes = await fetch('/api/nba/odds?t=' + Date.now());
+                    const oddsData = await oddsRes.json();
+                    const linePicks = oddsData.no_vig_picks || oddsData.picks || [];
+                    if (linePicks.length > 0) {
+                        allProps = linePicks;
+                        allFilteredProps = linePicks;
+                        matchupData = null;
+                        document.getElementById('prop-count-display').textContent = `${linePicks.length} games`;
+                        displayProps();
+                        return;
+                    }
+                } catch(e) { console.warn('[NBA] Moneyline fallback failed:', e); }
+                const msg = data.message || 'NBA props refresh daily — check back when games are scheduled.';
+                document.getElementById('player-props-container').innerHTML = `
+                  <div style="text-align:center;padding:3rem 1rem;max-width:420px;margin:0 auto;">
+                    <div style="font-size:2.5rem;margin-bottom:1rem;">🏀</div>
+                    <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:1.25rem;font-weight:700;color:#0F2406;text-transform:uppercase;margin-bottom:0.5rem;">NBA Props Not Available Yet</h4>
+                    <p style="font-family:'Inter',sans-serif;font-size:0.875rem;color:#6B9E5A;line-height:1.6;margin-bottom:1rem;">${msg}</p>
+                    <p style="font-family:'Inter',sans-serif;font-size:0.8rem;color:#A0BF96;">Props are released by sportsbooks closer to tipoff. The board updates automatically.</p>
+                  </div>`;
+                document.getElementById('prop-count-display').textContent = '0 props';
+                return;
+            }
+            allProps.forEach(p => {
+                const rawKey = (p.away_team && p.home_team) ? `${p.away_team} @ ${p.home_team}` : 'NBA Props';
+                let envLabel = '';
+                if (environmentData && environmentData[rawKey]) {
+                    const e = environmentData[rawKey].environment || '';
+                    if (/high/i.test(e)) envLabel = 'HIGH SCORING';
+                    else if (/low/i.test(e)) envLabel = 'LOW SCORING';
+                }
+                const key = envLabel ? `${rawKey} — ${envLabel}` : rawKey;
+                if (!matchupData[key]) matchupData[key] = [];
+                matchupData[key].push(p);
+            });
+            if (Object.keys(matchupData).length === 0) matchupData = null;
+            displayTodaysGames();
+        } catch(e) {
+            console.error('[NBA] Error loading props:', e);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NBA props unavailable — no games scheduled or off-season.</div>`;
         }
     }
 
@@ -1792,7 +1888,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         const matchupCards = Object.entries(matchupData).map(([matchup, props]) => {
             const propCount = Array.isArray(props) ? props.length : 0;
-            const sportIcon = currentSport === 'mlb' ? '⚾' : currentSport === 'nhl' ? '🏒' : currentSport === 'soccer' ? '⚽' : '🏈';
+            const sportIcon = currentSport === 'mlb' ? '⚾' : currentSport === 'nba' ? '🏀' : currentSport === 'nhl' ? '🏒' : currentSport === 'soccer' ? '⚽' : '🏈';
             let displayMatchup = matchup, environmentLabel = '';
             if (matchup.includes(' — ')) { const parts = matchup.split(' — '); displayMatchup = parts[0]; environmentLabel = parts[1]; }
             const teamParts = displayMatchup.split(' @ ');

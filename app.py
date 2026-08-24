@@ -1588,6 +1588,261 @@ def api_soccer_gamelines():
         return jsonify({"games": [], "environments": {}, "count": 0, "sport": "Soccer", "error": str(e)}), 500
 
 
+
+
+def _build_game_line_payload(raw_games, sport_label, spread_label="Spread", total_label="Game Total"):
+    """Normalize h2h/spreads/totals Odds API games into dashboard no-vig picks."""
+    from ev_engine import evaluate_pick
+
+    picks = []
+    for game in raw_games or []:
+        home = game.get("home_team", "")
+        away = game.get("away_team", "")
+        game_time = game.get("commence_time", "")
+        matchup = f"{away} @ {home}"
+
+        h2h_home = []
+        h2h_away = []
+        spread_sides = {}
+        total_over_prices = []
+        total_under_prices = []
+        total_point = None
+
+        for bk in game.get("bookmakers", []):
+            bk_name = bk.get("title", "").lower()
+            for market in bk.get("markets", []):
+                mk = market.get("key", "")
+                outcomes = market.get("outcomes", [])
+
+                if mk == "h2h" and len(outcomes) >= 2:
+                    for outcome in outcomes:
+                        other = next((x for x in outcomes if x != outcome), None)
+                        if not other:
+                            continue
+                        price = outcome.get("price")
+                        opp_price = other.get("price")
+                        if price is None or opp_price is None:
+                            continue
+                        if outcome.get("name") == home:
+                            h2h_home.append({"book": bk_name, "over_price": price, "under_price": opp_price})
+                        elif outcome.get("name") == away:
+                            h2h_away.append({"book": bk_name, "over_price": price, "under_price": opp_price})
+
+                elif mk == "spreads" and len(outcomes) >= 2:
+                    for outcome in outcomes:
+                        other = next((x for x in outcomes if x != outcome), None)
+                        if not other:
+                            continue
+                        team = outcome.get("name", "")
+                        price = outcome.get("price")
+                        point = outcome.get("point")
+                        opp_price = other.get("price")
+                        if price is None or opp_price is None or point is None:
+                            continue
+                        spread_sides.setdefault((team, point), []).append({
+                            "book": bk_name,
+                            "over_price": price,
+                            "under_price": opp_price,
+                        })
+
+                elif mk == "totals" and len(outcomes) >= 2:
+                    over_o = next((o for o in outcomes if o.get("name") == "Over"), None)
+                    under_o = next((o for o in outcomes if o.get("name") == "Under"), None)
+                    if over_o and under_o:
+                        over_price = over_o.get("price")
+                        under_price = under_o.get("price")
+                        point = over_o.get("point")
+                        if over_price is not None and under_price is not None and point is not None:
+                            total_point = point
+                            total_over_prices.append({"book": bk_name, "over_price": over_price, "under_price": under_price})
+                            total_under_prices.append({"book": bk_name, "over_price": under_price, "under_price": over_price})
+
+        for team, prices in [(home, h2h_home), (away, h2h_away)]:
+            if not prices:
+                continue
+            ev = evaluate_pick(team, "h2h", "over", None, prices, game_time)
+            no_vig_prob = round((ev["fair_probability"] or 0) * 100, 1)
+            if no_vig_prob < 52.0:
+                continue
+            picks.append({
+                "player": team,
+                "stat": "h2h",
+                "stat_label": "Moneyline Win",
+                "line": None,
+                "no_vig_prob": no_vig_prob,
+                "fair_odds": ev["fair_odds"],
+                "ev_pct": ev["ev_pct"],
+                "edge_pct": ev["edge_pct"],
+                "confidence_tier": ev["confidence_tier"],
+                "best_over_price": ev["best_offered_odds"],
+                "best_book": ev["best_book"],
+                "break_even_prob": round((ev["break_even_prob"] or 0) * 100, 1),
+                "book_count": ev["book_count"],
+                "matchup": matchup,
+                "game_time": game_time,
+                "sport": sport_label,
+                "market_type": "moneyline",
+                "all_books": prices,
+                "passes_threshold": ev["passes_threshold"],
+                "surfaced": ev["passes_threshold"],
+            })
+
+        for (team, point), prices in spread_sides.items():
+            ev = evaluate_pick(team, "spreads", "over", point, prices, game_time)
+            no_vig_prob = round((ev["fair_probability"] or 0) * 100, 1)
+            if no_vig_prob < 50.0:
+                continue
+            picks.append({
+                "player": team,
+                "stat": "spreads",
+                "stat_label": f"{spread_label} {'+' if point > 0 else ''}{point}",
+                "line": point,
+                "no_vig_prob": no_vig_prob,
+                "fair_odds": ev["fair_odds"],
+                "ev_pct": ev["ev_pct"],
+                "edge_pct": ev["edge_pct"],
+                "confidence_tier": ev["confidence_tier"],
+                "best_over_price": ev["best_offered_odds"],
+                "best_book": ev["best_book"],
+                "break_even_prob": round((ev["break_even_prob"] or 0) * 100, 1),
+                "book_count": ev["book_count"],
+                "matchup": matchup,
+                "game_time": game_time,
+                "sport": sport_label,
+                "market_type": "spread",
+                "all_books": prices,
+                "passes_threshold": ev["passes_threshold"],
+                "surfaced": ev["passes_threshold"],
+            })
+
+        for side_label, prices, side in [
+            (f"{total_label} Over {total_point}", total_over_prices, "over"),
+            (f"{total_label} Under {total_point}", total_under_prices, "under"),
+        ]:
+            if not prices or total_point is None:
+                continue
+            ev = evaluate_pick(matchup, "totals", side, total_point, prices, game_time)
+            no_vig_prob = round((ev["fair_probability"] or 0) * 100, 1)
+            if no_vig_prob < 50.0:
+                continue
+            picks.append({
+                "player": matchup,
+                "stat": "totals",
+                "stat_label": side_label,
+                "line": total_point,
+                "no_vig_prob": no_vig_prob,
+                "fair_odds": ev["fair_odds"],
+                "ev_pct": ev["ev_pct"],
+                "edge_pct": ev["edge_pct"],
+                "confidence_tier": ev["confidence_tier"],
+                "best_over_price": ev["best_offered_odds"],
+                "best_book": ev["best_book"],
+                "break_even_prob": round((ev["break_even_prob"] or 0) * 100, 1),
+                "book_count": ev["book_count"],
+                "matchup": matchup,
+                "game_time": game_time,
+                "sport": sport_label,
+                "market_type": "total",
+                "all_books": prices,
+                "passes_threshold": ev["passes_threshold"],
+                "surfaced": ev["passes_threshold"],
+            })
+
+    edge_picks = [
+        p for p in picks
+        if p.get("ev_pct") is not None and p.get("ev_pct") > 0 and p.get("no_vig_prob", 0) >= 65.0
+    ]
+    edge_picks.sort(key=lambda p: -(p.get("ev_pct") or 0))
+    no_vig_picks = [p for p in picks if (p.get("no_vig_prob") or 0) >= 52.0]
+    no_vig_picks.sort(key=lambda p: -(p.get("no_vig_prob") or 0))
+    avg_ev = round(sum(p.get("ev_pct") or 0 for p in edge_picks) / len(edge_picks), 1) if edge_picks else 0
+
+    return {
+        "no_vig_picks": no_vig_picks[:30],
+        "edge_picks": edge_picks,
+        "picks": no_vig_picks[:30],
+        "counts": {
+            "no_vig": len(no_vig_picks),
+            "edge": len(edge_picks),
+            "implied": len([p for p in no_vig_picks if p.get("implied_only")]),
+        },
+        "count": len(no_vig_picks),
+        "sport": sport_label,
+        "avg_ev": avg_ev,
+        "tiers": {
+            "LOCK": len([p for p in edge_picks if p.get("confidence_tier") == "LOCK"]),
+            "FIRE": len([p for p in edge_picks if p.get("confidence_tier") == "FIRE"]),
+            "EDGE": len([p for p in edge_picks if p.get("confidence_tier") == "EDGE"]),
+        },
+    }
+
+
+@app.route("/api/nba/props")
+def api_nba_props():
+    """NBA player props — serves from file cache, fetches on cache miss."""
+    try:
+        from enrichment import load_props_from_file
+
+        cache_file = "/var/data/nba_props_cache.json"
+        cache_fresh = False
+        if os.path.exists(cache_file):
+            age_seconds = time.time() - os.path.getmtime(cache_file)
+            cache_fresh = age_seconds < 82800
+
+        if cache_fresh:
+            props = load_props_from_file(cache_file)
+            if props:
+                logger.info(f"[NBA PROPS] Serving {len(props)} from cache")
+                return jsonify({
+                    "props": props,
+                    "count": len(props),
+                    "sport": "NBA",
+                    "cached": True,
+                    "tiers": {
+                        "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                        "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                        "LOW": len([p for p in props if p.get("confidence_tier") == "LOW"]),
+                    },
+                })
+
+        logger.info("[NBA PROPS] Cache miss - fetching")
+        props = _fetch_and_process_nba_props()
+        return jsonify({
+            "props": props,
+            "count": len(props),
+            "sport": "NBA",
+            "cached": False,
+            "status": "ready" if props else "not_available",
+            "message": "NBA props refresh daily - check back when games are scheduled" if not props else "",
+        })
+    except Exception as e:
+        logger.error(f"[NBA] /api/nba/props error: {e}")
+        return jsonify({"props": [], "count": 0, "sport": "NBA", "error": str(e)}), 500
+
+
+@app.route("/api/nba/odds")
+def api_nba_odds():
+    """Curated NBA picks — h2h, spreads, totals — evaluated with EV engine."""
+    try:
+        from nba_odds_api import fetch_nba_game_odds
+        raw_games = fetch_nba_game_odds()
+        payload = _build_game_line_payload(raw_games, "NBA", spread_label="Spread", total_label="Game Total")
+        return jsonify(payload)
+    except Exception as e:
+        logger.error(f"[NBA] /api/nba/odds error: {e}")
+        return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NBA", "error": str(e)}), 500
+
+
+@app.route("/api/nba/environment")
+def api_nba_environment():
+    try:
+        from nba_odds_api import get_nba_game_environment_map
+        env_map = get_nba_game_environment_map()
+        return jsonify({"environments": env_map, "count": len(env_map), "sport": "NBA"})
+    except Exception as e:
+        logger.error(f"[NBA ENV] error: {e}")
+        return jsonify({"environments": {}, "count": 0, "sport": "NBA", "error": str(e)}), 500
+
 @app.route("/api/nhl/odds")
 def api_nhl_odds():
     """Curated NHL picks — h2h, spreads, totals — evaluated with EV engine."""
@@ -2352,6 +2607,38 @@ def _fetch_and_process_soccer_props():
         return []
 
 
+
+def _fetch_and_process_nba_props():
+    """Fetch, group, and cache NBA props."""
+    try:
+        from nba_odds_api import fetch_player_props
+        from odds_api import group_props_by_player as _group_props_by_player
+        from enrichment import cache_props_to_file, load_props_from_file
+
+        logger.info("[NBA PROPS] Starting fetch...")
+        try:
+            os.makedirs('/var/data', exist_ok=True)
+        except OSError:
+            pass
+
+        raw = fetch_player_props()
+        if not raw:
+            logger.info("[NBA PROPS] No raw props - checking stale cache")
+            stale = load_props_from_file("/var/data/nba_props_cache.json")
+            return stale or []
+
+        props = _group_props_by_player(raw)
+        if not props:
+            logger.warning("[NBA PROPS] 0 after grouping")
+            return []
+
+        cache_props_to_file(props, "/var/data/nba_props_cache.json")
+        logger.info(f"[NBA PROPS] Cached {len(props)}")
+        return props
+    except Exception as e:
+        logger.error(f"[NBA PROPS] failed: {e}", exc_info=True)
+        return []
+
 def _fetch_and_cache_soccer_game_lines():
     """Fetch soccer game lines (h2h 3-way + totals) and cache to a SEPARATE
     file from player props so neither overwrites the other."""
@@ -2463,6 +2750,19 @@ scheduler.add_job(
     timezone="America/Phoenix",
     id="nhl_props_daily",
     name="NHL Props Daily 7:15AM PHX",
+    replace_existing=True
+)
+
+
+# NBA props — 7:30 AM PHX daily (staggered after NHL)
+scheduler.add_job(
+    func=lambda: _fetch_and_process_nba_props(),
+    trigger="cron",
+    hour=7,
+    minute=30,
+    timezone="America/Phoenix",
+    id="nba_props_daily",
+    name="NBA Props Daily 7:30AM PHX",
     replace_existing=True
 )
 
@@ -2919,6 +3219,10 @@ def refresh_props():
                 _fetch_and_process_nhl_props()
             except Exception as e:
                 logger.warning(f"[REFRESH] NHL props error: {e}")
+            try:
+                _fetch_and_process_nba_props()
+            except Exception as e:
+                logger.warning(f"[REFRESH] NBA props error: {e}")
 
         _Thread(target=_refresh_all, daemon=True).start()
         memory_cache["last_manual_refresh_ts"] = _time.time()
