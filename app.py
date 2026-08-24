@@ -3969,7 +3969,7 @@ def _send_welcome_email(email, name=""):
     <p>You're receiving this because you subscribed to Mora Assists.</p>
     <p>Mora Bets · Free sports analytics tool</p>
     <p style="text-align:center;margin-top:16px;font-size:13px;color:#6B9E5A;">
-      <a href="https://billing.stripe.com/p/login/8x2dR26GX2Hf9p05qJ4Vy00"
+      <a href="https://billing.stripe.com/p/login/aFa7sK6eh7MF4YZ1Oa0gw00"
          style="color:#4CBB17;text-decoration:none;font-weight:600;">
         Manage your subscription →
       </a>
