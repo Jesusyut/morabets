@@ -169,7 +169,17 @@ def _sync_to_brevo_contact(email, name="", phone="", source="daily_dashboard_tri
         attributes['LASTNAME'] = last_name
     cleaned_phone = (phone or '').strip()
     if cleaned_phone:
-        attributes['PHONE'] = cleaned_phone
+        phone_digits = ''.join(ch for ch in cleaned_phone if ch.isdigit())
+        normalized_sms = cleaned_phone
+        if len(phone_digits) == 10:
+            normalized_sms = f'+1{phone_digits}'
+        elif len(phone_digits) == 11 and phone_digits.startswith('1'):
+            normalized_sms = f'+{phone_digits}'
+        elif cleaned_phone.startswith('+'):
+            normalized_sms = '+' + phone_digits if phone_digits else cleaned_phone
+
+        attributes['PHONE'] = normalized_sms
+        attributes['SMS'] = normalized_sms
 
     payload = {
         'email': normalized_email,
