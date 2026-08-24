@@ -1388,7 +1388,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     async function loadMLBProps() {
         setPropsLabel();
         showSkeleton();
-        await loadPlayerPropsGeneric('/player_props', '/api/mlb/environment');
+        await loadPlayerPropsGeneric('/api/mlb/props', '/api/mlb/environment');
         if (allProps.length < 5) {
             try {
                 const oddsRes = await fetch('/api/odds');
@@ -1673,11 +1673,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 const envData = await envResponse.json();
                 if (envData && envData.environments) environmentData = envData.environments;
             } catch { environmentData = null; }
-            if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+            if (Array.isArray(data)) {
+                matchupData = null; allProps = data;
+            } else if (data && Array.isArray(data.props)) {
+                matchupData = null; allProps = data.props;
+            } else if (typeof data === 'object' && data !== null) {
                 matchupData = data; allProps = [];
                 Object.values(data).forEach(mp => { if (Array.isArray(mp)) allProps = allProps.concat(mp); });
-            } else if (Array.isArray(data)) {
-                matchupData = null; allProps = data;
             } else { matchupData = null; allProps = []; }
             allProps = allProps.filter(prop => {
                 const st = prop.stat || prop.stat_type || '';
