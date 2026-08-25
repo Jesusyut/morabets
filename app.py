@@ -3398,41 +3398,53 @@ def nfl_props_debug():
 @app.route("/api/refresh-props", methods=["POST"])
 def refresh_props():
     """
-    Manual props refresh — called by the dashboard refresh button.
-    Rate-limited to twice daily to protect API quota.
+    Manual board refresh — called by the dashboard refresh button.
+    Rate-limited to twice daily after a usable cache exists to protect API quota.
     Runs the fetch in a background thread so the response is instant.
     """
     import time as _time
+
+    cache_files = [
+        "/var/data/mlb_props_cache.json",
+        "/var/data/nhl_props_cache.json",
+        "/var/data/nba_props_cache.json",
+        "/var/data/soccer_props_cache.json",
+        "/var/data/mlb_odds_cache.json",
+        "/var/data/nhl_odds_cache.json",
+        "/var/data/nba_odds_cache.json",
+        "/var/data/soccer_lines_cache.json",
+    ]
+    has_any_cache = any(os.path.exists(filename) for filename in cache_files)
     last = memory_cache.get("last_manual_refresh_ts")
-    if last and (_time.time() - last) < 43200:
+    if has_any_cache and last and (_time.time() - last) < 43200:
         return jsonify({
-            "status":  "rate_limited",
-            "message": "Props already refreshed in this 12-hour window. Using cached data."
+            "status": "rate_limited",
+            "message": "Board already refreshed in this 12-hour window. Using cached data."
         }), 429
 
     try:
         from threading import Thread as _Thread
 
         def _refresh_all():
-            try:
-                _fetch_and_process_mlb_props()
-            except Exception as e:
-                logger.warning(f"[REFRESH] MLB props error: {e}")
-            try:
-                _fetch_and_process_nhl_props()
-            except Exception as e:
-                logger.warning(f"[REFRESH] NHL props error: {e}")
-            try:
-                _fetch_and_process_nba_props()
-            except Exception as e:
-                logger.warning(f"[REFRESH] NBA props error: {e}")
+            jobs = [
+                ("game lines", _fetch_and_cache_game_lines),
+                ("MLB props", _fetch_and_process_mlb_props),
+                ("NHL props", _fetch_and_process_nhl_props),
+                ("NBA props", _fetch_and_process_nba_props),
+                ("Soccer props", _fetch_and_process_soccer_props),
+            ]
+            for label, job in jobs:
+                try:
+                    job()
+                except Exception as e:
+                    logger.warning(f"[REFRESH] {label} error: {e}")
+            memory_cache["last_manual_refresh_ts"] = _time.time()
 
         _Thread(target=_refresh_all, daemon=True).start()
-        memory_cache["last_manual_refresh_ts"] = _time.time()
 
         return jsonify({
-            "status":  "refreshing",
-            "message": "Props updating in background. Reload in 30 seconds."
+            "status": "refreshing",
+            "message": "Board cache updating in background. Reload in 30 seconds."
         })
 
     except Exception as e:
