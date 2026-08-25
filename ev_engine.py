@@ -267,9 +267,9 @@ def evaluate_pick(
     # This prevents low-probability underdogs (+270 at 29%) from being LOCKs.
     fair_prob_val = result.get("fair_probability") or 0
 
-    if ev > 0 and fair_prob_val >= 0.65:
+    if ev > 0 and fair_prob_val >= 0.55:
         result["passes_threshold"] = True
-        if ev >= 5.0 and fair_prob_val >= 0.70:
+        if ev >= 5.0 and fair_prob_val >= 0.65:
             result["confidence_tier"] = "LOCK"
         elif ev >= 2.0:
             result["confidence_tier"] = "FIRE"
@@ -283,7 +283,7 @@ def evaluate_pick(
         result["confidence_tier"]  = "LOW"
         result["rejection_reason"] = (
             f"Probability {round(fair_prob_val * 100, 1)}% "
-            f"below 65% minimum for edge picks"
+            f"below 55% minimum for edge picks"
         )
 
     logger.info(

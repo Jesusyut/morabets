@@ -1000,47 +1000,72 @@ def group_props_by_matchup(props_data):
         except:
             return {"All Games": props_data if isinstance(props_data, list) else []}
 
+PROP_CACHE_MAX_AGE_SECONDS = 43200  # twice-daily refresh window
+LINE_CACHE_MAX_AGE_SECONDS = 43200
+
+def _load_json_cache_file(cache_file):
+    try:
+        from enrichment import load_props_from_file
+        if os.path.exists(cache_file):
+            return load_props_from_file(cache_file)
+    except Exception as e:
+        logger.warning(f"[CACHE] Could not read {cache_file}: {e}")
+    return []
+
+def _json_cache_is_fresh(cache_file, max_age_seconds):
+    try:
+        return os.path.exists(cache_file) and (time.time() - os.path.getmtime(cache_file)) < max_age_seconds
+    except OSError:
+        return False
+
+def _write_json_cache_file(cache_file, payload):
+    try:
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, 'w') as f:
+            json.dump(payload, f)
+    except Exception as e:
+        logger.warning(f"[CACHE] Could not write {cache_file}: {e}")
+
+def _cache_age_seconds(cache_file):
+    try:
+        if os.path.exists(cache_file):
+            return round(time.time() - os.path.getmtime(cache_file))
+    except OSError:
+        pass
+    return None
+
 @app.route("/api/mlb/props")
 def mlb_props():
     try:
         from enrichment import load_props_from_file
 
         cache_file = "/var/data/mlb_props_cache.json"
-        cache_fresh = False
+        props = _load_json_cache_file(cache_file)
+        if props:
+            fresh = _json_cache_is_fresh(cache_file, PROP_CACHE_MAX_AGE_SECONDS)
+            logger.info(f"[MLB PROPS] Serving {len(props)} from {'fresh' if fresh else 'stale'} cache")
+            return jsonify({
+                "props":  props,
+                "count":  len(props),
+                "sport":  "MLB",
+                "cached": True,
+                "stale": not fresh,
+                "cache_age_seconds": _cache_age_seconds(cache_file),
+                "tiers": {
+                    "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                    "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                    "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
+                }
+            })
 
-        if os.path.exists(cache_file):
-            age_seconds = time.time() - os.path.getmtime(cache_file)
-            cache_fresh = age_seconds < 82800  # 23 hours
-
-        if cache_fresh:
-            props = load_props_from_file(cache_file)
-            if props:
-                logger.info(f"[MLB PROPS] Serving {len(props)} from cache")
-                return jsonify({
-                    "props":  props,
-                    "count":  len(props),
-                    "sport":  "MLB",
-                    "cached": True,
-                    "tiers": {
-                        "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
-                        "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
-                        "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
-                    }
-                })
-
-        logger.info("[MLB PROPS] Cache miss — fetching")
-        props = _fetch_and_process_mlb_props()
-
+        logger.info("[MLB PROPS] No cache available — waiting for scheduled refresh")
         return jsonify({
-            "props":  props,
-            "count":  len(props),
-            "sport":  "MLB",
+            "props": [],
+            "count": 0,
+            "sport": "MLB",
             "cached": False,
-            "tiers": {
-                "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
-                "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
-                "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
-            }
+            "status": "not_available",
+            "message": "MLB props refresh twice daily — check back after the next board update."
         })
 
     except Exception as e:
@@ -1216,10 +1241,21 @@ def get_odds():
         return jsonify({"error": "Failed to retrieve odds"}), 500
 
 @app.route("/api/mlb/odds")
-def mlb_odds():
+def mlb_odds(force_refresh=False):
     """Curated MLB picks — h2h, spreads, totals — with no-vig probability."""
     try:
         from ev_engine import evaluate_pick
+
+        cache_file = "/var/data/mlb_odds_cache.json"
+        cached_payload = _load_json_cache_file(cache_file)
+        if cached_payload and (not force_refresh or _json_cache_is_fresh(cache_file, LINE_CACHE_MAX_AGE_SECONDS)):
+            cached_payload["cached"] = True
+            cached_payload["cache_age_seconds"] = _cache_age_seconds(cache_file)
+            return jsonify(cached_payload)
+
+        if not force_refresh:
+            logger.info("[MLB ODDS] No cache available — waiting for scheduled refresh")
+            return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "MLB", "cached": False, "status": "not_available", "message": "MLB lines refresh twice daily."})
 
         odds_api_key = os.environ.get("ODDS_API_KEY")
         if not odds_api_key:
@@ -1421,13 +1457,13 @@ def mlb_odds():
                 })
 
         # ── Split into two independent lists ──
-        # Edge: positive EV AND 65%+ true probability
+        # Edge: positive EV AND 55%+ true probability
         edge_picks = [
             p for p in picks
             if (
                 p.get("ev_pct") is not None
                 and p.get("ev_pct") > 0
-                and p.get("no_vig_prob", 0) >= 65.0
+                and p.get("no_vig_prob", 0) >= 55.0
             )
         ]
         edge_picks.sort(key=lambda p: -(p.get("ev_pct") or 0))
@@ -1462,7 +1498,7 @@ def mlb_odds():
 
         avg_ev = round(sum(p.get("ev_pct") or 0 for p in edge_picks) / len(edge_picks), 1) if edge_picks else 0
 
-        return jsonify({
+        payload = {
             "no_vig_picks": no_vig_picks[:30],
             "edge_picks":   edge_picks,
             "picks":        no_vig_picks[:30],   # backward compat
@@ -1479,7 +1515,9 @@ def mlb_odds():
                 "FIRE": len([p for p in edge_picks if p.get("confidence_tier") == "FIRE"]),
                 "EDGE": len([p for p in edge_picks if p.get("confidence_tier") == "EDGE"]),
             },
-        })
+        }
+        _write_json_cache_file(cache_file, payload)
+        return jsonify(payload)
 
     except Exception as e:
         logger.error(f"[MLB] /api/mlb/odds error: {e}")
@@ -1616,7 +1654,7 @@ def api_soccer_props():
 
 
 @app.route("/api/soccer/gamelines")
-def api_soccer_gamelines():
+def api_soccer_gamelines(force_refresh=False):
     """
     Soccer game-level lines (MLS + FIFA World Cup): 3-way h2h moneyline + totals.
     Mirrors the MLB Best Lines pattern (/api/mlb/odds): serves fresh file cache
@@ -1631,18 +1669,21 @@ def api_soccer_gamelines():
         games = None
 
         if os.path.exists(cache_file):
-            age_seconds = time.time() - os.path.getmtime(cache_file)
-            if age_seconds < 82800:  # 23 hours
-                try:
-                    with open(cache_file, "r") as f:
-                        games = json.load(f)
-                    logger.info(f"[SOCCER LINES] Serving {len(games)} from cache")
-                except Exception:
-                    games = None
+            try:
+                with open(cache_file, "r") as f:
+                    games = json.load(f)
+                fresh = _json_cache_is_fresh(cache_file, LINE_CACHE_MAX_AGE_SECONDS)
+                logger.info(f"[SOCCER LINES] Serving {len(games)} from {'fresh' if fresh else 'stale'} cache")
+            except Exception:
+                games = None
 
         if games is None:
+            if not force_refresh:
+                logger.info("[SOCCER LINES] No cache available — waiting for scheduled refresh")
+                return jsonify({"games": [], "environments": {}, "count": 0, "sport": "Soccer", "cached": False, "status": "not_available", "message": "Soccer lines refresh twice daily."})
             from soccer_odds_api import fetch_soccer_game_lines
             games = fetch_soccer_game_lines()
+            _write_json_cache_file(cache_file, games or [])
 
         environments = {}
         for g in (games or []):
@@ -1832,7 +1873,7 @@ def _build_game_line_payload(raw_games, sport_label, spread_label="Spread", tota
 
     edge_picks = [
         p for p in picks
-        if p.get("ev_pct") is not None and p.get("ev_pct") > 0 and p.get("no_vig_prob", 0) >= 65.0
+        if p.get("ev_pct") is not None and p.get("ev_pct") > 0 and p.get("no_vig_prob", 0) >= 55.0
     ]
     edge_picks.sort(key=lambda p: -(p.get("ev_pct") or 0))
     no_vig_picks = [p for p in picks if (p.get("no_vig_prob") or 0) >= 52.0]
@@ -1866,36 +1907,32 @@ def api_nba_props():
         from enrichment import load_props_from_file
 
         cache_file = "/var/data/nba_props_cache.json"
-        cache_fresh = False
-        if os.path.exists(cache_file):
-            age_seconds = time.time() - os.path.getmtime(cache_file)
-            cache_fresh = age_seconds < 82800
+        props = _load_json_cache_file(cache_file)
+        if props:
+            fresh = _json_cache_is_fresh(cache_file, PROP_CACHE_MAX_AGE_SECONDS)
+            logger.info(f"[NBA PROPS] Serving {len(props)} from {'fresh' if fresh else 'stale'} cache")
+            return jsonify({
+                "props": props,
+                "count": len(props),
+                "sport": "NBA",
+                "cached": True,
+                "stale": not fresh,
+                "cache_age_seconds": _cache_age_seconds(cache_file),
+                "tiers": {
+                    "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                    "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                    "LOW": len([p for p in props if p.get("confidence_tier") == "LOW"]),
+                },
+            })
 
-        if cache_fresh:
-            props = load_props_from_file(cache_file)
-            if props:
-                logger.info(f"[NBA PROPS] Serving {len(props)} from cache")
-                return jsonify({
-                    "props": props,
-                    "count": len(props),
-                    "sport": "NBA",
-                    "cached": True,
-                    "tiers": {
-                        "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
-                        "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
-                        "LOW": len([p for p in props if p.get("confidence_tier") == "LOW"]),
-                    },
-                })
-
-        logger.info("[NBA PROPS] Cache miss - fetching")
-        props = _fetch_and_process_nba_props()
+        logger.info("[NBA PROPS] No cache available - waiting for scheduled refresh")
         return jsonify({
-            "props": props,
-            "count": len(props),
+            "props": [],
+            "count": 0,
             "sport": "NBA",
             "cached": False,
-            "status": "ready" if props else "not_available",
-            "message": "NBA props refresh daily - check back when games are scheduled" if not props else "",
+            "status": "not_available",
+            "message": "NBA props refresh twice daily - check back when games are scheduled",
         })
     except Exception as e:
         logger.error(f"[NBA] /api/nba/props error: {e}")
@@ -1903,12 +1940,24 @@ def api_nba_props():
 
 
 @app.route("/api/nba/odds")
-def api_nba_odds():
+def api_nba_odds(force_refresh=False):
     """Curated NBA picks — h2h, spreads, totals — evaluated with EV engine."""
     try:
         from nba_odds_api import fetch_nba_game_odds
+        cache_file = "/var/data/nba_odds_cache.json"
+        cached_payload = _load_json_cache_file(cache_file)
+        if cached_payload and (not force_refresh or _json_cache_is_fresh(cache_file, LINE_CACHE_MAX_AGE_SECONDS)):
+            cached_payload["cached"] = True
+            cached_payload["cache_age_seconds"] = _cache_age_seconds(cache_file)
+            return jsonify(cached_payload)
+
+        if not force_refresh:
+            logger.info("[NBA ODDS] No cache available - waiting for scheduled refresh")
+            return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NBA", "cached": False, "status": "not_available", "message": "NBA lines refresh twice daily."})
+
         raw_games = fetch_nba_game_odds()
         payload = _build_game_line_payload(raw_games, "NBA", spread_label="Spread", total_label="Game Total")
+        _write_json_cache_file(cache_file, payload)
         return jsonify(payload)
     except Exception as e:
         logger.error(f"[NBA] /api/nba/odds error: {e}")
@@ -1926,11 +1975,22 @@ def api_nba_environment():
         return jsonify({"environments": {}, "count": 0, "sport": "NBA", "error": str(e)}), 500
 
 @app.route("/api/nhl/odds")
-def api_nhl_odds():
+def api_nhl_odds(force_refresh=False):
     """Curated NHL picks — h2h, spreads, totals — evaluated with EV engine."""
     try:
         from nhl_odds_api import fetch_nhl_game_odds
         from ev_engine import evaluate_pick
+
+        cache_file = "/var/data/nhl_odds_cache.json"
+        cached_payload = _load_json_cache_file(cache_file)
+        if cached_payload and (not force_refresh or _json_cache_is_fresh(cache_file, LINE_CACHE_MAX_AGE_SECONDS)):
+            cached_payload["cached"] = True
+            cached_payload["cache_age_seconds"] = _cache_age_seconds(cache_file)
+            return jsonify(cached_payload)
+
+        if not force_refresh:
+            logger.info("[NHL ODDS] No cache available - waiting for scheduled refresh")
+            return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NHL", "cached": False, "status": "not_available", "message": "NHL lines refresh twice daily."})
 
         raw_games = fetch_nhl_game_odds()
 
@@ -2099,13 +2159,13 @@ def api_nhl_odds():
                 })
 
         # ── Split into two independent lists ──
-        # Edge: positive EV AND 65%+ true probability
+        # Edge: positive EV AND 55%+ true probability
         edge_picks = [
             p for p in picks
             if (
                 p.get("ev_pct") is not None
                 and p.get("ev_pct") > 0
-                and p.get("no_vig_prob", 0) >= 65.0
+                and p.get("no_vig_prob", 0) >= 55.0
             )
         ]
         edge_picks.sort(key=lambda p: -(p.get("ev_pct") or 0))
@@ -2116,7 +2176,7 @@ def api_nhl_odds():
 
         avg_ev = round(sum(p.get("ev_pct") or 0 for p in edge_picks) / len(edge_picks), 1) if edge_picks else 0
 
-        return jsonify({
+        payload = {
             "no_vig_picks": no_vig_picks[:25],
             "edge_picks":   edge_picks,
             "picks":        no_vig_picks[:25],   # backward compat
@@ -2133,11 +2193,31 @@ def api_nhl_odds():
                 "FIRE": len([p for p in edge_picks if p.get("confidence_tier") == "FIRE"]),
                 "EDGE": len([p for p in edge_picks if p.get("confidence_tier") == "EDGE"]),
             },
-        })
+        }
+        _write_json_cache_file(cache_file, payload)
+        return jsonify(payload)
 
     except Exception as e:
         logger.error(f"[NHL] /api/nhl/odds error: {e}")
         return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NHL", "error": str(e)}), 500
+
+
+def _fetch_and_cache_game_lines():
+    """Refresh dashboard game-line caches on the scheduled cadence only."""
+    jobs = [
+        ("MLB", lambda: mlb_odds(force_refresh=True)),
+        ("Soccer", lambda: api_soccer_gamelines(force_refresh=True)),
+        ("NBA", lambda: api_nba_odds(force_refresh=True)),
+        ("NHL", lambda: api_nhl_odds(force_refresh=True)),
+    ]
+    with app.app_context():
+        for sport, job in jobs:
+            try:
+                job()
+                logger.info(f"[{sport} ODDS] Scheduled line cache refresh complete")
+            except Exception as e:
+                logger.warning(f"[{sport} ODDS] Scheduled line cache refresh failed: {e}")
+
 
 
 @app.route("/api/performance")
@@ -2811,64 +2891,64 @@ scheduler = BackgroundScheduler()
 
 # Schedule jobs
 
-# MLB props — 7:00 AM PHX daily (sharp consensus window)
+# MLB props — twice daily PHX (sharp consensus windows)
 scheduler.add_job(
     func=lambda: _fetch_and_process_mlb_props(),
     trigger="cron",
-    hour=7,
+    hour="7,15",
     minute=0,
     timezone="America/Phoenix",
-    id="mlb_props_daily",
-    name="MLB Props Daily 7AM PHX",
+    id="mlb_props_twice_daily",
+    name="MLB Props 7AM + 3PM PHX",
     replace_existing=True
 )
 
-# NHL props — 7:15 AM PHX daily (15 min offset to stagger API calls)
+# NHL props — twice daily PHX (15 min offset to stagger API calls)
 scheduler.add_job(
     func=lambda: _fetch_and_process_nhl_props(),
     trigger="cron",
-    hour=7,
+    hour="7,15",
     minute=15,
     timezone="America/Phoenix",
-    id="nhl_props_daily",
-    name="NHL Props Daily 7:15AM PHX",
+    id="nhl_props_twice_daily",
+    name="NHL Props 7:15AM + 3:15PM PHX",
     replace_existing=True
 )
 
 
-# NBA props — 7:30 AM PHX daily (staggered after NHL)
+# NBA props — twice daily PHX (staggered after NHL)
 scheduler.add_job(
     func=lambda: _fetch_and_process_nba_props(),
     trigger="cron",
-    hour=7,
+    hour="7,15",
     minute=30,
     timezone="America/Phoenix",
-    id="nba_props_daily",
-    name="NBA Props Daily 7:30AM PHX",
+    id="nba_props_twice_daily",
+    name="NBA Props 7:30AM + 3:30PM PHX",
     replace_existing=True
 )
 
-# Soccer props — 7:45 AM PHX daily (after MLB, NHL, board email)
+# Soccer props — twice daily PHX (after MLB/NHL/NBA)
 scheduler.add_job(
     func=fetch_soccer_props_safe,
     trigger="cron",
-    hour=7,
+    hour="7,15",
     minute=45,
     timezone="America/Phoenix",
-    id="soccer_props_daily",
-    name="Soccer Props 7:45AM PHX",
+    id="soccer_props_twice_daily",
+    name="Soccer Props 7:45AM + 3:45PM PHX",
     replace_existing=True
 )
 
 # Game lines refresh twice daily
 scheduler.add_job(
-    func=update_odds,
+    func=_fetch_and_cache_game_lines,
     trigger="cron",
     hour="7,15",
     minute=30,
     timezone="America/Phoenix",
     id="game_lines_twice_daily",
-    name="Game Lines 7:30AM + 3:30PM PHX",
+    name="All Game Lines 7:30AM + 3:30PM PHX",
     replace_existing=True
 )
 
@@ -3085,11 +3165,11 @@ def background_initializer():
             scheduler.add_job(
                 func=_fetch_and_process_mlb_props,
                 trigger='cron',
-                hour=7,
+                hour='7,15',
                 minute=0,
                 timezone='America/Phoenix',
-                id='mlb_props_daily',
-                name='MLB Props Daily 7AM PHX',
+                id='mlb_props_twice_daily',
+                name='MLB Props 7AM + 3PM PHX',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
@@ -3103,11 +3183,11 @@ def background_initializer():
             scheduler.add_job(
                 func=_fetch_and_process_nhl_props,
                 trigger='cron',
-                hour=7,
+                hour='7,15',
                 minute=15,
                 timezone='America/Phoenix',
-                id='nhl_props_daily',
-                name='NHL Props Daily 7:15AM PHX',
+                id='nhl_props_twice_daily',
+                name='NHL Props 7:15AM + 3:15PM PHX',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
@@ -3116,16 +3196,34 @@ def background_initializer():
         except Exception as e:
             logger.warning(f"NHL props job error: {e}")
 
+        # ── REGISTER NBA PROPS JOB ───────────────────────────────
+        try:
+            scheduler.add_job(
+                func=_fetch_and_process_nba_props,
+                trigger='cron',
+                hour='7,15',
+                minute=30,
+                timezone='America/Phoenix',
+                id='nba_props_twice_daily',
+                name='NBA Props 7:30AM + 3:30PM PHX',
+                replace_existing=True,
+                misfire_grace_time=3600,
+                coalesce=True
+            )
+            logger.info("✅ NBA props job registered")
+        except Exception as e:
+            logger.warning(f"NBA props job error: {e}")
+
         # ── REGISTER SOCCER PROPS JOB ────────────────────────────
         try:
             scheduler.add_job(
                 func=fetch_soccer_props_safe,
                 trigger='cron',
-                hour=7,
+                hour='7,15',
                 minute=45,
                 timezone='America/Phoenix',
-                id='soccer_props_daily',
-                name='Soccer Props 7:45AM PHX',
+                id='soccer_props_twice_daily',
+                name='Soccer Props 7:45AM + 3:45PM PHX',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
@@ -3155,13 +3253,13 @@ def background_initializer():
         # ── REGISTER GAME ODDS REFRESH ───────────────────────────
         try:
             scheduler.add_job(
-                func=update_odds,
+                func=_fetch_and_cache_game_lines,
                 trigger='cron',
                 hour='7,15',
                 minute=30,
                 timezone='America/Phoenix',
                 id='game_lines_twice_daily',
-                name='Game Lines 7:30AM + 3:30PM PHX',
+                name='All Game Lines 7:30AM + 3:30PM PHX',
                 replace_existing=True,
                 misfire_grace_time=3600,
                 coalesce=True
@@ -3186,7 +3284,7 @@ def background_initializer():
         import os as _os
         from datetime import datetime as _dt
 
-        def _cache_is_fresh(filepath, max_hours=20):
+        def _cache_is_fresh(filepath, max_hours=10):
             if not _os.path.exists(filepath):
                 return False
             age = (_dt.utcnow().timestamp() - _os.path.getmtime(filepath)) / 3600
@@ -3194,9 +3292,9 @@ def background_initializer():
 
         logger.info("🔄 Priming caches (age-aware)...")
 
-        # MLB props — skip if fetched within 20 hours
+        # MLB props — skip if fetched within 10 hours
         mlb_cache = '/var/data/mlb_props_cache.json'
-        if _cache_is_fresh(mlb_cache, max_hours=20):
+        if _cache_is_fresh(mlb_cache, max_hours=10):
             logger.info("[CACHE] MLB props fresh — skipping fetch")
         else:
             try:
@@ -3205,9 +3303,9 @@ def background_initializer():
             except Exception as e:
                 logger.warning(f"MLB props failed: {e}")
 
-        # NHL props — skip if fetched within 20 hours
+        # NHL props — skip if fetched within 10 hours
         nhl_cache = '/var/data/nhl_props_cache.json'
-        if _cache_is_fresh(nhl_cache, max_hours=20):
+        if _cache_is_fresh(nhl_cache, max_hours=10):
             logger.info("[CACHE] NHL props fresh — skipping fetch")
         else:
             try:
@@ -3216,9 +3314,9 @@ def background_initializer():
             except Exception as e:
                 logger.warning(f"NHL props failed: {e}")
 
-        # Soccer props — skip if fetched within 20 hours
+        # Soccer props — skip if fetched within 10 hours
         soccer_cache = '/var/data/soccer_props_cache.json'
-        if _cache_is_fresh(soccer_cache, max_hours=20):
+        if _cache_is_fresh(soccer_cache, max_hours=10):
             logger.info("[CACHE] Soccer props fresh — skipping fetch")
         else:
             try:
@@ -3241,7 +3339,7 @@ def background_initializer():
                 pass
         if not odds_fresh:
             try:
-                update_odds()
+                _fetch_and_cache_game_lines()
                 _os.makedirs('/var/data', exist_ok=True)
                 with open(odds_flag, 'w') as _f:
                     _f.write(str(_dt.utcnow().timestamp()))
@@ -3278,15 +3376,15 @@ def nfl_props_debug():
 def refresh_props():
     """
     Manual props refresh — called by the dashboard refresh button.
-    Rate-limited to once per 30 minutes to protect API quota.
+    Rate-limited to twice daily to protect API quota.
     Runs the fetch in a background thread so the response is instant.
     """
     import time as _time
     last = memory_cache.get("last_manual_refresh_ts")
-    if last and (_time.time() - last) < 1800:
+    if last and (_time.time() - last) < 43200:
         return jsonify({
             "status":  "rate_limited",
-            "message": "Props refreshed less than 30 minutes ago. Using cached data."
+            "message": "Props already refreshed in this 12-hour window. Using cached data."
         }), 429
 
     try:
