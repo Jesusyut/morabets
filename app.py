@@ -1084,7 +1084,7 @@ def mlb_props():
             })
 
         logger.info("[MLB PROPS] No cache available — queueing guarded background warmup")
-        _queue_cache_warmup("mlb_props", _fetch_and_process_mlb_props)
+        _queue_cache_warmup("mlb_props", _fetch_and_process_mlb_props, min_interval_seconds=300)
         return jsonify({
             "props": [],
             "count": 0,
@@ -1281,7 +1281,7 @@ def mlb_odds(force_refresh=False):
 
         if not force_refresh:
             logger.info("[MLB ODDS] No cache available — queueing guarded background warmup")
-            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines)
+            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines, min_interval_seconds=300)
             return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "MLB", "cached": False, "status": "not_available", "message": "MLB lines are warming up from cache. Refresh shortly."})
 
         odds_api_key = os.environ.get("ODDS_API_KEY")
@@ -1613,7 +1613,7 @@ def api_nhl_props():
             })
 
         logger.info("[NHL PROPS] No cache available — queueing guarded background warmup")
-        _queue_cache_warmup("nhl_props", _fetch_and_process_nhl_props)
+        _queue_cache_warmup("nhl_props", _fetch_and_process_nhl_props, min_interval_seconds=300)
         return jsonify({
             "props":  [],
             "count":  0,
@@ -1657,7 +1657,7 @@ def api_soccer_props():
             })
 
         logger.info("[SOCCER PROPS] No cache available — queueing guarded background warmup")
-        _queue_cache_warmup("soccer_props", _fetch_and_process_soccer_props)
+        _queue_cache_warmup("soccer_props", _fetch_and_process_soccer_props, min_interval_seconds=300)
         return jsonify({
             "props":  [],
             "count":  0,
@@ -1699,7 +1699,7 @@ def api_soccer_gamelines(force_refresh=False):
         if games is None:
             if not force_refresh:
                 logger.info("[SOCCER LINES] No cache available — queueing guarded background warmup")
-                _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines)
+                _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines, min_interval_seconds=300)
                 return jsonify({"games": [], "environments": {}, "count": 0, "sport": "Soccer", "cached": False, "status": "not_available", "message": "Soccer lines are warming up from cache. Refresh shortly."})
             from soccer_odds_api import fetch_soccer_game_lines
             games = fetch_soccer_game_lines()
@@ -1946,7 +1946,7 @@ def api_nba_props():
             })
 
         logger.info("[NBA PROPS] No cache available - queueing guarded background warmup")
-        _queue_cache_warmup("nba_props", _fetch_and_process_nba_props)
+        _queue_cache_warmup("nba_props", _fetch_and_process_nba_props, min_interval_seconds=300)
         return jsonify({
             "props": [],
             "count": 0,
@@ -1974,7 +1974,7 @@ def api_nba_odds(force_refresh=False):
 
         if not force_refresh:
             logger.info("[NBA ODDS] No cache available - queueing guarded background warmup")
-            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines)
+            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines, min_interval_seconds=300)
             return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NBA", "cached": False, "status": "not_available", "message": "NBA lines are warming up from cache. Refresh shortly."})
 
         raw_games = fetch_nba_game_odds()
@@ -2012,7 +2012,7 @@ def api_nhl_odds(force_refresh=False):
 
         if not force_refresh:
             logger.info("[NHL ODDS] No cache available - queueing guarded background warmup")
-            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines)
+            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines, min_interval_seconds=300)
             return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NHL", "cached": False, "status": "not_available", "message": "NHL lines are warming up from cache. Refresh shortly."})
 
         raw_games = fetch_nhl_game_odds()
@@ -3442,30 +3442,52 @@ def refresh_props():
 
 @app.route("/api/cache-check")
 def cache_check():
-    """Quick check of what's in prop cache files."""
-    from enrichment import load_props_from_file
+    """Quick check of the file caches that power the dashboard."""
 
     def file_info(filename):
         if not os.path.exists(filename):
             return {"exists": False, "count": 0, "age_minutes": None, "sample": None}
         age = (time.time() - os.path.getmtime(filename)) / 60
-        props = load_props_from_file(filename)
-        return {
-            "exists":      True,
-            "count":       len(props),
-            "age_minutes": round(age, 1),
-            "sample":      props[0] if props else None,
-            "tiers": {
-                "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
-                "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
-                "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
+        try:
+            with open(filename, "r") as f:
+                payload = json.load(f)
+        except Exception as e:
+            return {
+                "exists": True,
+                "count": 0,
+                "age_minutes": round(age, 1),
+                "sample": None,
+                "error": str(e),
             }
+
+        if isinstance(payload, dict):
+            rows = payload.get("props") or payload.get("picks") or payload.get("no_vig_picks") or []
+        elif isinstance(payload, list):
+            rows = payload
+        else:
+            rows = []
+
+        return {
+            "exists": True,
+            "count": len(rows),
+            "age_minutes": round(age, 1),
+            "sample": rows[0] if rows else None,
         }
 
     return jsonify({
-        "mlb":       file_info("/var/data/mlb_props_cache.json"),
-        "nhl":       file_info("/var/data/nhl_props_cache.json"),
-        "timestamp": datetime.utcnow().isoformat()
+        "props": {
+            "mlb": file_info("/var/data/mlb_props_cache.json"),
+            "nhl": file_info("/var/data/nhl_props_cache.json"),
+            "nba": file_info("/var/data/nba_props_cache.json"),
+            "soccer": file_info("/var/data/soccer_props_cache.json"),
+        },
+        "lines": {
+            "mlb": file_info("/var/data/mlb_odds_cache.json"),
+            "nhl": file_info("/var/data/nhl_odds_cache.json"),
+            "nba": file_info("/var/data/nba_odds_cache.json"),
+            "soccer": file_info("/var/data/soccer_lines_cache.json"),
+        },
+        "timestamp": datetime.utcnow().isoformat(),
     })
 
 
