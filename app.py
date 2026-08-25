@@ -1035,6 +1035,14 @@ def _cache_age_seconds(cache_file):
     return None
 
 _cache_warmups = {}
+_cache_job_status = {}
+
+def _record_cache_job(cache_key, status, message=None):
+    _cache_job_status[cache_key] = {
+        "status": status,
+        "message": message,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
 
 def _queue_cache_warmup(cache_key, refresh_func, min_interval_seconds=43200):
     """Kick off one background cache refresh per window when Render has no file cache."""
@@ -1049,11 +1057,15 @@ def _queue_cache_warmup(cache_key, refresh_func, min_interval_seconds=43200):
     def _run():
         try:
             logger.info(f"[CACHE] Background warmup started for {cache_key}")
+            _record_cache_job(cache_key, "started")
             with app.app_context():
-                refresh_func()
+                result = refresh_func()
+            result_count = len(result) if isinstance(result, list) else None
+            _record_cache_job(cache_key, "completed", f"result_count={result_count}")
             logger.info(f"[CACHE] Background warmup completed for {cache_key}")
         except Exception as e:
-            logger.warning(f"[CACHE] Background warmup failed for {cache_key}: {e}")
+            _record_cache_job(cache_key, "failed", str(e))
+            logger.warning(f"[CACHE] Background warmup failed for {cache_key}: {e}", exc_info=True)
 
     from threading import Thread
     Thread(target=_run, daemon=True).start()
@@ -3434,10 +3446,17 @@ def refresh_props():
                 ("Soccer props", _fetch_and_process_soccer_props),
             ]
             for label, job in jobs:
+                cache_key = f"manual_{label.replace(' ', '_')}"
                 try:
-                    job()
+                    logger.info(f"[REFRESH] Starting {label}")
+                    _record_cache_job(cache_key, "started")
+                    result = job()
+                    result_count = len(result) if isinstance(result, list) else None
+                    _record_cache_job(cache_key, "completed", f"result_count={result_count}")
+                    logger.info(f"[REFRESH] Completed {label}")
                 except Exception as e:
-                    logger.warning(f"[REFRESH] {label} error: {e}")
+                    _record_cache_job(cache_key, "failed", str(e))
+                    logger.warning(f"[REFRESH] {label} error: {e}", exc_info=True)
             memory_cache["last_manual_refresh_ts"] = _time.time()
 
         _Thread(target=_refresh_all, daemon=True).start()
@@ -3499,6 +3518,7 @@ def cache_check():
             "nba": file_info("/var/data/nba_odds_cache.json"),
             "soccer": file_info("/var/data/soccer_lines_cache.json"),
         },
+        "warmups": _cache_job_status,
         "timestamp": datetime.utcnow().isoformat(),
     })
 
