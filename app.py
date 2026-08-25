@@ -1034,6 +1034,31 @@ def _cache_age_seconds(cache_file):
         pass
     return None
 
+_cache_warmups = {}
+
+def _queue_cache_warmup(cache_key, refresh_func, min_interval_seconds=43200):
+    """Kick off one background cache refresh per window when Render has no file cache."""
+    now_ts = time.time()
+    last_ts = _cache_warmups.get(cache_key)
+    if last_ts and (now_ts - last_ts) < min_interval_seconds:
+        logger.info(f"[CACHE] Warmup already queued recently for {cache_key}")
+        return False
+
+    _cache_warmups[cache_key] = now_ts
+
+    def _run():
+        try:
+            logger.info(f"[CACHE] Background warmup started for {cache_key}")
+            with app.app_context():
+                refresh_func()
+            logger.info(f"[CACHE] Background warmup completed for {cache_key}")
+        except Exception as e:
+            logger.warning(f"[CACHE] Background warmup failed for {cache_key}: {e}")
+
+    from threading import Thread
+    Thread(target=_run, daemon=True).start()
+    return True
+
 @app.route("/api/mlb/props")
 def mlb_props():
     try:
@@ -1058,7 +1083,8 @@ def mlb_props():
                 }
             })
 
-        logger.info("[MLB PROPS] No cache available — waiting for scheduled refresh")
+        logger.info("[MLB PROPS] No cache available — queueing guarded background warmup")
+        _queue_cache_warmup("mlb_props", _fetch_and_process_mlb_props)
         return jsonify({
             "props": [],
             "count": 0,
@@ -1254,8 +1280,9 @@ def mlb_odds(force_refresh=False):
             return jsonify(cached_payload)
 
         if not force_refresh:
-            logger.info("[MLB ODDS] No cache available — waiting for scheduled refresh")
-            return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "MLB", "cached": False, "status": "not_available", "message": "MLB lines refresh twice daily."})
+            logger.info("[MLB ODDS] No cache available — queueing guarded background warmup")
+            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines)
+            return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "MLB", "cached": False, "status": "not_available", "message": "MLB lines are warming up from cache. Refresh shortly."})
 
         odds_api_key = os.environ.get("ODDS_API_KEY")
         if not odds_api_key:
@@ -1567,31 +1594,26 @@ def api_nhl_props():
         from enrichment import load_props_from_file
 
         cache_file = "/var/data/nhl_props_cache.json"
-        cache_fresh = False
+        props = _load_json_cache_file(cache_file)
+        if props:
+            fresh = _json_cache_is_fresh(cache_file, PROP_CACHE_MAX_AGE_SECONDS)
+            logger.info(f"[NHL PROPS] Serving {len(props)} from {'fresh' if fresh else 'stale'} cache")
+            return jsonify({
+                "props":  props,
+                "count":  len(props),
+                "sport":  "NHL",
+                "cached": True,
+                "stale": not fresh,
+                "cache_age_seconds": _cache_age_seconds(cache_file),
+                "tiers": {
+                    "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                    "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                    "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
+                }
+            })
 
-        if os.path.exists(cache_file):
-            age_seconds = time.time() - os.path.getmtime(cache_file)
-            cache_fresh = age_seconds < 82800  # 23 hours
-
-        if cache_fresh:
-            props = load_props_from_file(cache_file)
-            if props:
-                logger.info(f"[NHL PROPS] Serving {len(props)} from cache")
-                return jsonify({
-                    "props":  props,
-                    "count":  len(props),
-                    "sport":  "NHL",
-                    "cached": True,
-                    "tiers": {
-                        "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
-                        "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
-                        "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
-                    }
-                })
-
-        # Cache is empty/stale — props haven't been posted yet for today.
-        # Return empty with a clear status so the dashboard can show a helpful message.
-        logger.info("[NHL PROPS] Cache empty — props not yet available for today")
+        logger.info("[NHL PROPS] No cache available — queueing guarded background warmup")
+        _queue_cache_warmup("nhl_props", _fetch_and_process_nhl_props)
         return jsonify({
             "props":  [],
             "count":  0,
@@ -1616,29 +1638,26 @@ def api_soccer_props():
         from enrichment import load_props_from_file
 
         cache_file = "/var/data/soccer_props_cache.json"
-        cache_fresh = False
+        props = _load_json_cache_file(cache_file)
+        if props:
+            fresh = _json_cache_is_fresh(cache_file, PROP_CACHE_MAX_AGE_SECONDS)
+            logger.info(f"[SOCCER PROPS] Serving {len(props)} from {'fresh' if fresh else 'stale'} cache")
+            return jsonify({
+                "props":  props,
+                "count":  len(props),
+                "sport":  "Soccer",
+                "cached": True,
+                "stale": not fresh,
+                "cache_age_seconds": _cache_age_seconds(cache_file),
+                "tiers": {
+                    "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
+                    "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
+                    "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
+                }
+            })
 
-        if os.path.exists(cache_file):
-            age_seconds = time.time() - os.path.getmtime(cache_file)
-            cache_fresh = age_seconds < 82800  # 23 hours
-
-        if cache_fresh:
-            props = load_props_from_file(cache_file)
-            if props:
-                logger.info(f"[SOCCER PROPS] Serving {len(props)} from cache")
-                return jsonify({
-                    "props":  props,
-                    "count":  len(props),
-                    "sport":  "Soccer",
-                    "cached": True,
-                    "tiers": {
-                        "LOCK": len([p for p in props if p.get("confidence_tier") == "LOCK"]),
-                        "FIRE": len([p for p in props if p.get("confidence_tier") == "FIRE"]),
-                        "LOW":  len([p for p in props if p.get("confidence_tier") == "LOW"])
-                    }
-                })
-
-        logger.info("[SOCCER PROPS] Cache empty — no MLS/FIFA props available right now")
+        logger.info("[SOCCER PROPS] No cache available — queueing guarded background warmup")
+        _queue_cache_warmup("soccer_props", _fetch_and_process_soccer_props)
         return jsonify({
             "props":  [],
             "count":  0,
@@ -1679,8 +1698,9 @@ def api_soccer_gamelines(force_refresh=False):
 
         if games is None:
             if not force_refresh:
-                logger.info("[SOCCER LINES] No cache available — waiting for scheduled refresh")
-                return jsonify({"games": [], "environments": {}, "count": 0, "sport": "Soccer", "cached": False, "status": "not_available", "message": "Soccer lines refresh twice daily."})
+                logger.info("[SOCCER LINES] No cache available — queueing guarded background warmup")
+                _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines)
+                return jsonify({"games": [], "environments": {}, "count": 0, "sport": "Soccer", "cached": False, "status": "not_available", "message": "Soccer lines are warming up from cache. Refresh shortly."})
             from soccer_odds_api import fetch_soccer_game_lines
             games = fetch_soccer_game_lines()
             _write_json_cache_file(cache_file, games or [])
@@ -1925,7 +1945,8 @@ def api_nba_props():
                 },
             })
 
-        logger.info("[NBA PROPS] No cache available - waiting for scheduled refresh")
+        logger.info("[NBA PROPS] No cache available - queueing guarded background warmup")
+        _queue_cache_warmup("nba_props", _fetch_and_process_nba_props)
         return jsonify({
             "props": [],
             "count": 0,
@@ -1952,8 +1973,9 @@ def api_nba_odds(force_refresh=False):
             return jsonify(cached_payload)
 
         if not force_refresh:
-            logger.info("[NBA ODDS] No cache available - waiting for scheduled refresh")
-            return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NBA", "cached": False, "status": "not_available", "message": "NBA lines refresh twice daily."})
+            logger.info("[NBA ODDS] No cache available - queueing guarded background warmup")
+            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines)
+            return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NBA", "cached": False, "status": "not_available", "message": "NBA lines are warming up from cache. Refresh shortly."})
 
         raw_games = fetch_nba_game_odds()
         payload = _build_game_line_payload(raw_games, "NBA", spread_label="Spread", total_label="Game Total")
@@ -1989,8 +2011,9 @@ def api_nhl_odds(force_refresh=False):
             return jsonify(cached_payload)
 
         if not force_refresh:
-            logger.info("[NHL ODDS] No cache available - waiting for scheduled refresh")
-            return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NHL", "cached": False, "status": "not_available", "message": "NHL lines refresh twice daily."})
+            logger.info("[NHL ODDS] No cache available - queueing guarded background warmup")
+            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines)
+            return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NHL", "cached": False, "status": "not_available", "message": "NHL lines are warming up from cache. Refresh shortly."})
 
         raw_games = fetch_nhl_game_odds()
 
