@@ -959,11 +959,19 @@
       document.body.classList.add('checkout-loading');
 
       try {
-        await fetch('/api/subscribe', {
+        const leadRes = await fetch('/api/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, name, phone, source: 'daily_dashboard_trial' })
         });
+        const leadData = await leadRes.json().catch(() => ({}));
+        if (leadData.event_id && typeof fbq !== 'undefined') {
+          fbq('track', 'Lead', {
+            value: 0,
+            currency: 'USD',
+            content_name: 'Fade the Books Daily Dashboard Lead'
+          }, { eventID: leadData.event_id });
+        }
       } catch (err) {
         console.warn('Lead capture failed before checkout', err);
       }

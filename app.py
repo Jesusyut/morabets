@@ -389,6 +389,67 @@ def mora_assists_welcome():
     return render_template('mora_assists_welcome.html')
 
 
+@app.route('/success')
+def dashboard_trial_success():
+    """Dashboard trial success page. Verifies Stripe session before tracking StartTrial."""
+    session_id = (request.args.get("session_id") or "").strip()
+    if not session_id:
+        return render_template(
+            "dashboard_success.html",
+            verified=False,
+            session_id="",
+            email="",
+            meta_pixel_id=os.environ.get("META_PIXEL_ID", "1688269505510635"),
+            error="We could not verify your checkout yet. Please contact support if this continues.",
+        ), 400
+
+    stripe_secret_key = os.environ.get("STRIPE_SECRET_KEY", "")
+    if not stripe_secret_key:
+        logger.error("[STRIPE] STRIPE_SECRET_KEY is not configured for dashboard success page")
+        return render_template(
+            "dashboard_success.html",
+            verified=False,
+            session_id="",
+            email="",
+            meta_pixel_id=os.environ.get("META_PIXEL_ID", "1688269505510635"),
+            error="We could not verify your checkout yet. Please contact support if this continues.",
+        ), 500
+
+    try:
+        stripe_lib.api_key = stripe_secret_key
+        checkout_session = stripe_lib.checkout.Session.retrieve(session_id)
+        status = _stripe_object_get(checkout_session, "status", "")
+        verified = status == "complete"
+        email = _stripe_checkout_email(checkout_session)
+
+        if verified:
+            try:
+                _sync_dashboard_subscription_from_checkout_session(checkout_session)
+            except Exception as sync_err:
+                logger.warning(f"[STRIPE] Dashboard success subscription sync failed: {sync_err}")
+            if email:
+                _set_context_edge_session(email)
+
+        return render_template(
+            "dashboard_success.html",
+            verified=verified,
+            session_id=session_id if verified else "",
+            email=email,
+            meta_pixel_id=os.environ.get("META_PIXEL_ID", "1688269505510635"),
+            error="" if verified else "We could not verify your checkout yet. Please contact support if this continues.",
+        )
+    except Exception as e:
+        logger.error(f"[STRIPE] Dashboard success verification error: {e}")
+        return render_template(
+            "dashboard_success.html",
+            verified=False,
+            session_id="",
+            email="",
+            meta_pixel_id=os.environ.get("META_PIXEL_ID", "1688269505510635"),
+            error="We could not verify your checkout yet. Please contact support if this continues.",
+        ), 400
+
+
 @app.route('/context-edge/success')
 def context_edge_success():
     """Context Edge checkout success page. Verifies Stripe session before tracking Purchase."""
@@ -1078,9 +1139,20 @@ def api_subscribe():
 
         brevo_synced = _sync_to_brevo_contact(email, name=name, phone=phone, source=source)
         save_subscriber(email, name=name, phone=phone, source=source)
+
+        event_id = None
+        try:
+            from meta_pixel import track_lead, get_event_id
+            event_id = get_event_id()
+            track_lead(request, customer_email=email, event_id=event_id)
+            logger.info(f'[META] Dashboard trial Lead fired for {email}')
+        except Exception as meta_err:
+            logger.warning(f'[META] Dashboard trial Lead failed: {meta_err}')
+
         return jsonify({
             'status': 'ok',
             'message': 'Subscribed',
+            'event_id': event_id,
             'external': {'brevo': brevo_synced},
         }), 200
     except Exception as e:
@@ -3663,6 +3735,150 @@ def _context_edge_subscription_price_id(subscription):
     return _stripe_object_get(price, "id", "") or os.environ.get("STRIPE_CONTEXT_EDGE_PRICE_ID", "")
 
 
+def _stripe_checkout_email(checkout_session):
+    return (
+        _stripe_object_get(checkout_session, "customer_email", "")
+        or _stripe_object_get(_stripe_object_get(checkout_session, "customer_details", {}), "email", "")
+        or _stripe_object_get(_stripe_object_get(checkout_session, "metadata", {}), "email", "")
+        or ""
+    ).strip().lower()
+
+
+DASHBOARD_STRIPE_PRODUCT_KEYS = {"dashboard", "daily_dashboard", "fade_the_books_dashboard"}
+
+
+def _stripe_metadata_product(obj):
+    return (_stripe_object_get(_stripe_object_get(obj, "metadata", {}), "product", "") or "").strip().lower()
+
+
+def _is_dashboard_checkout_session(checkout_session):
+    product = _stripe_metadata_product(checkout_session)
+    if product in DASHBOARD_STRIPE_PRODUCT_KEYS:
+        return True
+
+    configured_payment_link = os.environ.get("STRIPE_DASHBOARD_PAYMENT_LINK_ID", "").strip()
+    payment_link = (_stripe_object_get(checkout_session, "payment_link", "") or "").strip()
+    return bool(configured_payment_link and payment_link == configured_payment_link)
+
+
+def _is_dashboard_subscription(subscription):
+    return _stripe_metadata_product(subscription) in DASHBOARD_STRIPE_PRODUCT_KEYS
+
+
+def _sync_dashboard_subscription_from_stripe_subscription(subscription, fallback_email=""):
+    from supabase_backend import upsert_profile_by_email, upsert_subscription
+
+    customer_id = _stripe_object_get(subscription, "customer", "")
+    email = _context_edge_customer_email(customer_id, fallback_email)
+    if not email or "@" not in email:
+        raise ValueError("Stripe customer email is required for dashboard subscription sync")
+
+    profile = upsert_profile_by_email(email, stripe_customer_id=customer_id)
+    return upsert_subscription(
+        profile=profile,
+        stripe_subscription_id=_stripe_object_get(subscription, "id", ""),
+        stripe_price_id=_context_edge_subscription_price_id(subscription),
+        stripe_customer_id=customer_id,
+        plan="dashboard",
+        status=_stripe_object_get(subscription, "status", "trialing"),
+        current_period_start=_stripe_ts_to_iso(_stripe_object_get(subscription, "current_period_start")),
+        current_period_end=_stripe_ts_to_iso(_stripe_object_get(subscription, "current_period_end")),
+        trial_ends_at=_stripe_ts_to_iso(_stripe_object_get(subscription, "trial_end")),
+        cancelled_at=_stripe_ts_to_iso(
+            _stripe_object_get(subscription, "canceled_at")
+            or _stripe_object_get(subscription, "ended_at")
+        ),
+    )
+
+
+def _sync_dashboard_subscription_from_checkout_session(checkout_session):
+    subscription_id = _stripe_object_get(checkout_session, "subscription", "")
+    fallback_email = _stripe_checkout_email(checkout_session)
+    if subscription_id:
+        stripe_lib.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+        subscription = stripe_lib.Subscription.retrieve(subscription_id)
+        return _sync_dashboard_subscription_from_stripe_subscription(
+            subscription,
+            fallback_email=fallback_email,
+        )
+
+    from supabase_backend import upsert_subscription_by_email
+
+    return upsert_subscription_by_email(
+        fallback_email,
+        stripe_customer_id=_stripe_object_get(checkout_session, "customer", ""),
+        plan="dashboard",
+        status="active",
+    )
+
+
+def _handle_dashboard_checkout_completed(checkout_session):
+    result = _sync_dashboard_subscription_from_checkout_session(checkout_session)
+    session_id = _stripe_object_get(checkout_session, "id", "")
+    email = _stripe_checkout_email(checkout_session)
+
+    try:
+        from meta_pixel import track_start_trial
+
+        track_start_trial(
+            customer_email=email,
+            event_id=session_id,
+            value=0,
+            currency="USD",
+            content_name="Fade the Books 3-Day Trial",
+        )
+    except Exception as e:
+        logger.warning(f"[META CAPI] Dashboard StartTrial tracking failed: {e}")
+
+    logger.info(f"[STRIPE] Dashboard checkout completed: {session_id}")
+    return result
+
+
+def _is_dashboard_invoice(invoice):
+    if _stripe_metadata_product(invoice) in DASHBOARD_STRIPE_PRODUCT_KEYS:
+        return True
+
+    subscription_id = _stripe_object_get(invoice, "subscription", "")
+    if not subscription_id:
+        return False
+
+    try:
+        stripe_lib.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+        subscription = stripe_lib.Subscription.retrieve(subscription_id)
+        return _is_dashboard_subscription(subscription)
+    except Exception as e:
+        logger.warning(f"[STRIPE] Could not verify dashboard invoice subscription {subscription_id}: {e}")
+        return False
+
+
+def _handle_dashboard_paid_invoice(invoice):
+    amount_paid = _stripe_object_get(invoice, "amount_paid", 0) or 0
+    if amount_paid <= 0:
+        logger.info(f"[STRIPE] Dashboard invoice has no paid amount: {_stripe_object_get(invoice, 'id', '')}")
+        return None
+
+    email = (
+        _stripe_object_get(invoice, "customer_email", "")
+        or _context_edge_customer_email(_stripe_object_get(invoice, "customer", ""))
+    )
+
+    try:
+        from meta_pixel import track_purchase
+
+        track_purchase(
+            customer_email=email,
+            event_id=_stripe_object_get(invoice, "id", ""),
+            value=round(amount_paid / 100, 2),
+            currency=(_stripe_object_get(invoice, "currency", "usd") or "usd").upper(),
+            content_name="Fade the Books Monthly Subscription",
+        )
+    except Exception as e:
+        logger.warning(f"[META CAPI] Dashboard paid Purchase tracking failed: {e}")
+
+    logger.info(f"[STRIPE] Dashboard paid invoice tracked: {_stripe_object_get(invoice, 'id', '')}")
+    return None
+
+
 def _upsert_context_edge_subscription_from_stripe(subscription, fallback_email=""):
     from supabase_backend import upsert_profile_by_email, upsert_subscription
 
@@ -3701,6 +3917,9 @@ def _handle_context_edge_stripe_event(event):
     data_obj = event.get("data", {}).get("object", {})
 
     if event_type == "checkout.session.completed":
+        if _is_dashboard_checkout_session(data_obj):
+            return _handle_dashboard_checkout_completed(data_obj)
+
         customer_id = _stripe_object_get(data_obj, "customer", "")
         fallback_email = (
             _stripe_object_get(data_obj, "customer_email", "")
@@ -3749,11 +3968,25 @@ def _handle_context_edge_stripe_event(event):
         logger.info(f"[CONTEXT EDGE STRIPE] Checkout completed: {subscription_id}")
         return result
 
+    if event_type == "invoice.payment_succeeded":
+        if _is_dashboard_invoice(data_obj):
+            return _handle_dashboard_paid_invoice(data_obj)
+        logger.info(f"[STRIPE] Ignored non-dashboard paid invoice: {_stripe_object_get(data_obj, 'id', '')}")
+        return None
+
     if event_type in (
         "customer.subscription.created",
         "customer.subscription.updated",
         "customer.subscription.deleted",
     ):
+        if _is_dashboard_subscription(data_obj):
+            result = _sync_dashboard_subscription_from_stripe_subscription(data_obj)
+            logger.info(
+                "[STRIPE] Dashboard subscription synced: "
+                f"{_stripe_object_get(data_obj, 'id', '')} ({_stripe_object_get(data_obj, 'status', '')})"
+            )
+            return result
+
         result = _upsert_context_edge_subscription_from_stripe(data_obj)
         logger.info(
             "[CONTEXT EDGE STRIPE] Subscription synced: "

@@ -69,7 +69,8 @@ def _extract_user_data(request) -> dict:
 def send_event(event_name: str,
                user_data: dict,
                custom_data: dict = None,
-               event_id: str = None) -> bool:
+               event_id: str = None,
+               event_source_url: str = "https://fadethebooks.com/") -> bool:
     """
     Send a single event to the Meta Conversions API.
     Returns True on success, False on failure.
@@ -85,7 +86,7 @@ def send_event(event_name: str,
             {
                 "event_name":       event_name,
                 "event_time":       int(time.time()),
-                "event_source_url": "https://morabets.com/dashboard",
+                "event_source_url": event_source_url,
                 "action_source":    "website",
                 "user_data":        user_data,
             }
@@ -133,20 +134,41 @@ def track_lead(request,
         user_data["em"] = _hash(customer_email)
 
     custom_data = {
-        "content_name":     "Mora Bets Free Access",
-        "content_category": "Sports Betting Tool",
-        "value":            14.99,
+        "content_name":     "Fade the Books Daily Dashboard Lead",
+        "content_category": "Sports Analytics Dashboard",
+        "value":            0,
         "currency":         "USD"
     }
 
     return send_event("Lead", user_data, custom_data, event_id)
 
 
+def track_start_trial(customer_email: str = None,
+                      event_id: str = None,
+                      value: float = 0,
+                      currency: str = "USD",
+                      content_name: str = "Fade the Books 3-Day Trial") -> bool:
+    """Fire a StartTrial event server-side via Meta Conversions API."""
+    user_data = {}
+
+    if customer_email:
+        user_data["em"] = _hash(customer_email)
+
+    custom_data = {
+        "content_name": content_name,
+        "content_category": "Sports Analytics Dashboard",
+        "value": value,
+        "currency": currency,
+    }
+
+    return send_event("StartTrial", user_data, custom_data, event_id)
+
+
 def track_purchase(customer_email: str = None,
                    event_id: str = None,
                    value: float = 7,
                    currency: str = "USD",
-                   content_name: str = "Context Edge $7 Trial") -> bool:
+                   content_name: str = "Fade the Books Monthly Subscription") -> bool:
     """
     Fire a Purchase event server-side via Meta Conversions API.
     Uses the Stripe Checkout Session ID as event_id for browser/server dedupe.
@@ -158,7 +180,7 @@ def track_purchase(customer_email: str = None,
 
     custom_data = {
         "content_name": content_name,
-        "content_category": "Sports Betting Tool",
+        "content_category": "Sports Analytics Dashboard",
         "value": value,
         "currency": currency,
     }
