@@ -139,31 +139,39 @@ MLB_STATS_API = "https://statsapi.mlb.com/api/v1"
 
 def cache_props_to_file(props, filename="/var/data/mlb_props_cache.json"):
     """Redis-free prop caching using flat JSON file"""
-    try:
-        cache_dir = os.path.dirname(filename)
-        if cache_dir:
-            os.makedirs(cache_dir, exist_ok=True)
-        with open(filename, "w") as f:
-            json.dump(props, f)
-        print(f"[CACHE] Props saved to {filename} ✅")
-        return True
-    except Exception as e:
-        print(f"[CACHE ERROR] Failed to write cache: {e}")
-        return False
+    fallback_dir = os.environ.get("CACHE_FALLBACK_DIR", "/tmp/fadethebooks-cache")
+    fallback = os.path.join(fallback_dir, os.path.basename(filename))
+    candidates = [filename] if fallback == filename else [filename, fallback]
+    for candidate in candidates:
+        try:
+            cache_dir = os.path.dirname(candidate)
+            if cache_dir:
+                os.makedirs(cache_dir, exist_ok=True)
+            with open(candidate, "w") as f:
+                json.dump(props, f)
+            print(f"[CACHE] Props saved to {candidate} ✅")
+            return True
+        except Exception as e:
+            print(f"[CACHE ERROR] Failed to write cache {candidate}: {e}")
+    return False
 
 def load_props_from_file(filename="/var/data/mlb_props_cache.json"):
     """Load props from file cache"""
-    try:
-        with open(filename, "r") as f:
-            props = json.load(f)
-        print(f"[CACHE] Loaded {len(props)} props from {filename}")
-        return props
-    except FileNotFoundError:
-        print(f"[CACHE] No cache file found: {filename}")
-        return []
-    except Exception as e:
-        print(f"[CACHE ERROR] Failed to load cache: {e}")
-        return []
+    fallback_dir = os.environ.get("CACHE_FALLBACK_DIR", "/tmp/fadethebooks-cache")
+    fallback = os.path.join(fallback_dir, os.path.basename(filename))
+    candidates = [filename] if fallback == filename else [filename, fallback]
+    for candidate in candidates:
+        try:
+            with open(candidate, "r") as f:
+                props = json.load(f)
+            print(f"[CACHE] Loaded {len(props)} props from {candidate}")
+            return props
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            print(f"[CACHE ERROR] Failed to load cache {candidate}: {e}")
+    print(f"[CACHE] No cache file found: {filename}")
+    return []
 
 # In-memory cache for player IDs to reduce API calls
 player_id_cache = {}

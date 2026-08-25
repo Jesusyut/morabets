@@ -1002,34 +1002,53 @@ def group_props_by_matchup(props_data):
 
 PROP_CACHE_MAX_AGE_SECONDS = 43200  # twice-daily refresh window
 LINE_CACHE_MAX_AGE_SECONDS = 43200
+CACHE_FALLBACK_DIR = os.environ.get("CACHE_FALLBACK_DIR", "/tmp/fadethebooks-cache")
+
+def _cache_fallback_path(cache_file):
+    return os.path.join(CACHE_FALLBACK_DIR, os.path.basename(cache_file))
+
+def _cache_candidates(cache_file):
+    fallback = _cache_fallback_path(cache_file)
+    return [cache_file] if fallback == cache_file else [cache_file, fallback]
+
+def _existing_cache_path(cache_file):
+    return next((candidate for candidate in _cache_candidates(cache_file) if os.path.exists(candidate)), None)
 
 def _load_json_cache_file(cache_file):
-    try:
-        from enrichment import load_props_from_file
-        if os.path.exists(cache_file):
-            return load_props_from_file(cache_file)
-    except Exception as e:
-        logger.warning(f"[CACHE] Could not read {cache_file}: {e}")
+    for candidate in _cache_candidates(cache_file):
+        try:
+            from enrichment import load_props_from_file
+            if os.path.exists(candidate):
+                return load_props_from_file(candidate)
+        except Exception as e:
+            logger.warning(f"[CACHE] Could not read {candidate}: {e}")
     return []
 
 def _json_cache_is_fresh(cache_file, max_age_seconds):
     try:
-        return os.path.exists(cache_file) and (time.time() - os.path.getmtime(cache_file)) < max_age_seconds
+        existing = _existing_cache_path(cache_file)
+        return bool(existing) and (time.time() - os.path.getmtime(existing)) < max_age_seconds
     except OSError:
         return False
 
 def _write_json_cache_file(cache_file, payload):
-    try:
-        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-        with open(cache_file, 'w') as f:
-            json.dump(payload, f)
-    except Exception as e:
-        logger.warning(f"[CACHE] Could not write {cache_file}: {e}")
+    for candidate in _cache_candidates(cache_file):
+        try:
+            os.makedirs(os.path.dirname(candidate), exist_ok=True)
+            with open(candidate, 'w') as f:
+                json.dump(payload, f)
+            if candidate != cache_file:
+                logger.info(f"[CACHE] Wrote fallback cache {candidate}")
+            return True
+        except Exception as e:
+            logger.warning(f"[CACHE] Could not write {candidate}: {e}")
+    return False
 
 def _cache_age_seconds(cache_file):
     try:
-        if os.path.exists(cache_file):
-            return round(time.time() - os.path.getmtime(cache_file))
+        existing = _existing_cache_path(cache_file)
+        if existing:
+            return round(time.time() - os.path.getmtime(existing))
     except OSError:
         pass
     return None
@@ -3426,7 +3445,7 @@ def refresh_props():
         "/var/data/nba_odds_cache.json",
         "/var/data/soccer_lines_cache.json",
     ]
-    has_any_cache = any(os.path.exists(filename) for filename in cache_files)
+    has_any_cache = any(_existing_cache_path(filename) for filename in cache_files)
     last = memory_cache.get("last_manual_refresh_ts")
     if has_any_cache and last and (_time.time() - last) < 43200:
         return jsonify({
@@ -3476,11 +3495,12 @@ def cache_check():
     """Quick check of the file caches that power the dashboard."""
 
     def file_info(filename):
-        if not os.path.exists(filename):
+        existing = _existing_cache_path(filename)
+        if not existing:
             return {"exists": False, "count": 0, "age_minutes": None, "sample": None}
-        age = (time.time() - os.path.getmtime(filename)) / 60
+        age = (time.time() - os.path.getmtime(existing)) / 60
         try:
-            with open(filename, "r") as f:
+            with open(existing, "r") as f:
                 payload = json.load(f)
         except Exception as e:
             return {
@@ -3503,6 +3523,7 @@ def cache_check():
             "count": len(rows),
             "age_minutes": round(age, 1),
             "sample": rows[0] if rows else None,
+            "path": existing,
         }
 
     return jsonify({
