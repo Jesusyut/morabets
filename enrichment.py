@@ -140,6 +140,9 @@ MLB_STATS_API = "https://statsapi.mlb.com/api/v1"
 def cache_props_to_file(props, filename="/var/data/mlb_props_cache.json"):
     """Redis-free prop caching using flat JSON file"""
     try:
+        cache_dir = os.path.dirname(filename)
+        if cache_dir:
+            os.makedirs(cache_dir, exist_ok=True)
         with open(filename, "w") as f:
             json.dump(props, f)
         print(f"[CACHE] Props saved to {filename} ✅")
