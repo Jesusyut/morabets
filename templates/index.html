@@ -1167,7 +1167,7 @@
       if (newsletterActivityTimer || shouldSuppressNewsletter() || newsletterShown) return;
       newsletterActivityTimer = window.setTimeout(() => {
         showNewsletterOffer();
-      }, 30000);
+      }, 20000);
     }
 
     ['scroll', 'mousemove', 'touchstart', 'keydown'].forEach((eventName) => {
