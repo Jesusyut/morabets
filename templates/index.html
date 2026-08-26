@@ -718,7 +718,7 @@
       <div class="container">
         <h1>Sportsbooks Don't Want You Knowing the True Odds. <span class="green">Now You Do.</span></h1>
         <p class="subhead">Strip the vig. Scan for real edge. Bet with math on your side.</p>
-        <button class="cta checkout-cta" type="button">START MEMBERSHIP — $44.99/MO</button>
+        <button class="cta checkout-cta" type="button">START MEMBERSHIP</button>
         <p class="tiny">Full access today. Cancel anytime.</p>
         <div class="status-message" data-checkout-status></div>
         <div class="member-access" aria-label="Existing subscriber access">
@@ -838,7 +838,7 @@
             <li>✓ Value opportunities sorted for faster scanning</li>
             <li>✓ Access on any device</li>
           </ul>
-          <button id="openTrialDownsell" class="secondary-action trial-downsell-action" type="button">Not ready? Join free tips and get the 3-day trial</button>
+          <button id="openTrialDownsell" class="secondary-action trial-downsell-action" type="button">Join our newsletter for free tips and a 3 day trial</button>
           <p class="tiny" style="text-align:center;">No contracts. $44.99/month. Cancel anytime.</p>
           <div class="status-message" data-checkout-status></div>
         </div>
@@ -874,7 +874,7 @@
       <div class="container" style="text-align:center;">
         <h2>The Book Has an Edge. Now You Have One Too.</h2>
         <p class="subhead">See the math. Bet smarter.</p>
-        <button class="cta checkout-cta" type="button">START MEMBERSHIP — $44.99/MO</button>
+        <button class="cta checkout-cta" type="button">START MEMBERSHIP</button>
         <p class="tiny">Then $44.99/month. No contracts. Cancel anytime.</p>
         <div class="status-message" data-checkout-status></div>
         <div class="account-section">
@@ -1038,8 +1038,8 @@
         || sessionStorage.getItem('ce_context_edge_access') === 'true';
     }
 
-    function showNewsletterOffer() {
-      if (!newsletterModal || newsletterShown || shouldSuppressNewsletter()) return;
+    function showNewsletterOffer(forceOpen) {
+      if (!newsletterModal || newsletterShown || (!forceOpen && shouldSuppressNewsletter())) return;
       newsletterShown = true;
       newsletterModal.classList.add('visible');
       setTimeout(() => {
@@ -1107,7 +1107,7 @@
     if (openTrialDownsell) {
       openTrialDownsell.addEventListener('click', () => {
         newsletterShown = false;
-        showNewsletterOffer();
+        showNewsletterOffer(true);
       });
     }
 
