@@ -548,6 +548,13 @@
       color: #cfcfcf;
     }
 
+    .trial-downsell-action {
+      width: 100%;
+      margin-top: 24px;
+      background: rgba(34,197,94,0.08);
+      cursor: pointer;
+    }
+
     .newsletter-modal {
       position: fixed;
       inset: 0;
@@ -711,8 +718,8 @@
       <div class="container">
         <h1>Sportsbooks Don't Want You Knowing the True Odds. <span class="green">Now You Do.</span></h1>
         <p class="subhead">Strip the vig. Scan for real edge. Bet with math on your side.</p>
-        <button class="cta checkout-cta" type="button">START FREE 3-DAY TRIAL</button>
-        <p class="tiny">Then $44.99/month. Cancel anytime.</p>
+        <button class="cta checkout-cta" type="button">START MEMBERSHIP — $44.99/MO</button>
+        <p class="tiny">Full access today. Cancel anytime.</p>
         <div class="status-message" data-checkout-status></div>
         <div class="member-access" aria-label="Existing subscriber access">
           <p class="member-access-label">Already subscribed? Enter your email to access your membership.</p>
@@ -821,8 +828,8 @@
       <div class="container">
         <h2 style="text-align:center;">Start With the Daily Dashboard.</h2>
         <div class="offer-box">
-          <div class="price">FREE 3-DAY TRIAL</div>
-          <p class="offer-copy">Full access to the daily no-vig dashboard. Then $44.99/month after your free 3-day trial. Cancel anytime.</p>
+          <div class="price">$44.99/MONTH</div>
+          <p class="offer-copy">Full access to the daily no-vig dashboard. Cancel anytime.</p>
           <ul class="check-list">
             <li>✓ True no-vig probability board — MLB, NFL, NHL, Soccer</li>
             <li>✓ Live line shopping across 7+ books</li>
@@ -831,11 +838,11 @@
             <li>✓ Value opportunities sorted for faster scanning</li>
             <li>✓ Access on any device</li>
           </ul>
-          <form id="subscribeForm" class="trial-form"><input type="text" id="signupName" placeholder="Full name" autocomplete="name"><input type="email" id="signupEmail" placeholder="Email address" autocomplete="email" required><input type="tel" id="signupPhone" placeholder="Phone number" autocomplete="tel"><p class="tiny" style="margin:-0.35rem 0 0.35rem;text-align:left;">* We won't call you. Most members prefer SMS insight in the morning rather than missing the email.</p><button class="cta full" type="submit">START FREE 3-DAY TRIAL</button></form>
-          <p class="tiny" style="text-align:center;">No contracts. Free for 3 days, then $44.99/month. Cancel anytime.</p>
+          <button id="openTrialDownsell" class="secondary-action trial-downsell-action" type="button">Not ready? Join free tips and get the 3-day trial</button>
+          <p class="tiny" style="text-align:center;">No contracts. $44.99/month. Cancel anytime.</p>
           <div class="status-message" data-checkout-status></div>
         </div>
-        <p class="risk">If you don't find value in the first 3 days, cancel. Takes 10 seconds.</p>
+        <p class="risk">If the dashboard does not change how you see value at the book, cancel. Takes 10 seconds.</p>
       </div>
     </section>
 
@@ -856,8 +863,8 @@
             <p>MLB, NFL, NHL, and Soccer when markets are available. The board updates live throughout the day with fresh lines and no-vig probabilities.</p>
           </article>
           <article class="card faq-item">
-            <h3>Q: Why a free trial?</h3>
-            <p>Because we'd rather you see the dashboard before you commit to $44.99/month. The 3-day trial removes the risk of trying something new. If it doesn't change how you see value at the book, don't keep paying.</p>
+            <h3>Q: Is there a trial option?</h3>
+            <p>Yes. If you're not ready to start today, join the free tips list and we'll show you the 3-day trial path from there.</p>
           </article>
         </div>
       </div>
@@ -866,8 +873,8 @@
     <section>
       <div class="container" style="text-align:center;">
         <h2>The Book Has an Edge. Now You Have One Too.</h2>
-        <p class="subhead">Start free. See the math. Bet smarter.</p>
-        <button class="cta checkout-cta" type="button">START FREE 3-DAY TRIAL</button>
+        <p class="subhead">See the math. Bet smarter.</p>
+        <button class="cta checkout-cta" type="button">START MEMBERSHIP — $44.99/MO</button>
         <p class="tiny">Then $44.99/month. No contracts. Cancel anytime.</p>
         <div class="status-message" data-checkout-status></div>
         <div class="account-section">
@@ -889,17 +896,20 @@
   </footer>
 
   <div class="mobile-sticky-cta" id="mobileStickyCta">
-    <button class="cta checkout-cta" type="button">Start Free →</button>
+    <button class="cta checkout-cta" type="button">Start Membership →</button>
   </div>
 
   <div class="newsletter-modal" id="newsletterModal" aria-label="Newsletter offer">
     <div class="newsletter-card">
       <button class="newsletter-close" id="newsletterClose" type="button" aria-label="Close newsletter offer">×</button>
       <h3>Not ready to start?</h3>
-      <p>Get today's best no-vig value opportunities, product updates, and new feature releases delivered to your inbox.</p>
+      <p>Get tips for using Fade the Books across every active sport, plus today's best no-vig value opportunities and product updates. Then unlock the 3-day trial path.</p>
       <div class="newsletter-form">
+        <input id="newsletterName" type="text" placeholder="Full name" autocomplete="name">
         <input id="newsletterEmail" type="email" placeholder="your@email.com" autocomplete="email">
-        <button id="newsletterJoinButton" class="cta full" type="button">Join Free</button>
+        <input id="newsletterPhone" type="tel" placeholder="Phone number" autocomplete="tel">
+        <p class="tiny" style="margin:0;text-align:left;">* We won't call you. Most members prefer SMS insight in the morning rather than missing the email.</p>
+        <button id="newsletterJoinButton" class="cta full" type="button">JOIN FREE + GET 3-DAY TRIAL</button>
       </div>
       <p class="newsletter-status" id="newsletterStatus"></p>
     </div>
@@ -913,9 +923,12 @@
     const memberAccessStatus = document.getElementById('memberAccessStatus');
     const newsletterModal = document.getElementById('newsletterModal');
     const newsletterClose = document.getElementById('newsletterClose');
+    const newsletterName = document.getElementById('newsletterName');
     const newsletterEmail = document.getElementById('newsletterEmail');
+    const newsletterPhone = document.getElementById('newsletterPhone');
     const newsletterJoinButton = document.getElementById('newsletterJoinButton');
     const newsletterStatus = document.getElementById('newsletterStatus');
+    const openTrialDownsell = document.getElementById('openTrialDownsell');
     const NEWSLETTER_SIGNED_UP_KEY = 'mora_newsletter_signed_up';
     const NEWSLETTER_DISMISSED_KEY = 'mora_landing_newsletter_dismissed';
     const CHECKOUT_STARTED_KEY = 'fade_books_dashboard_checkout_started';
@@ -928,29 +941,9 @@
       });
     }
 
-    const subscribeForm = document.getElementById('subscribeForm');
-    const signupName = document.getElementById('signupName');
-    const signupEmail = document.getElementById('signupEmail');
-    const signupPhone = document.getElementById('signupPhone');
-    const DASHBOARD_PAYMENT_LINK = 'https://buy.stripe.com/aFa7sK6eh7MF4YZ1Oa0gw00';
+    const DASHBOARD_PAYMENT_LINK = 'https://buy.stripe.com/8x24gy0TX4At3UV3Wi0gw01';
 
-    function scrollToSignup() {
-      const target = subscribeForm || document.querySelector('.offer-box');
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => signupEmail && signupEmail.focus(), 450);
-      }
-    }
-
-    async function startCheckout() {
-      const name = signupName ? signupName.value.trim() : '';
-      const email = signupEmail ? signupEmail.value.trim().toLowerCase() : '';
-      const phone = signupPhone ? signupPhone.value.trim() : '';
-      if (!email) {
-        scrollToSignup();
-        setCheckoutStatus('Enter your email to start the free trial.');
-        return;
-      }
+    function startCheckout() {
       setCheckoutStatus('');
       localStorage.setItem(CHECKOUT_STARTED_KEY, 'true');
       hideNewsletterOffer();
@@ -958,40 +951,16 @@
         fbq('track', 'InitiateCheckout', {
           value: 44.99,
           currency: 'USD',
-          content_name: 'Fade the Books Daily Dashboard Trial'
+          content_name: 'Fade the Books Daily Dashboard'
         });
       }
       document.body.classList.add('checkout-loading');
-
-      try {
-        const leadRes = await fetch('/api/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, phone, source: 'daily_dashboard_trial' })
-        });
-        const leadData = await leadRes.json().catch(() => ({}));
-        if (leadData.event_id && typeof fbq !== 'undefined') {
-          fbq('track', 'Lead', {
-            value: 0,
-            currency: 'USD',
-            content_name: 'Fade the Books Daily Dashboard Lead'
-          }, { eventID: leadData.event_id });
-        }
-      } catch (err) {
-        console.warn('Lead capture failed before checkout', err);
-      }
       window.location.href = DASHBOARD_PAYMENT_LINK;
     }
 
     checkoutButtons.forEach((button) => {
-      button.addEventListener('click', scrollToSignup);
+      button.addEventListener('click', startCheckout);
     });
-    if (subscribeForm) {
-      subscribeForm.addEventListener('submit', (event) => {
-        event.preventDefault();
-        startCheckout();
-      });
-    }
 
     async function accessMembership() {
       const email = (memberAccessEmail && memberAccessEmail.value ? memberAccessEmail.value : '').trim().toLowerCase();
@@ -1033,7 +1002,7 @@
         if (memberAccessStatus) {
           memberAccessStatus.textContent = 'No active membership found. Opening checkout...';
         }
-        await startCheckout(email);
+        startCheckout();
         return;
       } catch (err) {
         if (memberAccessStatus) memberAccessStatus.textContent = 'Could not verify access. Try again.';
@@ -1084,46 +1053,62 @@
     }
 
     async function submitNewsletter() {
+      const name = (newsletterName && newsletterName.value ? newsletterName.value : '').trim();
       const email = (newsletterEmail && newsletterEmail.value ? newsletterEmail.value : '').trim().toLowerCase();
+      const phone = (newsletterPhone && newsletterPhone.value ? newsletterPhone.value : '').trim();
       if (newsletterStatus) {
         newsletterStatus.textContent = '';
         newsletterStatus.style.color = 'var(--red)';
+      }
+      if (!name) {
+        if (newsletterStatus) newsletterStatus.textContent = 'Enter your name.';
+        return;
       }
       if (!email || !email.includes('@')) {
         if (newsletterStatus) newsletterStatus.textContent = 'Enter a valid email.';
         return;
       }
+      if (!phone) {
+        if (newsletterStatus) newsletterStatus.textContent = 'Enter your phone number.';
+        return;
+      }
       if (newsletterJoinButton) {
         newsletterJoinButton.disabled = true;
-        newsletterJoinButton.textContent = 'Joining...';
+        newsletterJoinButton.textContent = 'Sending...';
       }
       try {
-        const res = await fetch('/api/gate-signup', {
+        const res = await fetch('/api/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name: '', source: 'landing_newsletter' })
+          body: JSON.stringify({ email, name, phone, source: 'trial_downsell_newsletter' })
         });
         const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || 'Lead submission failed');
+        }
         if (data.event_id && typeof fbq !== 'undefined') {
           fbq('track', 'Lead', {
             value: 0,
             currency: 'USD',
-            content_name: 'Landing Newsletter'
+            content_name: 'Fade the Books Trial Downsell'
           }, { eventID: data.event_id });
         }
         localStorage.setItem(NEWSLETTER_SIGNED_UP_KEY, 'true');
-        if (newsletterStatus) {
-          newsletterStatus.style.color = 'var(--green)';
-          newsletterStatus.textContent = "You're in.";
-        }
-        setTimeout(() => hideNewsletterOffer(), 900);
+        window.location.href = '/trial-success';
       } catch (err) {
-        if (newsletterStatus) newsletterStatus.textContent = 'Could not join. Try again.';
+        if (newsletterStatus) newsletterStatus.textContent = 'Could not submit. Try again.';
         if (newsletterJoinButton) {
           newsletterJoinButton.disabled = false;
-          newsletterJoinButton.textContent = 'Join Free';
+          newsletterJoinButton.textContent = 'JOIN FREE + GET 3-DAY TRIAL';
         }
       }
+    }
+
+    if (openTrialDownsell) {
+      openTrialDownsell.addEventListener('click', () => {
+        newsletterShown = false;
+        showNewsletterOffer();
+      });
     }
 
     if (newsletterClose) {

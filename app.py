@@ -450,6 +450,16 @@ def dashboard_trial_success():
         ), 400
 
 
+@app.route('/trial-success')
+def trial_downsell_success():
+    """Newsletter down-sell success page with the 3-day trial handoff."""
+    return render_template(
+        "trial_success.html",
+        trial_link="https://buy.stripe.com/aFa7sK6eh7MF4YZ1Oa0gw00",
+        meta_pixel_id=os.environ.get("META_PIXEL_ID", "1688269505510635"),
+    )
+
+
 @app.route('/context-edge/success')
 def context_edge_success():
     """Context Edge checkout success page. Verifies Stripe session before tracking Purchase."""
@@ -1218,6 +1228,8 @@ def api_subscribe():
         source = (data.get('source') or 'daily_dashboard_trial').strip()
         if not email or '@' not in email:
             return jsonify({'error': 'Invalid email'}), 400
+        if source in {'daily_dashboard_trial', 'trial_downsell_newsletter'} and (not name or not phone):
+            return jsonify({'error': 'Name and phone are required'}), 400
 
         brevo_synced = _sync_to_brevo_contact(email, name=name, phone=phone, source=source)
         save_subscriber(email, name=name, phone=phone, source=source)
