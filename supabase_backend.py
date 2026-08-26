@@ -124,6 +124,20 @@ def normalize_subscription_status(status: Optional[str]) -> Optional[str]:
     }.get(normalized, normalized)
 
 
+def normalize_user_role(role: Optional[str]) -> str:
+    normalized = (role or "customer").strip().lower()
+    if normalized not in {"customer", "affiliate", "admin", "owner"}:
+        raise ValueError("Invalid profile role")
+    return normalized
+
+
+def normalize_affiliate_status(status: Optional[str]) -> str:
+    normalized = (status or "pending").strip().lower()
+    if normalized not in {"pending", "approved", "paused", "rejected"}:
+        raise ValueError("Invalid affiliate status")
+    return normalized
+
+
 def normalize_daily_report_status(status: Optional[str]) -> str:
     if status is None:
         return "ready"
@@ -171,6 +185,8 @@ def upsert_profile_by_email(email: str, **fields: Any) -> dict[str, Any]:
     for key in ("full_name", "stripe_customer_id"):
         if fields.get(key) is not None:
             payload[key] = fields[key]
+    if fields.get("role") is not None:
+        payload["role"] = normalize_user_role(fields["role"])
 
     rows = _request(
         "POST",
@@ -183,6 +199,88 @@ def upsert_profile_by_email(email: str, **fields: Any) -> dict[str, Any]:
     if not profile:
         raise RuntimeError("Supabase profile upsert returned no row")
     return profile
+
+
+def read_profile_by_email(email: str) -> Optional[dict[str, Any]]:
+    normalized_email = normalize_email(email)
+    if not normalized_email or "@" not in normalized_email:
+        return None
+
+    rows = _request(
+        "GET",
+        "profiles",
+        params={
+            "select": "id,email,full_name,stripe_customer_id,role,created_at,updated_at",
+            "email": f"eq.{normalized_email}",
+            "limit": "1",
+        },
+    )
+    return _single_row(rows)
+
+
+def set_profile_role_by_email(email: str, role: str) -> dict[str, Any]:
+    return upsert_profile_by_email(email, role=normalize_user_role(role))
+
+
+def read_user_role_by_email(email: str) -> Optional[str]:
+    normalized_email = normalize_email(email)
+    if normalized_email in OWNER_EMAILS:
+        return "owner"
+    profile = read_profile_by_email(normalized_email)
+    if not profile:
+        return None
+    return normalize_user_role(profile.get("role"))
+
+
+def user_has_affiliate_access(email: str) -> bool:
+    normalized_email = normalize_email(email)
+    if not normalized_email or "@" not in normalized_email:
+        return False
+    if normalized_email in OWNER_EMAILS:
+        return True
+    try:
+        role = read_user_role_by_email(normalized_email)
+    except SupabaseConfigError:
+        return False
+    except Exception:
+        return False
+    return role in {"affiliate", "admin", "owner"}
+
+
+def upsert_affiliate_profile_by_email(
+    email: str,
+    *,
+    affiliate_code: str,
+    status: str = "pending",
+    commission_rate: float = 0.30,
+    approved_at: Optional[str] = None,
+) -> dict[str, Any]:
+    normalized_code = (affiliate_code or "").strip().upper()
+    if not normalized_code:
+        raise ValueError("affiliate_code is required")
+
+    profile = upsert_profile_by_email(email, role="affiliate")
+    payload = {
+        "user_id": profile["id"],
+        "affiliate_code": normalized_code,
+        "status": normalize_affiliate_status(status),
+        "commission_rate": commission_rate,
+        "updated_at": _utc_now_iso(),
+    }
+    if approved_at is not None:
+        payload["approved_at"] = approved_at
+
+    rows = _request(
+        "POST",
+        "affiliate_profiles",
+        params={"on_conflict": "user_id"},
+        json=payload,
+        prefer="resolution=merge-duplicates,return=representation",
+    )
+    affiliate_profile = _single_row(rows)
+    if not affiliate_profile:
+        raise RuntimeError("Supabase affiliate profile upsert returned no row")
+    return affiliate_profile
 
 
 def _get_latest_subscription_for_profile(
@@ -330,7 +428,7 @@ def read_active_subscription_status_by_email(email: str) -> dict[str, Any]:
     }
 
 
-def user_has_context_edge_access(email: str) -> bool:
+def user_has_product_access(email: str) -> bool:
     normalized_email = normalize_email(email)
     if not normalized_email or "@" not in normalized_email:
         return False
@@ -338,12 +436,20 @@ def user_has_context_edge_access(email: str) -> bool:
         return True
 
     try:
+        role = read_user_role_by_email(normalized_email)
+        if role in {"affiliate", "admin", "owner"}:
+            return True
+
         status = read_active_subscription_status_by_email(normalized_email)
     except SupabaseConfigError:
         return False
     except Exception:
         return False
     return bool(status.get("active"))
+
+
+def user_has_context_edge_access(email: str) -> bool:
+    return user_has_product_access(email)
 
 
 def read_context_edge_cache(cache_key: str) -> Optional[dict[str, Any]]:

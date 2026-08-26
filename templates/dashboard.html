@@ -579,6 +579,76 @@ f.parentNode.insertBefore(j,f);
         @media(min-width: 640px)  { .picks-grid { grid-template-columns: repeat(2, 1fr); } }
         @media(min-width: 1024px) { .picks-grid { grid-template-columns: repeat(3, 1fr); } }
 
+        .assists-panel {
+            background: #FFFFFF;
+            border: 1px solid rgba(76,187,23,0.2);
+            border-radius: 0.75rem;
+            padding: 0.9rem;
+            box-shadow: 0 2px 10px rgba(76,187,23,0.06);
+        }
+        .assists-card {
+            background: #FFFFFF;
+            border: 1px solid rgba(76,187,23,0.18);
+            border-radius: 0.75rem;
+            padding: 0.9rem 1rem;
+            height: 100%;
+            box-shadow: 0 2px 8px rgba(76,187,23,0.06);
+        }
+        .assists-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 0.55rem;
+        }
+        .assists-rank {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            color: #4CBB17;
+            font-size: 1rem;
+        }
+        .assists-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1.08rem;
+            font-weight: 800;
+            color: #0F2406;
+            line-height: 1.1;
+        }
+        .assists-market {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 650;
+            color: #6B9E5A;
+            margin-top: 0.12rem;
+        }
+        .assists-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin: 0.65rem 0;
+        }
+        .assists-chip {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.68rem;
+            font-weight: 750;
+            color: #2D6E0F;
+            background: #E8F5E1;
+            border: 1px solid rgba(76,187,23,0.24);
+            border-radius: 50rem;
+            padding: 0.18rem 0.5rem;
+        }
+        .assists-context {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.74rem;
+            color: #6B9E5A;
+            line-height: 1.45;
+        }
+        @media(max-width: 640px) {
+            .assists-panel { padding: 0.75rem; }
+            .assists-card { padding: 0.8rem; }
+            .assists-title { font-size: 1rem; }
+        }
+
         /* ── Section headers ── */
         .section-header-title {
             font-family: 'Barlow Condensed', sans-serif;
@@ -687,6 +757,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div style="background:#E8F5E1;border:1px solid rgba(76,187,23,0.2);border-radius:0.75rem;padding:0.25rem;display:inline-flex;gap:0.25rem;">
         <button onclick="switchMainTab('player-props')" id="player-props-tab" class="main-tab-btn active">
             <i class="fas fa-users" style="margin-right:0.3rem;font-size:0.8em;"></i>Today's Board
+        </button>
+        <button onclick="switchMainTab('best-opportunities')" id="best-opportunities-tab" class="main-tab-btn">
+            <i class="fas fa-bolt" style="margin-right:0.3rem;font-size:0.8em;"></i>Best Opportunities
         </button>
         <button onclick="switchMainTab('how-to-profit')" id="how-to-profit-tab" class="main-tab-btn">
             <i class="fas fa-graduation-cap" style="margin-right:0.3rem;font-size:0.8em;"></i>Betting Strategy
@@ -806,6 +879,34 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 
 <!-- ════════════════════════════════════════════════════
+     BEST OPPORTUNITIES TAB
+════════════════════════════════════════════════════ -->
+<div id="best-opportunities" style="display:none;max-width:1280px;margin:0 auto;padding:0.75rem 1rem;">
+    <div class="member-announcement-bar" role="status">
+        <strong>Daily Assists</strong>
+        <span>Scans cached board value across active sports, then filters for DraftKings/FanDuel prices at -220 or better.</span>
+    </div>
+
+    <div class="assists-panel">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.85rem;">
+            <div>
+                <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:1.45rem;font-weight:800;color:#0F2406;margin:0;text-transform:uppercase;letter-spacing:0.04em;">
+                    <i class="fas fa-bolt" style="color:#4CBB17;margin-right:0.4rem;font-size:0.9rem;"></i>Best Opportunities
+                </h2>
+                <small style="display:block;font-family:'Inter',sans-serif;font-size:0.76rem;color:#6B9E5A;margin-top:0.15rem;">No-vig edge + matchup context + DraftKings/FanDuel availability.</small>
+            </div>
+            <span id="best-opportunities-count" class="pill-badge" style="background:#E8F5E1;color:#3A9012;border:1px solid rgba(76,187,23,0.3);">Loading...</span>
+        </div>
+        <div id="best-opportunities-summary" style="font-family:'Inter',sans-serif;font-size:0.76rem;color:#6B9E5A;margin-bottom:0.8rem;"></div>
+        <div id="best-opportunities-container" class="picks-grid">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
      BETTING STRATEGY TAB
 ════════════════════════════════════════════════════ -->
 <div id="how-to-profit" style="display:none;max-width:1280px;margin:0 auto;padding:1.5rem 1rem;">
@@ -888,9 +989,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // ─────────────────────────────────────────────
     function switchMainTab(id) {
         document.getElementById('player-props').style.display = id === 'player-props' ? 'block' : 'none';
+        document.getElementById('best-opportunities').style.display = id === 'best-opportunities' ? 'block' : 'none';
         document.getElementById('how-to-profit').style.display = id === 'how-to-profit' ? 'block' : 'none';
         document.getElementById('player-props-tab').classList.toggle('active', id === 'player-props');
+        document.getElementById('best-opportunities-tab').classList.toggle('active', id === 'best-opportunities');
         document.getElementById('how-to-profit-tab').classList.toggle('active', id === 'how-to-profit');
+        if (id === 'best-opportunities') loadBestOpportunities();
     }
 
     // ─────────────────────────────────────────────
@@ -904,6 +1008,101 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     let currentSport = 'mlb';
     let currentMode  = 'lines';
     let nflProps = [];
+    let bestOpportunitiesLoaded = false;
+
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function formatAmericanOdds(value) {
+        if (value == null || value === '') return '—';
+        const num = Number(value);
+        if (Number.isNaN(num)) return escapeHtml(value);
+        return num > 0 ? `+${num}` : `${num}`;
+    }
+
+    function renderBestOpportunityCard(item) {
+        const line = item.line != null && item.line !== '' ? ` <span style="color:#4CBB17;">${escapeHtml(item.line)}</span>` : '';
+        const edge = item.edge_pct != null
+            ? `<span class="assists-chip">EV +${Number(item.edge_pct).toFixed(1)}%</span>`
+            : '';
+        const books = Array.isArray(item.available_books) && item.available_books.length
+            ? item.available_books.map(escapeHtml).join(' / ')
+            : escapeHtml(item.book || 'DK/FD');
+        const notes = (item.context_notes || []).map(note => `<span class="assists-chip">${escapeHtml(note)}</span>`).join('');
+        const matchup = item.matchup ? `<div class="assists-context" style="margin-top:0.4rem;">${escapeHtml(item.matchup)}</div>` : '';
+
+        return `
+            <div class="assists-card">
+                <div class="assists-card-top">
+                    <div>
+                        <div class="assists-rank">#${escapeHtml(item.rank || '')} ${escapeHtml(item.sport || '')}</div>
+                        <div class="assists-title">${escapeHtml(item.title)}</div>
+                        <div class="assists-market">${escapeHtml(item.market)}${line}</div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-family:'Inter',sans-serif;font-weight:800;color:#000;font-size:1.05rem;">${Number(item.no_vig_prob || 0).toFixed(1)}%</div>
+                        <div style="font-family:'Inter',sans-serif;font-size:0.68rem;color:#6B9E5A;">no-vig</div>
+                    </div>
+                </div>
+                <div style="font-family:'Inter',sans-serif;font-size:0.78rem;color:#2D6E0F;font-weight:700;">
+                    ${escapeHtml(item.book)} ${formatAmericanOdds(item.odds)}
+                    <span style="color:#6B9E5A;font-weight:600;margin-left:0.35rem;">available on ${books}</span>
+                </div>
+                <div class="assists-meta">
+                    ${edge}
+                    <span class="assists-chip">${escapeHtml(item.source_type === 'line' ? 'Best Lines' : 'Player Prop')}</span>
+                    ${notes}
+                </div>
+                ${matchup}
+            </div>`;
+    }
+
+    async function loadBestOpportunities() {
+        const container = document.getElementById('best-opportunities-container');
+        const countEl = document.getElementById('best-opportunities-count');
+        const summaryEl = document.getElementById('best-opportunities-summary');
+        if (!container || !countEl || !summaryEl) return;
+
+        if (bestOpportunitiesLoaded && container.dataset.loaded === 'true') return;
+        container.dataset.loaded = 'loading';
+        countEl.textContent = 'Scanning cache...';
+        summaryEl.textContent = '';
+        container.innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>';
+
+        try {
+            const res = await fetch('/api/best-opportunities?t=' + Date.now());
+            const data = await res.json();
+            const opportunities = data.opportunities || [];
+            bestOpportunitiesLoaded = true;
+            container.dataset.loaded = 'true';
+
+            if (!res.ok || opportunities.length === 0) {
+                countEl.textContent = '0 found';
+                summaryEl.textContent = 'No qualifying cached opportunities right now. The board will update after the next odds refresh.';
+                container.innerHTML = `
+                    <div style="grid-column:1/-1;text-align:center;padding:2.25rem 1rem;background:#F5FAF2;border:1px solid rgba(76,187,23,0.18);border-radius:0.75rem;">
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.15rem;font-weight:800;color:#0F2406;text-transform:uppercase;">No qualified assists yet</div>
+                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:#6B9E5A;margin:0.35rem 0 0;">Looking for 55%+ no-vig signals with DK/FanDuel prices at -220 or better.</p>
+                    </div>`;
+                return;
+            }
+
+            countEl.textContent = `${opportunities.length} found`;
+            summaryEl.textContent = `Criteria: ${data.criteria.min_no_vig_prob}%+ no-vig probability, DK/FanDuel availability, odds not worse than ${data.criteria.min_acceptable_odds}.`;
+            container.innerHTML = opportunities.map(renderBestOpportunityCard).join('');
+        } catch (err) {
+            console.error('[BEST OPPORTUNITIES] load failed:', err);
+            countEl.textContent = 'Unavailable';
+            summaryEl.textContent = '';
+            container.innerHTML = '<div class="alert alert-warning text-center" style="grid-column:1/-1;">Best opportunities temporarily unavailable.</div>';
+        }
+    }
 
     function sportLabel() {
         if (currentSport === 'mlb') return 'MLB';

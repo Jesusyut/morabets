@@ -105,6 +105,24 @@ def _session_has_context_edge_access():
     return False
 
 
+def _session_verified_email():
+    return _normalize_context_edge_email(session.get(CONTEXT_EDGE_SESSION_EMAIL_KEY))
+
+
+def _session_has_affiliate_access():
+    email = _session_verified_email()
+    if not email:
+        return False
+
+    try:
+        from supabase_backend import user_has_affiliate_access
+
+        return bool(user_has_affiliate_access(email))
+    except Exception as e:
+        logger.error(f"[AFFILIATE] Access check failed for {email}: {e}")
+        return False
+
+
 def save_subscriber(email, name="", phone="", source="daily_dashboard_trial"):
     """Append or update a subscriber record in the local JSON backup."""
     try:
@@ -728,6 +746,17 @@ def dashboard():
     except Exception as e:
         logger.error(f"Error in dashboard route: {e}")
         return f'<h1>Fade the Books</h1><p>Error: {str(e)}</p><p><a href="/health">Health Check</a></p>'
+
+
+@app.route("/affiliate")
+def affiliate_portal():
+    """Protected placeholder portal for approved FadeTheBooks partners."""
+    email = _session_verified_email()
+    if not email:
+        return redirect(url_for("home", affiliate="required"))
+    if not _session_has_affiliate_access():
+        return render_template("affiliate.html", email=email, denied=True), 403
+    return render_template("affiliate.html", email=email, denied=False)
 
 
 @app.before_request
@@ -1625,6 +1654,35 @@ def api_quota():
     except Exception as e:
         logger.error(f"Failed to get quota: {e}")
         return jsonify({"error": "Quota unavailable"}), 503
+
+@app.route("/api/best-opportunities")
+def api_best_opportunities():
+    """Member dashboard assist board built from cached odds/props only."""
+    try:
+        from best_opportunities_service import build_best_opportunities_report
+
+        line_payloads = {
+            "MLB": _load_json_cache_file("/var/data/mlb_odds_cache.json"),
+            "NBA": _load_json_cache_file("/var/data/nba_odds_cache.json"),
+            "NHL": _load_json_cache_file("/var/data/nhl_odds_cache.json"),
+        }
+        prop_payloads = {
+            "MLB": _load_json_cache_file("/var/data/mlb_props_cache.json"),
+            "NBA": _load_json_cache_file("/var/data/nba_props_cache.json"),
+            "NHL": _load_json_cache_file("/var/data/nhl_props_cache.json"),
+            "Soccer": _load_json_cache_file("/var/data/soccer_props_cache.json"),
+            "NFL": _load_json_cache_file("/var/data/nfl_props_cache.json"),
+        }
+        report = build_best_opportunities_report(line_payloads=line_payloads, prop_payloads=prop_payloads)
+        return jsonify(report)
+    except Exception as e:
+        logger.error(f"[BEST OPPORTUNITIES] Route error: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": "Best opportunities are temporarily unavailable.",
+            "opportunities": [],
+            "count": 0,
+        }), 500
 
 @app.route("/api/nhl/props")
 def api_nhl_props():
