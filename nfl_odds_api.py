@@ -23,23 +23,61 @@ PRIMARY_BOOKS = ["draftkings","fanduel"]  # preseason focus
 ALL_BOOKS = ["draftkings","fanduel","betmgm","caesars","pointsbetus"]
 
 DEFAULT_MARKETS = [
-    "player_pass_yds",
+    "player_assists",
+    "player_defensive_interceptions",
+    "player_field_goals",
+    "player_kicking_points",
+    "player_pass_attempts",
+    "player_pass_completions",
+    "player_pass_interceptions",
+    "player_pass_longest_completion",
+    "player_pass_rush_yds",
+    "player_pass_rush_reception_tds",
+    "player_pass_rush_reception_yds",
     "player_pass_tds",
-    "player_rush_yds",
-    "player_rush_tds",
+    "player_pass_yds",
+    "player_pass_yds_q1",
+    "player_pats",
     "player_receptions",
-    "player_reception_yds",
+    "player_reception_longest",
     "player_reception_tds",
-    # optional, but supported:
-    # "player_pass_interceptions",
-    # "player_rush_attempts",
-    # "player_reception_longest",
-    # "player_pass_longest_completion",
-    # "player_kicking_points",
+    "player_reception_yds",
+    "player_rush_attempts",
+    "player_rush_longest",
+    "player_rush_reception_tds",
+    "player_rush_reception_yds",
+    "player_rush_tds",
+    "player_rush_yds",
+    "player_sacks",
+    "player_solo_tackles",
+    "player_tackles_assists",
+    "player_tds_over",
+    "player_1st_td",
+    "player_anytime_td",
+    "player_last_td",
 ]
 
-# Extended markets for regular season
-EXTENDED_MARKETS = [
+# Extended markets for regular season. Keep this separate so callers can pass a
+# smaller custom list for diagnostics without changing the production default.
+EXTENDED_MARKETS = list(DEFAULT_MARKETS)
+
+def _market_chunks(markets: List[str], size: int = 8) -> List[List[str]]:
+    return [markets[i:i + size] for i in range(0, len(markets), size)]
+
+def _merge_bookmaker_markets(bookmaker_map: Dict[str, Dict[str, Any]], bookmakers: List[Dict[str, Any]]) -> None:
+    for bm in bookmakers or []:
+        key = bm.get("key") or bm.get("title")
+        if not key:
+            continue
+        target = bookmaker_map.setdefault(key, {**bm, "markets": []})
+        existing_market_keys = {m.get("key") for m in target.get("markets", [])}
+        for market in bm.get("markets") or []:
+            if market.get("key") in existing_market_keys:
+                continue
+            target.setdefault("markets", []).append(market)
+            existing_market_keys.add(market.get("key"))
+
+LEGACY_CORE_MARKETS = [
     "player_pass_yds",
     "player_pass_tds",
     "player_rush_yds",
@@ -47,12 +85,6 @@ EXTENDED_MARKETS = [
     "player_receptions",
     "player_reception_yds",
     "player_reception_tds",
-    # optional, but supported:
-    # "player_pass_interceptions",
-    # "player_rush_attempts",
-    # "player_reception_longest",
-    # "player_pass_longest_completion",
-    # "player_kicking_points",
 ]
 
 def _get(url: str, params: Dict[str, Any], timeout: int = 20) -> Tuple[Any, Dict[str,str]]:
@@ -156,21 +188,25 @@ def fetch_nfl_props(
         ev_id = ev.get("id")
         if not ev_id:
             continue
-        try:
-            p = _event_odds(sport_key, ev_id, mkts, None)  # mirror MLB: no bookmaker filter
-        except RuntimeError as e:
-            print(f"[NFL] Event {ev_id} failed: {e}")
-            continue
+
+        bookmaker_map: Dict[str, Dict[str, Any]] = {}
+        for chunk in _market_chunks(mkts):
+            try:
+                p = _event_odds(sport_key, ev_id, chunk, None)  # mirror MLB: no bookmaker filter
+            except RuntimeError as e:
+                print(f"[NFL] Event {ev_id} market chunk failed: {e}")
+                continue
+            _merge_bookmaker_markets(bookmaker_map, p.get("bookmakers", []))
         
         # keep ONLY events that actually have markets
-        if p.get("bookmakers"):
+        if bookmaker_map:
             out.append({
                 "id": ev_id,
                 "commence_time": ev.get("commence_time"),
                 "home_team": ev.get("home_team"),
                 "away_team": ev.get("away_team"),
                 "teams": ev.get("teams", []),
-                "bookmakers": p.get("bookmakers", []),
+                "bookmakers": list(bookmaker_map.values()),
             })
     return out
 

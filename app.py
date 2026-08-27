@@ -2957,6 +2957,7 @@ def _fetch_and_process_nba_props():
 def _normalize_nfl_events_to_props(events):
     """Normalize Odds API NFL event payloads into dashboard-ready prop rows."""
     enhanced_props: list[dict] = []
+    yes_no_player_markets = {"player_tds_over", "player_1st_td", "player_anytime_td", "player_last_td"}
 
     for event in events or []:
         home_team = (event.get("home_team") or "").strip()
@@ -2976,19 +2977,24 @@ def _normalize_nfl_events_to_props(events):
                     if not _valid_price(price):
                         continue
 
+                    outcome_name = (oc.get("name") or "").strip()
+                    normalized_outcome = outcome_name.lower()
                     player_name = (oc.get("description") or "").strip()
+                    if not player_name and normalized_outcome not in {"over", "under", "yes", "no"}:
+                        player_name = outcome_name
                     if not player_name:
                         continue
 
                     point = oc.get("point", None)
-                    side = (oc.get("name") or "").strip().lower()
                     key = (player_name, point, market_key)
                     entry = pairs.setdefault(key, {"over_odds": None, "under_odds": None})
 
-                    if "over" in side:
+                    if "over" in normalized_outcome or normalized_outcome == "yes":
                         entry["over_odds"] = price
-                    elif "under" in side:
+                    elif "under" in normalized_outcome or normalized_outcome == "no":
                         entry["under_odds"] = price
+                    elif market_key in yes_no_player_markets:
+                        entry["over_odds"] = price
 
                 for (player_name, point, mk), ou in pairs.items():
                     if ou.get("over_odds") is None and ou.get("under_odds") is None:
