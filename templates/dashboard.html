@@ -1224,7 +1224,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         if (currentMode === 'lines') {
             if (currentSport === 'mlb') loadMLBLines();
-            else if (currentSport === 'nfl') loadNFLProps();
+            else if (currentSport === 'nfl') loadNFLLines();
             else if (currentSport === 'nba') loadNBALines();
             else if (currentSport === 'soccer') loadSoccerLines();
             else loadNHLLines();
@@ -1310,6 +1310,36 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         } catch(e) {
             console.error('[NBA] Error loading best lines:', e);
             document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NBA lines temporarily unavailable.</div>`;
+        }
+    }
+
+    async function loadNFLLines() {
+        showSkeleton();
+        try {
+            const res = await fetch('/api/nfl/odds?t=' + Date.now());
+            const data = await res.json();
+            const noVigPicks = data.no_vig_picks || data.picks || [];
+            const edgePicks = data.edge_picks || [];
+            const counts = data.counts || { no_vig: noVigPicks.length, edge: edgePicks.length, implied: 0 };
+            if (noVigPicks.length === 0 && edgePicks.length === 0) {
+                document.getElementById('player-props-container').innerHTML = `
+                    <div style="text-align:center;padding:4rem 0;">
+                        <div style="font-size:3rem;margin-bottom:1rem;">🏈</div>
+                        <p style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;color:#0F2406;margin:0 0 0.5rem;">No NFL lines available right now.</p>
+                        <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:#6B9E5A;">NFL lines refresh when games are scheduled and sportsbooks post markets.</p>
+                    </div>`;
+                document.getElementById('prop-count-display').textContent = '0 picks';
+                return;
+            }
+            const impliedCount = counts.implied || noVigPicks.filter(p => p.implied_only).length;
+            const twoSidedCount = noVigPicks.length - impliedCount;
+            document.getElementById('prop-count-display').textContent = impliedCount > 0
+                ? `${twoSidedCount} two-sided · ${impliedCount} implied · ${edgePicks.length} edge`
+                : `${noVigPicks.length} lines · ${edgePicks.length} edge`;
+            renderLinesBoard(noVigPicks, edgePicks, counts, 'NFL');
+        } catch(e) {
+            console.error('[NFL] Error loading best lines:', e);
+            document.getElementById('player-props-container').innerHTML = `<div class="alert alert-warning text-center">NFL lines temporarily unavailable.</div>`;
         }
     }
 
@@ -1836,19 +1866,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             nflProps = Array.isArray(props) ? props : [];
             if (envData && envData.environments) environmentData = envData.environments; else environmentData = null;
             if (nflProps.length === 0) {
-                try {
-                    const oddsRes = await fetch('/api/nfl/odds?t=' + Date.now());
-                    const oddsData = await oddsRes.json();
-                    const linePicks = oddsData.no_vig_picks || oddsData.picks || [];
-                    if (linePicks.length > 0) {
-                        allProps = linePicks;
-                        allFilteredProps = linePicks;
-                        matchupData = null;
-                        document.getElementById('prop-count-display').textContent = `${linePicks.length} lines`;
-                        displayProps();
-                        return;
-                    }
-                } catch(e) { console.warn('[NFL] Lines fallback failed:', e); }
                 document.getElementById('player-props-container').innerHTML = `<div class="alert alert-info text-center"><h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season / No Props</h4><p class="mb-0">Check back during the NFL season for live player props.</p></div>`;
                 document.getElementById('prop-count-display').textContent = '0 props';
                 return;

@@ -1674,6 +1674,7 @@ def api_nfl_odds(force_refresh=False):
     """Curated NFL picks — h2h, spreads, totals — evaluated with EV engine."""
     try:
         from nfl_odds_api import fetch_nfl_game_odds
+        from nfl_game_enrichment import build_nfl_environment_map
         cache_file = "/var/data/nfl_odds_cache.json"
         cached_payload = _load_json_cache_file(cache_file)
         if cached_payload and (not force_refresh or _json_cache_is_fresh(cache_file, LINE_CACHE_MAX_AGE_SECONDS)):
@@ -1697,6 +1698,9 @@ def api_nfl_odds(force_refresh=False):
 
         raw_games = fetch_nfl_game_odds()
         payload = _build_game_line_payload(raw_games, "NFL", spread_label="Spread", total_label="Game Total")
+        env_map = build_nfl_environment_map(raw_games)
+        payload = _enrich_game_line_payload_with_environment(payload, env_map)
+        _write_json_cache_file("/var/data/nfl_environment_cache.json", env_map)
         _write_json_cache_file(cache_file, payload)
         return jsonify(payload)
     except Exception as e:
@@ -1722,6 +1726,7 @@ def api_best_opportunities():
         line_payloads = {
             "MLB": _load_json_cache_file("/var/data/mlb_odds_cache.json"),
             "NBA": _load_json_cache_file("/var/data/nba_odds_cache.json"),
+            "NFL": _load_json_cache_file("/var/data/nfl_odds_cache.json"),
             "NHL": _load_json_cache_file("/var/data/nhl_odds_cache.json"),
         }
         prop_payloads = {
@@ -2077,6 +2082,55 @@ def _build_game_line_payload(raw_games, sport_label, spread_label="Spread", tota
             "EDGE": len([p for p in edge_picks if p.get("confidence_tier") == "EDGE"]),
         },
     }
+
+
+def _enrich_game_line_payload_with_environment(payload, environment_map):
+    """Attach matchup environment context to cached game-line picks."""
+    if not isinstance(payload, dict) or not isinstance(environment_map, dict):
+        return payload
+
+    def normalize_environment(value):
+        text = str(value or "").strip()
+        lowered = text.lower()
+        if lowered in {"high", "high scoring", "high-scoring"}:
+            return "High Scoring"
+        if lowered in {"low", "low scoring", "low-scoring"}:
+            return "Low Scoring"
+        return text or "Neutral"
+
+    def context_note(env):
+        environment = normalize_environment(env.get("environment"))
+        if environment == "High Scoring":
+            return "High-scoring game environment"
+        if environment == "Low Scoring":
+            return "Low-scoring game environment"
+        if env.get("favored_side") or env.get("favored_team"):
+            return "Market context available"
+        return "No-vig board signal"
+
+    seen_ids = set()
+    for bucket in ("no_vig_picks", "edge_picks", "picks"):
+        for pick in payload.get(bucket) or []:
+            if not isinstance(pick, dict):
+                continue
+            pick_id = id(pick)
+            if pick_id in seen_ids:
+                continue
+            seen_ids.add(pick_id)
+
+            env = environment_map.get(pick.get("matchup") or "") or {}
+            if not env:
+                continue
+
+            environment = normalize_environment(env.get("environment"))
+            pick["environment"] = environment
+            pick["game_environment"] = environment
+            pick["context_note"] = context_note(env)
+            pick["total_points"] = env.get("total_points") if env.get("total_points") is not None else env.get("total")
+            pick["favored_side"] = env.get("favored_side")
+            pick["favored_team"] = env.get("favored_team")
+
+    return payload
 
 
 @app.route("/api/nba/props")
