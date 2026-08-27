@@ -235,8 +235,8 @@ memory_cache = {}  # In-memory fallback cache
 redis_healthy = False
 redis_last_check = 0
 
-# ---- NFL prop filtering (FanDuel + odds gate) ----
-VALID_BOOK_TITLES = {"fanduel"}   # case-insensitive match on bookmaker.title
+# ---- NFL prop filtering (FanDuel/DraftKings + odds gate) ----
+VALID_BOOK_TITLES = {"fanduel", "draftkings"}   # case-insensitive match on bookmaker.title
 ODDS_MIN, ODDS_MAX = -300, 250
 
 def _valid_price(p):
@@ -1638,8 +1638,14 @@ def api_mlb_environment():
 def api_nfl_environment():
     """Get NFL game environment classifications and favored teams"""
     try:
-        from nfl_odds_api import get_nfl_game_environment_map
-        env_map = get_nfl_game_environment_map()
+        cache_file = "/var/data/nfl_environment_cache.json"
+        env_map = _load_json_cache_file(cache_file)
+        if isinstance(env_map, dict) and env_map:
+            logger.info("[NFL ENV] Serving %d matchups from cache", len(env_map))
+        else:
+            logger.info("[NFL ENV] No cache available - queueing guarded background warmup")
+            _queue_cache_warmup("nfl_props", _fetch_and_process_nfl_props, min_interval_seconds=300)
+            env_map = {}
         return jsonify({"environments": env_map})
     except Exception as e:
         logger.error(f"Failed to get NFL environment data: {e}")
@@ -2459,6 +2465,9 @@ def cache_status():
 
     mlb_props = load_props_from_file("/var/data/mlb_props_cache.json")
     nhl_props = load_props_from_file("/var/data/nhl_props_cache.json")
+    nba_props = load_props_from_file("/var/data/nba_props_cache.json")
+    nfl_props = load_props_from_file("/var/data/nfl_props_cache.json")
+    soccer_props = load_props_from_file("/var/data/soccer_props_cache.json")
 
     def file_age_minutes(filename):
         try:
@@ -2486,8 +2495,35 @@ def cache_status():
                 "LOW": len([p for p in nhl_props if p.get("confidence_tier") == "LOW"])
             }
         },
-        "next_refresh": "Daily at 10:00 AM ET",
-        "strategy": "Sharp consensus window — overnight sharp action settled, before public money distorts lines"
+        "nba": {
+            "props_count": len(nba_props),
+            "cache_age_minutes": file_age_minutes("/var/data/nba_props_cache.json"),
+            "tiers": {
+                "LOCK": len([p for p in nba_props if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in nba_props if p.get("confidence_tier") == "FIRE"]),
+                "LOW": len([p for p in nba_props if p.get("confidence_tier") == "LOW"])
+            }
+        },
+        "nfl": {
+            "props_count": len(nfl_props),
+            "cache_age_minutes": file_age_minutes("/var/data/nfl_props_cache.json"),
+            "tiers": {
+                "LOCK": len([p for p in nfl_props if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in nfl_props if p.get("confidence_tier") == "FIRE"]),
+                "LOW": len([p for p in nfl_props if p.get("confidence_tier") == "LOW"])
+            }
+        },
+        "soccer": {
+            "props_count": len(soccer_props),
+            "cache_age_minutes": file_age_minutes("/var/data/soccer_props_cache.json"),
+            "tiers": {
+                "LOCK": len([p for p in soccer_props if p.get("confidence_tier") == "LOCK"]),
+                "FIRE": len([p for p in soccer_props if p.get("confidence_tier") == "FIRE"]),
+                "LOW": len([p for p in soccer_props if p.get("confidence_tier") == "LOW"])
+            }
+        },
+        "next_refresh": "Twice daily at 7:00 AM and 3:00 PM Phoenix time, staggered by sport",
+        "strategy": "Scheduled cache refreshes keep the dashboard fast and protect Odds API quota."
     })
 
 @app.route("/api/mlb/props/enhanced")
@@ -2528,138 +2564,24 @@ def get_enhanced_mlb_props():
 def get_nfl_props():
     """
     NFL player props endpoint
-    - Keeps off-season handling (422/INVALID_MARKET -> [])
-    - Filters to VALID_BOOK_TITLES and odds window via _valid_price
-    - Normalizes to MLB-like rows
-    - Enriches with environment map
+    - Serves cached props for dashboard stability and API quota safety
+    - Queues guarded background warmup on cache miss
+    - Live fetch only happens from scheduler/manual/debug paths
     """
     try:
         logger.info("[NFL] /api/nfl/props called")
 
-        # --- required imports ---
-        from nfl_odds_api import fetch_nfl_props
-        from nfl_game_enrichment import (
-            build_nfl_environment_map,
-            enrich_nfl_props_with_context,
-        )
-        # If get_team_abbreviation is in another module, import it:
-        # from teams import get_team_abbreviation
+        cache_file = "/var/data/nfl_props_cache.json"
+        props = _load_json_cache_file(cache_file)
+        existing_cache = _existing_cache_path(cache_file)
+        if props or (existing_cache and _json_cache_is_fresh(cache_file, PROP_CACHE_MAX_AGE_SECONDS)):
+            fresh = _json_cache_is_fresh(cache_file, PROP_CACHE_MAX_AGE_SECONDS)
+            logger.info("[NFL PROPS] Serving %d from %s cache", len(props), "fresh" if fresh else "stale")
+            return jsonify(props)
 
-        # --- fetch with off-season guard ---
-        try:
-            events = fetch_nfl_props() or []
-        except RuntimeError as e:
-            msg = str(e)
-            if "422" in msg or "INVALID_MARKET" in msg:
-                logger.info("[NFL] Off-season: no player props")
-                return jsonify([])
-            raise
-
-        if not events:
-            logger.info("[NFL] odds API returned 0 events")
-            return jsonify([])
-
-        enhanced_props: list[dict] = []
-
-        for event in events:
-            home_team = (event.get("home_team") or "").strip()
-            away_team = (event.get("away_team") or "").strip()
-
-            for bookmaker in (event.get("bookmakers") or []):
-                title = (bookmaker.get("title") or "").strip()
-                # If VALID_BOOK_TITLES is defined as {"fanduel"} and is case-insensitive:
-                try:
-                    if title.lower() not in VALID_BOOK_TITLES:
-                        continue
-                except NameError:
-                    # Fallback: allow all books if not configured
-                    pass
-
-                for market in (bookmaker.get("markets") or []):
-                    market_key = (market.get("key") or "").strip()
-
-                    # Optional: limit to a subset of markets
-                    # if market_key not in DESIRED_MARKETS:
-                    #     continue
-
-                    # Pair outcomes by (player, line, market)
-                    pairs: dict[tuple, dict] = {}
-                    for oc in (market.get("outcomes") or []):
-                        price = oc.get("price")
-                        # Enforce odds window if helper exists; otherwise accept as-is
-                        try:
-                            if not _valid_price(price):
-                                continue
-                        except NameError:
-                            pass  # no odds window configured
-
-                        player_name = (oc.get("description") or "").strip()
-                        point = oc.get("point", None)
-
-                        side = (oc.get("name") or "").strip().lower()  # "over"/"under"
-                        key = (player_name, point, market_key)
-
-                        entry = pairs.setdefault(key, {"over_odds": None, "under_odds": None})
-
-                        if "over" in side:
-                            entry["over_odds"] = price
-                        elif "under" in side:
-                            entry["under_odds"] = price
-                        else:
-                            # Skip unlabeled sides; don’t guess
-                            continue
-
-                    for (player_name, point, mk), ou in pairs.items():
-                        if ou.get("over_odds") is None and ou.get("under_odds") is None:
-                            continue  # nothing valid within window
-
-                        # Team abbreviations with safe fallback
-                        try:
-                            home_abbr = get_team_abbreviation(home_team)
-                            away_abbr = get_team_abbreviation(away_team)
-                        except NameError:
-                            home_abbr = ""
-                            away_abbr = ""
-
-                        enhanced_props.append({
-                            "player": player_name,
-                            "player_name": player_name,
-                            "stat": mk,
-                            "stat_type": mk,
-                            "market": mk,
-                            "line": point,
-                            "point": point,
-                            "bookmaker": title,
-                            "sportsbook": title,
-                            "home_team": home_team,
-                            "away_team": away_team,
-                            "home_abbr": home_abbr,
-                            "away_abbr": away_abbr,
-                            "matchup": f"{away_team} @ {home_team}",
-                            "over_odds": ou.get("over_odds"),
-                            "under_odds": ou.get("under_odds"),
-                            # defaults; enrichment overwrites
-                            "confidence": "Medium",
-                            "team": "",
-                            "team_abbr": "",
-                            "team_status": "",
-                            "hit_probability": 0.5,
-                        })
-
-        logger.info("[NFL] normalized (post-filter) %d props", len(enhanced_props))
-
-        # Build environment from the full events (book-agnostic)
-        env_map = build_nfl_environment_map(events)
-        logger.info("[NFL] built env for %d matchups", len(env_map))
-
-        enriched = enrich_nfl_props_with_context(enhanced_props, env_map)
-        logger.info("[NFL] enriched %d props", len(enriched))
-
-        # Optional global cap for payload safety
-        # MAX_PROPS_TOTAL = 400
-        # enriched = enriched[:MAX_PROPS_TOTAL]
-
-        return jsonify(enriched)
+        logger.info("[NFL PROPS] No cache available - queueing guarded background warmup")
+        _queue_cache_warmup("nfl_props", _fetch_and_process_nfl_props, min_interval_seconds=300)
+        return jsonify([])
 
     except Exception as e:
         logger.error("[NFL] Error in props endpoint: %s", e, exc_info=True)
@@ -2925,6 +2847,138 @@ def _fetch_and_process_nba_props():
         logger.error(f"[NBA PROPS] failed: {e}", exc_info=True)
         return []
 
+def _normalize_nfl_events_to_props(events):
+    """Normalize Odds API NFL event payloads into dashboard-ready prop rows."""
+    enhanced_props: list[dict] = []
+
+    for event in events or []:
+        home_team = (event.get("home_team") or "").strip()
+        away_team = (event.get("away_team") or "").strip()
+
+        for bookmaker in (event.get("bookmakers") or []):
+            title = (bookmaker.get("title") or "").strip()
+            if title.lower() not in VALID_BOOK_TITLES:
+                continue
+
+            for market in (bookmaker.get("markets") or []):
+                market_key = (market.get("key") or "").strip()
+
+                pairs: dict[tuple, dict] = {}
+                for oc in (market.get("outcomes") or []):
+                    price = oc.get("price")
+                    if not _valid_price(price):
+                        continue
+
+                    player_name = (oc.get("description") or "").strip()
+                    if not player_name:
+                        continue
+
+                    point = oc.get("point", None)
+                    side = (oc.get("name") or "").strip().lower()
+                    key = (player_name, point, market_key)
+                    entry = pairs.setdefault(key, {"over_odds": None, "under_odds": None})
+
+                    if "over" in side:
+                        entry["over_odds"] = price
+                    elif "under" in side:
+                        entry["under_odds"] = price
+
+                for (player_name, point, mk), ou in pairs.items():
+                    if ou.get("over_odds") is None and ou.get("under_odds") is None:
+                        continue
+
+                    try:
+                        home_abbr = get_team_abbreviation(home_team)
+                        away_abbr = get_team_abbreviation(away_team)
+                    except NameError:
+                        home_abbr = ""
+                        away_abbr = ""
+
+                    enhanced_props.append({
+                        "player": player_name,
+                        "player_name": player_name,
+                        "stat": mk,
+                        "stat_type": mk,
+                        "market": mk,
+                        "line": point,
+                        "point": point,
+                        "bookmaker": title,
+                        "sportsbook": title,
+                        "home_team": home_team,
+                        "away_team": away_team,
+                        "home_abbr": home_abbr,
+                        "away_abbr": away_abbr,
+                        "matchup": f"{away_team} @ {home_team}",
+                        "over_odds": ou.get("over_odds"),
+                        "under_odds": ou.get("under_odds"),
+                        "confidence": "Medium",
+                        "team": "",
+                        "team_abbr": "",
+                        "team_status": "",
+                        "hit_probability": 0.5,
+                    })
+
+    return enhanced_props
+
+def _fetch_and_process_nfl_props():
+    """Fetch, normalize, enrich, and cache NFL props plus environment context."""
+    try:
+        from enrichment import cache_props_to_file, load_props_from_file
+        from nfl_odds_api import fetch_nfl_props, get_nfl_game_environment_map
+        from nfl_game_enrichment import build_nfl_environment_map, enrich_nfl_props_with_context
+
+        logger.info("[NFL PROPS] Starting fetch...")
+        try:
+            os.makedirs('/var/data', exist_ok=True)
+        except OSError:
+            pass
+
+        try:
+            events = fetch_nfl_props() or []
+        except RuntimeError as e:
+            msg = str(e)
+            if "422" in msg or "INVALID_MARKET" in msg:
+                logger.info("[NFL PROPS] Off-season/no prop markets: %s", msg)
+                stale = load_props_from_file("/var/data/nfl_props_cache.json")
+                return stale or []
+            raise
+
+        try:
+            env_map = get_nfl_game_environment_map()
+        except Exception as e:
+            logger.warning("[NFL PROPS] Live environment fetch failed, deriving from prop events: %s", e)
+            env_map = build_nfl_environment_map(events)
+        _write_json_cache_file("/var/data/nfl_environment_cache.json", env_map)
+        logger.info("[NFL PROPS] Cached environment for %d matchups", len(env_map))
+
+        if not events:
+            logger.info("[NFL PROPS] No events with props - checking stale cache")
+            stale = load_props_from_file("/var/data/nfl_props_cache.json")
+            if stale:
+                return stale
+            cache_props_to_file([], "/var/data/nfl_props_cache.json")
+            return []
+
+        props = _normalize_nfl_events_to_props(events)
+        logger.info("[NFL PROPS] Normalized %d props", len(props))
+
+        if not props:
+            logger.info("[NFL PROPS] 0 props after filters - checking stale cache")
+            stale = load_props_from_file("/var/data/nfl_props_cache.json")
+            if stale:
+                return stale
+            cache_props_to_file([], "/var/data/nfl_props_cache.json")
+            return []
+
+        enriched = enrich_nfl_props_with_context(props, env_map)
+        cache_props_to_file(enriched, "/var/data/nfl_props_cache.json")
+        logger.info("[NFL PROPS] Cached %d props", len(enriched))
+        return enriched
+
+    except Exception as e:
+        logger.error(f"[NFL PROPS] failed: {e}", exc_info=True)
+        return []
+
 def _fetch_and_cache_soccer_game_lines():
     """Fetch soccer game lines (h2h 3-way + totals) and cache to a SEPARATE
     file from player props so neither overwrites the other."""
@@ -3052,7 +3106,19 @@ scheduler.add_job(
     replace_existing=True
 )
 
-# Soccer props — twice daily PHX (after MLB/NHL/NBA)
+# NFL props — twice daily PHX (staggered after NBA)
+scheduler.add_job(
+    func=lambda: _fetch_and_process_nfl_props(),
+    trigger="cron",
+    hour="7,15",
+    minute=40,
+    timezone="America/Phoenix",
+    id="nfl_props_twice_daily",
+    name="NFL Props 7:40AM + 3:40PM PHX",
+    replace_existing=True
+)
+
+# Soccer props — twice daily PHX (after MLB/NHL/NBA/NFL)
 scheduler.add_job(
     func=fetch_soccer_props_safe,
     trigger="cron",
@@ -3338,6 +3404,24 @@ def background_initializer():
         except Exception as e:
             logger.warning(f"NBA props job error: {e}")
 
+        # ── REGISTER NFL PROPS JOB ───────────────────────────────
+        try:
+            scheduler.add_job(
+                func=_fetch_and_process_nfl_props,
+                trigger='cron',
+                hour='7,15',
+                minute=40,
+                timezone='America/Phoenix',
+                id='nfl_props_twice_daily',
+                name='NFL Props 7:40AM + 3:40PM PHX',
+                replace_existing=True,
+                misfire_grace_time=3600,
+                coalesce=True
+            )
+            logger.info("✅ NFL props job registered")
+        except Exception as e:
+            logger.warning(f"NFL props job error: {e}")
+
         # ── REGISTER SOCCER PROPS JOB ────────────────────────────
         try:
             scheduler.add_job(
@@ -3438,6 +3522,17 @@ def background_initializer():
             except Exception as e:
                 logger.warning(f"NHL props failed: {e}")
 
+        # NFL props — skip if fetched within 10 hours
+        nfl_cache = '/var/data/nfl_props_cache.json'
+        if _cache_is_fresh(nfl_cache, max_hours=10):
+            logger.info("[CACHE] NFL props fresh — skipping fetch")
+        else:
+            try:
+                _fetch_and_process_nfl_props()
+                logger.info("✅ NFL props primed")
+            except Exception as e:
+                logger.warning(f"NFL props failed: {e}")
+
         # Soccer props — skip if fetched within 10 hours
         soccer_cache = '/var/data/soccer_props_cache.json'
         if _cache_is_fresh(soccer_cache, max_hours=10):
@@ -3509,6 +3604,7 @@ def refresh_props():
         "/var/data/mlb_props_cache.json",
         "/var/data/nhl_props_cache.json",
         "/var/data/nba_props_cache.json",
+        "/var/data/nfl_props_cache.json",
         "/var/data/soccer_props_cache.json",
         "/var/data/mlb_odds_cache.json",
         "/var/data/nhl_odds_cache.json",
@@ -3532,6 +3628,7 @@ def refresh_props():
                 ("MLB props", _fetch_and_process_mlb_props),
                 ("NHL props", _fetch_and_process_nhl_props),
                 ("NBA props", _fetch_and_process_nba_props),
+                ("NFL props", _fetch_and_process_nfl_props),
                 ("Soccer props", _fetch_and_process_soccer_props),
             ]
             for label, job in jobs:
@@ -3601,6 +3698,7 @@ def cache_check():
             "mlb": file_info("/var/data/mlb_props_cache.json"),
             "nhl": file_info("/var/data/nhl_props_cache.json"),
             "nba": file_info("/var/data/nba_props_cache.json"),
+            "nfl": file_info("/var/data/nfl_props_cache.json"),
             "soccer": file_info("/var/data/soccer_props_cache.json"),
         },
         "lines": {
@@ -4946,6 +5044,7 @@ def load_board_for_context():
         'MLB': '/var/data/mlb_props_cache.json',
         'Soccer': '/var/data/soccer_props_cache.json',
         'NHL': '/var/data/nhl_props_cache.json',
+        'NFL': '/var/data/nfl_props_cache.json',
     }
     board = []
     for sport, path in caches.items():
