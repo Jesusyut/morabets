@@ -444,6 +444,21 @@
       text-align: center;
     }
 
+    .member-access-toggle {
+      display: inline-flex;
+      margin: 0 auto 18px;
+      border: 0;
+      background: transparent;
+      color: var(--green);
+      cursor: pointer;
+      padding: 0;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 850;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
     .member-access {
       width: min(100%, 560px);
       margin: 26px auto 0;
@@ -505,6 +520,15 @@
       color: var(--red);
       font-size: 12px;
       text-align: center;
+    }
+
+    .member-access-panel {
+      display: none;
+      margin-top: 14px;
+    }
+
+    .member-access-panel.visible {
+      display: block;
     }
 
     .account-section {
@@ -723,13 +747,17 @@
   <main>
     <section class="hero" id="hero">
       <div class="container">
-        <h1>Sportsbooks Don't Want You Knowing the True Odds. <span class="green">Now You Do.</span></h1>
-        <p class="subhead">Strip the vig. Scan for real edge. Bet with math on your side.</p>
-        <button class="cta checkout-cta" type="button">Get Access</button>
-        <p class="tiny">Full access today. Cancel anytime.</p>
-        <div class="status-message" data-checkout-status></div>
-        <div class="member-access" aria-label="Existing subscriber access">
-          <p class="member-access-label">Already subscribed? Enter your email to access your membership.</p>
+        <button class="member-access-toggle" id="memberAccessToggle" type="button">Already subscribed? Enter your email to access your membership.</button>
+        <h1>Every Prediction Market Price Traces Back to a Sportsbook Line. <span class="green">Here's the Gap Between Them.</span></h1>
+        <form class="member-access" data-lead-form aria-label="Board preview signup">
+          <div class="member-access-row">
+            <input name="name" type="text" placeholder="Full name" autocomplete="name" required>
+            <input name="email" type="email" placeholder="your@email.com" autocomplete="email" required>
+            <button type="submit">See today's board</button>
+          </div>
+          <p class="member-access-status" data-lead-status></p>
+        </form>
+        <div class="member-access member-access-panel" id="memberAccessPanel" aria-label="Existing subscriber access">
           <div class="member-access-row">
             <input id="memberAccessEmail" type="email" placeholder="subscriber@email.com" autocomplete="email">
             <button id="memberAccessButton" type="button">ACCESS MEMBERSHIP</button>
@@ -741,115 +769,47 @@
 
     <section>
       <div class="container">
-        <p class="eyebrow">RECENT RESULTS</p>
-        <div class="grid-3">
-          <article class="card receipt-card">
-            <img class="landing-image receipt-image" src="../static/landing/draftkings-june-2-brewers-knights.jpg" alt="DraftKings receipt showing $1,000 wager paid $2,047.13 for MIL Brewers ML and VGK Golden Knights +1.5">
-            <p class="caption">"$1,000 in. $2,047 out. Brewers showed value on the no-vig board. Knights cleared the spread."</p>
-          </article>
-          <article class="card receipt-card">
-            <img class="landing-image receipt-image" src="../static/landing/draftkings-june-6-brewers-guardians.jpg" alt="DraftKings receipt showing $1,250 wager paid $2,532.93 for MIL Brewers ML and CLE Guardians +1.5">
-            <p class="caption">"$1,250 in. $2,532 out. Both teams 60%+ on the no-vig board that day."</p>
-          </article>
-          <article class="card receipt-card">
-            <img class="landing-image receipt-image receipt-image-kalshi" src="../static/landing/kalshi-world-cup-btts.jpg" alt="Kalshi World Cup receipt showing Mexico vs England both teams to score paid $1,395.42">
-            <p class="caption">"$500 in. $916 out. Soccer total cleared. Same math-first approach across every sport on the board."</p>
-          </article>
-        </div>
-        <p class="subhead" style="margin: 30px 0 0; text-align:center;">These aren't cherry-picked. They're what happens when you bet math instead of gut.</p>
+        <p class="eyebrow">This morning: Spencer Horwitz, 65.9% no-vig, DraftKings had it at -188.</p>
+        <article class="card product-card">
+          <div>
+            <p class="label">Name</p>
+            <h3>Spencer Horwitz</h3>
+          </div>
+          <div class="feature-copy">
+            <p>65.9% No-vig</p>
+            <p>-188 DraftKings</p>
+          </div>
+        </article>
+        <p class="caption" style="text-align:center;">"Most bettors are reading the price. This shows you the probability underneath it."</p>
       </div>
     </section>
 
     <section>
       <div class="narrow section-copy">
-        <h2>You're Not Losing Because You're Bad at Picking Games.</h2>
-        <p>You're losing because the books build a margin into every single line they post. That margin — called the vig — means even a coin-flip bet is priced so they profit over time.</p>
-        <p>Most bettors never see the true probability. They see -110 on both sides and think it's 50/50. It's not. Strip the vig and you'll see exactly what the book thinks will happen — before you decide whether you agree.</p>
-        <p>That's step one. Most people stop there.</p>
-        <p>Step two is knowing why a specific game has edge today — not just that the probability is 61%, but what's driving that number. Line movement. Market mistakes. Contextual factors the model is flagging. That's what separates a value bet from a lucky one.</p>
-        <div class="pullquote">"It's not a time machine. It's an edge."</div>
+        <h2>It's not just sportsbook math. It's market math.</h2>
+        <p>The same morning Spencer Horwitz showed 65.9% on our board, a prediction market — Robinhood's — had him priced at 54 cents to get a hit. Same event. Two different numbers.</p>
+        <p>That's an 11-point gap between what a prediction market was charging and what the sportsbook's own pricing actually implied, once the fee's stripped out.</p>
+        <p>This is the part most people never see: true probability isn't a sportsbook trick. It's a market-reading number. It works anywhere a price exists — one sportsbook against another, or a sportsbook against a prediction market. When the real number and the listed price disagree, that gap is the whole game.</p>
+        <p class="muted"><em>(For the record: Horwitz got a hit in his first at-bat. One outcome doesn't prove a model — a 65.9% probability is still supposed to miss about a third of the time. What matters is the gap was real, and the math found it before the game started.)</em></p>
       </div>
     </section>
 
     <section>
       <div class="container">
-        <h2>One Daily Dashboard. Every Available Edge.</h2>
+        <h2>Real receipts. No embellishment.</h2>
         <div class="grid-2">
-          <article class="card product-card">
-            <div>
-              <p class="label">INCLUDED WITH MEMBERSHIP</p>
-              <h3>Fade the Books Daily Dashboard</h3>
-            </div>
-            <div class="feature-copy">
-              <p>Every active sport. MLB, NFL, NHL, and Soccer when markets are available. Updated live.</p>
-              <p>We pull sportsbook lines, strip the vig mathematically, organize the board by sport, and show the true implied probability behind each market. No guessing. No gut feel. Pure math.</p>
-            </div>
-            <img class="landing-image product-image" src="../static/landing/mora-bets-board.png" alt="Fade the Books dashboard showing today's no-vig board with probabilities and best available lines">
-            <p class="caption">"Today's board — real probabilities, live lines, best available price across 7 books."</p>
+          <article class="card receipt-card">
+            <img class="landing-image receipt-image" src="../static/landing/draftkings-june-6-brewers-guardians.jpg" alt="DraftKings receipt showing $1,250 wager paid $2,532.93 for MIL Brewers ML and CLE Guardians +1.5">
           </article>
-
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <h2>Simple. Systematic. Repeatable.</h2>
-        <div class="steps">
-          <article class="card step">
-            <div class="step-num">1</div>
-            <h3>Open the board</h3>
-            <p class="muted">Check today's games. Sort by true probability. Anything 60%+ is mathematically worth a look.</p>
-          </article>
-          <article class="card step">
-            <div class="step-num">2</div>
-            <h3>Compare the best available price</h3>
-            <p class="muted">Use the no-vig probability beside the best available sportsbook price so you can decide where the math gives you the cleanest opportunity.</p>
-          </article>
-          <article class="card step">
-            <div class="step-num">3</div>
-            <h3>Bet with math, not gut</h3>
-            <p class="muted">You're not gambling on a hunch. You're executing on edge. Small units, consistent application, positive expectancy over time.</p>
+          <article class="card receipt-card">
+            <img class="landing-image receipt-image" src="../static/landing/draftkings-june-2-brewers-knights.jpg" alt="DraftKings receipt showing $1,000 wager paid $2,047.13 for MIL Brewers ML and VGK Golden Knights +1.5">
           </article>
         </div>
-        <p class="subhead" style="margin: 30px 0 0; text-align:center;">This is how sharp bettors think. Now it's how you bet.</p>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="narrow section-copy">
-          <h2>The Board Showed the Edge. Here's What Happened.</h2>
-          <p>On June 6th, the no-vig board showed Milwaukee Brewers at 61.1% true win probability and Cleveland Guardians Run Line +1.5 at 60.9%. $1,250 went in. $2,532.93 came back.</p>
-          <p>That's not luck. That's what 60%+ edge looks like when you apply it consistently with discipline.</p>
+        <div class="narrow section-copy" style="margin-top: 28px;">
+          <p>$1,250 in. $2,532.93 out. Brewers ML and Guardians +1.5, both showing 60%+ on the no-vig board that day.</p>
+          <p>$1,000 in. $2,047.13 out. Brewers ML and Golden Knights +1.5, same math-first read.</p>
+          <p class="muted">These aren't cherry-picked. They're what happens when the number underneath the price gets checked before the money goes in. Individual results — not typical, not guaranteed.</p>
         </div>
-        <div class="proof-pair">
-          <img class="landing-image proof-image" src="../static/landing/mora-bets-board.png" alt="Fade the Books board screenshot showing no-vig probabilities">
-          <img class="landing-image proof-image" src="../static/landing/draftkings-june-6-brewers-guardians.jpg" alt="DraftKings receipt showing $1,250 wager paid $2,532.93">
-        </div>
-        <p class="caption" style="text-align:center;">"The board showed the value. The receipt shows what happened."</p>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <h2 style="text-align:center;">Start With the Daily Dashboard.</h2>
-        <div class="offer-box">
-          <div class="price">$44.99/MONTH</div>
-          <p class="offer-copy">Full access to the daily no-vig dashboard. Cancel anytime.</p>
-          <ul class="check-list">
-            <li>✓ True no-vig probability board — MLB, NFL, NHL, Soccer</li>
-            <li>✓ Live line shopping across 7+ books</li>
-            <li>✓ Organized daily dashboard across active sports</li>
-            <li>✓ Best available line tracking</li>
-            <li>✓ Value opportunities sorted for faster scanning</li>
-            <li>✓ Access on any device</li>
-          </ul>
-          <button id="openTrialDownsell" class="secondary-action trial-downsell-action" type="button">Get Edge updates and Free trial here</button>
-          <p class="tiny" style="text-align:center;">No contracts. $44.99/month. Cancel anytime.</p>
-          <div class="status-message" data-checkout-status></div>
-        </div>
-        <p class="risk">If the dashboard does not change how you see value at the book, cancel. Takes 10 seconds.</p>
       </div>
     </section>
 
@@ -859,19 +819,15 @@
         <div class="faq">
           <article class="card faq-item">
             <h3>Q: Is this gambling advice or tips?</h3>
-            <p>No. Fade the Books doesn't tell you what to bet. It shows you where the mathematical edge is and what the AI scan is flagging. What you do with that information is your decision. We show you the math. You pull the trigger.</p>
+            <p>No. We don't tell you what to bet. We show you where the math and the price disagree. What you do with that is yours.</p>
           </article>
           <article class="card faq-item">
-            <h3>Q: I've seen "guaranteed picks" before. How is this different?</h3>
-            <p>We don't sell picks. We don't guarantee wins. No edge wins 100% of the time — anyone claiming otherwise is lying to you. What we offer is a consistent mathematical advantage over the long run. A 60% true probability doesn't mean winning every time. It means winning more often than the book priced.</p>
+            <h3>Q: I've seen "guaranteed picks" before. What's different here?</h3>
+            <p>We don't sell picks and we don't promise wins. A 60% true probability doesn't win every time — it wins more often than the book priced. That's the whole product.</p>
           </article>
           <article class="card faq-item">
-            <h3>Q: What sports does it cover?</h3>
-            <p>MLB, NFL, NHL, and Soccer when markets are available. The board updates live throughout the day with fresh lines and no-vig probabilities.</p>
-          </article>
-          <article class="card faq-item">
-            <h3>Q: Is there a trial option?</h3>
-            <p>Yes. If you're not ready to start today, join the free tips list and we'll show you the free trial path from there.</p>
+            <h3>Q: What do I get for my email?</h3>
+            <p>Today's board, straight to your inbox. No pricing decision, no card, nothing to cancel. Just the number.</p>
           </article>
         </div>
       </div>
@@ -879,11 +835,15 @@
 
     <section>
       <div class="container" style="text-align:center;">
-        <h2>The Book Has an Edge. Now You Have One Too.</h2>
-        <p class="subhead">See the math. Bet smarter.</p>
-        <button class="cta checkout-cta" type="button">Get Access</button>
-        <p class="tiny">Then $44.99/month. No contracts. Cancel anytime.</p>
-        <div class="status-message" data-checkout-status></div>
+        <h2>Get today's board in your inbox.</h2>
+        <form class="member-access" data-lead-form aria-label="Board preview signup">
+          <div class="member-access-row">
+            <input name="name" type="text" placeholder="Full name" autocomplete="name" required>
+            <input name="email" type="email" placeholder="your@email.com" autocomplete="email" required>
+            <button type="submit">See today's board</button>
+          </div>
+          <p class="member-access-status" data-lead-status></p>
+        </form>
         <div class="account-section">
           <h3>Already a member?</h3>
           <p>Manage your subscription, billing, or cancellation in Stripe.</p>
@@ -902,73 +862,83 @@
     </div>
   </footer>
 
-  <div class="mobile-sticky-cta" id="mobileStickyCta">
-    <button class="cta checkout-cta" type="button">Get Access Today →</button>
-  </div>
-
-  <div class="newsletter-modal" id="newsletterModal" aria-label="Newsletter offer">
-    <div class="newsletter-card">
-      <button class="newsletter-close" id="newsletterClose" type="button" aria-label="Close newsletter offer">×</button>
-      <h3>Not ready to start?</h3>
-      <p>Get tips for using Fade the Books across every active sport, plus today's best no-vig value opportunities and product updates. Then unlock the free trial path.</p>
-      <div class="newsletter-form">
-        <input id="newsletterName" type="text" placeholder="Full name" autocomplete="name">
-        <input id="newsletterEmail" type="email" placeholder="your@email.com" autocomplete="email">
-        <input id="newsletterPhone" type="tel" placeholder="Phone number" autocomplete="tel">
-        <p class="tiny" style="margin:0;text-align:left;">* We won't call you. Most members prefer SMS insight in the morning rather than missing the email.</p>
-        <button id="newsletterJoinButton" class="cta full" type="button">JOIN FREE + GET FREE TRIAL</button>
-      </div>
-      <p class="newsletter-status" id="newsletterStatus"></p>
-    </div>
-  </div>
-
   <script>
-    const checkoutButtons = document.querySelectorAll('.checkout-cta');
-    const statusEls = document.querySelectorAll('[data-checkout-status]');
+    const leadForms = document.querySelectorAll('[data-lead-form]');
+    const memberAccessToggle = document.getElementById('memberAccessToggle');
+    const memberAccessPanel = document.getElementById('memberAccessPanel');
     const memberAccessEmail = document.getElementById('memberAccessEmail');
     const memberAccessButton = document.getElementById('memberAccessButton');
     const memberAccessStatus = document.getElementById('memberAccessStatus');
-    const newsletterModal = document.getElementById('newsletterModal');
-    const newsletterClose = document.getElementById('newsletterClose');
-    const newsletterName = document.getElementById('newsletterName');
-    const newsletterEmail = document.getElementById('newsletterEmail');
-    const newsletterPhone = document.getElementById('newsletterPhone');
-    const newsletterJoinButton = document.getElementById('newsletterJoinButton');
-    const newsletterStatus = document.getElementById('newsletterStatus');
-    const openTrialDownsell = document.getElementById('openTrialDownsell');
-    const NEWSLETTER_SIGNED_UP_KEY = 'mora_newsletter_signed_up';
-    const NEWSLETTER_DISMISSED_KEY = 'mora_landing_newsletter_dismissed';
-    const CHECKOUT_STARTED_KEY = 'fade_books_dashboard_checkout_started';
     const MEMBER_CONFIRMED_KEY = 'fade_books_member_confirmed';
-    let newsletterShown = false;
-    let newsletterActivityTimer = null;
+    const TRIAL_PAYMENT_LINK = 'https://buy.stripe.com/aFa7sK6eh7MF4YZ1Oa0gw00';
 
-    function setCheckoutStatus(message) {
-      statusEls.forEach((el) => {
-        el.textContent = message || '';
-      });
+    function setLeadStatus(form, message, color) {
+      const status = form.querySelector('[data-lead-status]');
+      if (!status) return;
+      status.textContent = message || '';
+      status.style.color = color || 'var(--red)';
     }
 
-    const DASHBOARD_PAYMENT_LINK = 'https://buy.stripe.com/8x24gy0TX4At3UV3Wi0gw01';
+    async function submitLeadForm(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const name = (form.querySelector('input[name="name"]')?.value || '').trim();
+      const email = (form.querySelector('input[name="email"]')?.value || '').trim().toLowerCase();
+      const button = form.querySelector('button[type="submit"]');
 
-    function startCheckout() {
-      setCheckoutStatus('');
-      localStorage.setItem(CHECKOUT_STARTED_KEY, 'true');
-      hideNewsletterOffer();
-      if (typeof fbq !== 'undefined') {
-        fbq('track', 'InitiateCheckout', {
-          value: 44.99,
-          currency: 'USD',
-          content_name: 'Fade the Books Daily Dashboard'
-        });
+      if (!name) {
+        setLeadStatus(form, 'Enter your name.');
+        return;
       }
-      document.body.classList.add('checkout-loading');
-      window.location.href = DASHBOARD_PAYMENT_LINK;
+      if (!email || !email.includes('@')) {
+        setLeadStatus(form, 'Enter a valid email.');
+        return;
+      }
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'SENDING...';
+      }
+
+      try {
+        const res = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name, source: 'daily_board_preview' })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Lead submission failed');
+        if (data.event_id && typeof fbq !== 'undefined') {
+          fbq('track', 'Lead', {
+            value: 0,
+            currency: 'USD',
+            content_name: 'Fade the Books Daily Board Preview'
+          }, { eventID: data.event_id });
+        }
+        setLeadStatus(form, 'Opening your trial...', 'var(--green)');
+        window.setTimeout(() => {
+          window.location.href = TRIAL_PAYMENT_LINK;
+        }, 250);
+      } catch (err) {
+        setLeadStatus(form, 'Could not submit. Try again.');
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = "See today's board";
+        }
+      }
     }
 
-    checkoutButtons.forEach((button) => {
-      button.addEventListener('click', startCheckout);
-    });
+    leadForms.forEach((form) => form.addEventListener('submit', submitLeadForm));
+
+    function showMemberAccessPanel() {
+      if (memberAccessPanel) memberAccessPanel.classList.add('visible');
+      if (memberAccessEmail) memberAccessEmail.focus();
+    }
+
+    if (memberAccessToggle) {
+      memberAccessToggle.addEventListener('click', showMemberAccessPanel);
+    }
 
     async function accessMembership() {
       const email = (memberAccessEmail && memberAccessEmail.value ? memberAccessEmail.value : '').trim().toLowerCase();
@@ -998,8 +968,6 @@
           sessionStorage.setItem('ce_context_edge_email', email);
           sessionStorage.setItem('ce_premium_dismissed', 'true');
           localStorage.setItem(MEMBER_CONFIRMED_KEY, 'true');
-          localStorage.setItem(CHECKOUT_STARTED_KEY, 'true');
-          hideNewsletterOffer();
           if (memberAccessStatus) {
             memberAccessStatus.style.color = 'var(--green)';
             memberAccessStatus.textContent = 'Access confirmed. Opening dashboard...';
@@ -1008,9 +976,8 @@
           return;
         }
         if (memberAccessStatus) {
-          memberAccessStatus.textContent = 'No active membership found. Opening checkout...';
+          memberAccessStatus.textContent = 'No active membership found.';
         }
-        startCheckout();
         return;
       } catch (err) {
         if (memberAccessStatus) memberAccessStatus.textContent = 'Could not verify access. Try again.';
@@ -1033,152 +1000,10 @@
 
     const pageParams = new URLSearchParams(window.location.search);
     if (pageParams.get('access') === 'required' && memberAccessStatus) {
+      showMemberAccessPanel();
       memberAccessStatus.style.color = 'var(--green)';
       memberAccessStatus.textContent = 'Already subscribed? Enter your email to open the dashboard.';
-      if (memberAccessEmail) memberAccessEmail.focus();
     }
-
-    function shouldSuppressNewsletter() {
-      return localStorage.getItem(NEWSLETTER_SIGNED_UP_KEY) === 'true'
-        || localStorage.getItem(NEWSLETTER_DISMISSED_KEY) === 'true'
-        || localStorage.getItem(CHECKOUT_STARTED_KEY) === 'true'
-        || localStorage.getItem(MEMBER_CONFIRMED_KEY) === 'true'
-        || sessionStorage.getItem('ce_context_edge_access') === 'true';
-    }
-
-    function showNewsletterOffer(forceOpen) {
-      if (!newsletterModal || newsletterShown || (!forceOpen && shouldSuppressNewsletter())) return;
-      newsletterShown = true;
-      newsletterModal.classList.add('visible');
-      setTimeout(() => {
-        if (newsletterEmail) newsletterEmail.focus();
-      }, 50);
-    }
-
-    function hideNewsletterOffer(markDismissed) {
-      if (newsletterModal) newsletterModal.classList.remove('visible');
-      if (markDismissed) localStorage.setItem(NEWSLETTER_DISMISSED_KEY, 'true');
-    }
-
-    async function submitNewsletter() {
-      const name = (newsletterName && newsletterName.value ? newsletterName.value : '').trim();
-      const email = (newsletterEmail && newsletterEmail.value ? newsletterEmail.value : '').trim().toLowerCase();
-      const phone = (newsletterPhone && newsletterPhone.value ? newsletterPhone.value : '').trim();
-      if (newsletterStatus) {
-        newsletterStatus.textContent = '';
-        newsletterStatus.style.color = 'var(--red)';
-      }
-      if (!name) {
-        if (newsletterStatus) newsletterStatus.textContent = 'Enter your name.';
-        return;
-      }
-      if (!email || !email.includes('@')) {
-        if (newsletterStatus) newsletterStatus.textContent = 'Enter a valid email.';
-        return;
-      }
-      if (!phone) {
-        if (newsletterStatus) newsletterStatus.textContent = 'Enter your phone number.';
-        return;
-      }
-      if (newsletterJoinButton) {
-        newsletterJoinButton.disabled = true;
-        newsletterJoinButton.textContent = 'Sending...';
-      }
-      try {
-        const res = await fetch('/api/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, phone, source: 'trial_downsell_newsletter' })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data.error || 'Lead submission failed');
-        }
-        if (data.event_id && typeof fbq !== 'undefined') {
-          fbq('track', 'Lead', {
-            value: 0,
-            currency: 'USD',
-            content_name: 'Fade the Books Trial Downsell'
-          }, { eventID: data.event_id });
-        }
-        localStorage.setItem(NEWSLETTER_SIGNED_UP_KEY, 'true');
-        window.location.href = '/trial-success';
-      } catch (err) {
-        if (newsletterStatus) newsletterStatus.textContent = 'Could not submit. Try again.';
-        if (newsletterJoinButton) {
-          newsletterJoinButton.disabled = false;
-          newsletterJoinButton.textContent = 'JOIN FREE + GET FREE TRIAL';
-        }
-      }
-    }
-
-    if (openTrialDownsell) {
-      openTrialDownsell.addEventListener('click', () => {
-        newsletterShown = false;
-        showNewsletterOffer(true);
-      });
-    }
-
-    if (newsletterClose) {
-      newsletterClose.addEventListener('click', () => hideNewsletterOffer(true));
-    }
-    if (newsletterModal) {
-      newsletterModal.addEventListener('click', (event) => {
-        if (event.target === newsletterModal) hideNewsletterOffer(true);
-      });
-    }
-    if (newsletterJoinButton) {
-      newsletterJoinButton.addEventListener('click', submitNewsletter);
-    }
-    if (newsletterEmail) {
-      newsletterEmail.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') submitNewsletter();
-      });
-    }
-
-    const sticky = document.getElementById('mobileStickyCta');
-    const hero = document.getElementById('hero');
-    if (sticky && hero && 'IntersectionObserver' in window) {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          sticky.classList.toggle('visible', !entry.isIntersecting);
-        });
-      }, { threshold: 0 });
-      observer.observe(hero);
-    } else if (sticky) {
-      window.addEventListener('scroll', () => {
-        sticky.classList.toggle('visible', window.scrollY > window.innerHeight * 0.7);
-      }, { passive: true });
-    }
-
-    function maybeShowNewsletterFromScroll() {
-      if (shouldSuppressNewsletter() || newsletterShown) return;
-      const doc = document.documentElement;
-      const scrollable = doc.scrollHeight - window.innerHeight;
-      if (scrollable <= 0) return;
-      const progress = window.scrollY / scrollable;
-      const nearBottom = window.scrollY + window.innerHeight >= doc.scrollHeight - 120;
-      const mobile = window.matchMedia('(max-width: 820px)').matches;
-      if (nearBottom || (mobile && progress >= 0.8)) showNewsletterOffer();
-    }
-
-    window.addEventListener('scroll', maybeShowNewsletterFromScroll, { passive: true });
-    function scheduleNewsletterActivityPrompt() {
-      if (newsletterActivityTimer || shouldSuppressNewsletter() || newsletterShown) return;
-      newsletterActivityTimer = window.setTimeout(() => {
-        showNewsletterOffer();
-      }, 20000);
-    }
-
-    ['scroll', 'mousemove', 'touchstart', 'keydown'].forEach((eventName) => {
-      window.addEventListener(eventName, scheduleNewsletterActivityPrompt, { passive: true, once: true });
-    });
-
-    document.addEventListener('mouseleave', (event) => {
-      if (event.clientY <= 0 && !window.matchMedia('(max-width: 820px)').matches) {
-        showNewsletterOffer();
-      }
-    });
   </script>
 </body>
 </html>
