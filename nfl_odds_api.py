@@ -241,6 +241,11 @@ def get_nfl_game_environment_map(hours_ahead: int = 96) -> Dict[str, Dict[str, A
         }
     return env_map
 
+def fetch_nfl_game_odds(hours_ahead: int = 168) -> List[Dict[str, Any]]:
+    """Fetch NFL game-level moneyline, spread, and total odds."""
+    sport_key = _detect_nfl_sport_key(hours_ahead)
+    return _bulk_odds(sport_key, ["h2h", "spreads", "totals"], hours_ahead)
+
 if __name__ == "__main__":
     try:
         sk = _detect_nfl_sport_key()

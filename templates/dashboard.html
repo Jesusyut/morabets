@@ -1836,6 +1836,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             nflProps = Array.isArray(props) ? props : [];
             if (envData && envData.environments) environmentData = envData.environments; else environmentData = null;
             if (nflProps.length === 0) {
+                try {
+                    const oddsRes = await fetch('/api/nfl/odds?t=' + Date.now());
+                    const oddsData = await oddsRes.json();
+                    const linePicks = oddsData.no_vig_picks || oddsData.picks || [];
+                    if (linePicks.length > 0) {
+                        allProps = linePicks;
+                        allFilteredProps = linePicks;
+                        matchupData = null;
+                        document.getElementById('prop-count-display').textContent = `${linePicks.length} lines`;
+                        displayProps();
+                        return;
+                    }
+                } catch(e) { console.warn('[NFL] Lines fallback failed:', e); }
                 document.getElementById('player-props-container').innerHTML = `<div class="alert alert-info text-center"><h4><i class="fas fa-calendar-alt me-2"></i>NFL Off-Season / No Props</h4><p class="mb-0">Check back during the NFL season for live player props.</p></div>`;
                 document.getElementById('prop-count-display').textContent = '0 props';
                 return;

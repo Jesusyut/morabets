@@ -1668,6 +1668,41 @@ def api_nfl_environment():
         logger.error(f"Failed to get NFL environment data: {e}")
         return jsonify({"error": "NFL environment data unavailable"}), 503
 
+
+@app.route("/api/nfl/odds")
+def api_nfl_odds(force_refresh=False):
+    """Curated NFL picks — h2h, spreads, totals — evaluated with EV engine."""
+    try:
+        from nfl_odds_api import fetch_nfl_game_odds
+        cache_file = "/var/data/nfl_odds_cache.json"
+        cached_payload = _load_json_cache_file(cache_file)
+        if cached_payload and (not force_refresh or _json_cache_is_fresh(cache_file, LINE_CACHE_MAX_AGE_SECONDS)):
+            cached_payload["cached"] = True
+            cached_payload["cache_age_seconds"] = _cache_age_seconds(cache_file)
+            return jsonify(cached_payload)
+
+        if not force_refresh:
+            logger.info("[NFL ODDS] No cache available - queueing guarded background warmup")
+            _queue_cache_warmup("game_lines", _fetch_and_cache_game_lines, min_interval_seconds=300)
+            return jsonify({
+                "picks": [],
+                "no_vig_picks": [],
+                "edge_picks": [],
+                "count": 0,
+                "sport": "NFL",
+                "cached": False,
+                "status": "not_available",
+                "message": "NFL lines are warming up from cache. Refresh shortly.",
+            })
+
+        raw_games = fetch_nfl_game_odds()
+        payload = _build_game_line_payload(raw_games, "NFL", spread_label="Spread", total_label="Game Total")
+        _write_json_cache_file(cache_file, payload)
+        return jsonify(payload)
+    except Exception as e:
+        logger.error(f"[NFL] /api/nfl/odds error: {e}")
+        return jsonify({"picks": [], "no_vig_picks": [], "edge_picks": [], "count": 0, "sport": "NFL", "error": str(e)}), 500
+
 @app.route("/api/quota")
 def api_quota():
     """Return current Odds API quota stats"""
@@ -2355,6 +2390,7 @@ def _fetch_and_cache_game_lines():
         ("MLB", lambda: mlb_odds(force_refresh=True)),
         ("Soccer", lambda: api_soccer_gamelines(force_refresh=True)),
         ("NBA", lambda: api_nba_odds(force_refresh=True)),
+        ("NFL", lambda: api_nfl_odds(force_refresh=True)),
         ("NHL", lambda: api_nhl_odds(force_refresh=True)),
     ]
     with app.app_context():
