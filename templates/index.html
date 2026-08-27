@@ -748,8 +748,8 @@
     <section class="hero" id="hero">
       <div class="container">
         <button class="member-access-toggle" id="memberAccessToggle" type="button">Already subscribed? Enter your email to access your membership.</button>
-        <h1>The Same Line Prices Both Markets. <span class="green">We Check Where They Disagree.</span></h1>
-        <p class="subhead">Sportsbook odds feed prediction markets too. Most people only ever see one side of that price. We check both, every morning, automatically.</p>
+        <h1>The Gap Finds Itself. <span class="green">You Just Check It.</span></h1>
+        <p class="subhead">Sportsbook odds feed prediction markets. We check both, every morning, automatically.</p>
         <form class="member-access" data-lead-form aria-label="Board preview signup">
           <div class="member-access-row">
             <input name="name" type="text" placeholder="Full name" autocomplete="name" required>
@@ -871,6 +871,7 @@
     const memberAccessButton = document.getElementById('memberAccessButton');
     const memberAccessStatus = document.getElementById('memberAccessStatus');
     const MEMBER_CONFIRMED_KEY = 'fade_books_member_confirmed';
+    const LEAD_SUBMITTED_EMAIL_KEY = 'fade_books_lead_submitted_email';
     const TRIAL_PAYMENT_LINK = 'https://buy.stripe.com/aFa7sK6eh7MF4YZ1Oa0gw00';
 
     function setLeadStatus(form, message, color) {
@@ -895,6 +896,11 @@
         setLeadStatus(form, 'Enter a valid email.');
         return;
       }
+      if (sessionStorage.getItem(LEAD_SUBMITTED_EMAIL_KEY) === email) {
+        setLeadStatus(form, 'Opening your trial...', 'var(--green)');
+        window.location.href = TRIAL_PAYMENT_LINK;
+        return;
+      }
 
       if (button) {
         button.disabled = true;
@@ -916,6 +922,7 @@
             content_name: 'Fade the Books Daily Board Preview'
           }, { eventID: data.event_id });
         }
+        sessionStorage.setItem(LEAD_SUBMITTED_EMAIL_KEY, email);
         setLeadStatus(form, 'Opening your trial...', 'var(--green)');
         window.setTimeout(() => {
           window.location.href = TRIAL_PAYMENT_LINK;

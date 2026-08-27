@@ -7,6 +7,7 @@ import requests
 import sys
 import csv
 import threading
+import hashlib
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -165,6 +166,14 @@ def save_subscriber(email, name="", phone="", source="daily_dashboard_trial"):
         logger.info(f'[SUBSCRIBE] Added/updated {normalized_email} source={subscriber_record["source"]}')
     except Exception as e:
         logger.error(f'[SUBSCRIBE] Error saving subscriber {email}: {e}')
+
+
+def _lead_event_id(email, source="daily_dashboard_trial"):
+    """Stable daily Meta event id so repeat submits do not inflate lead counts."""
+    normalized_email = (email or "").strip().lower()
+    normalized_source = (source or "daily_dashboard_trial").strip().lower()
+    digest = hashlib.sha256(f"{normalized_source}:{normalized_email}".encode("utf-8")).hexdigest()[:20]
+    return f"lead-{datetime.utcnow().strftime('%Y%m%d')}-{digest}"
 
 
 def _sync_to_brevo_contact(email, name="", phone="", source="daily_dashboard_trial"):
@@ -1257,16 +1266,24 @@ def api_subscribe():
         source = (data.get('source') or 'daily_dashboard_trial').strip()
         if not email or '@' not in email:
             return jsonify({'error': 'Invalid email'}), 400
-        if source in {'daily_dashboard_trial', 'trial_downsell_newsletter'} and (not name or not phone):
-            return jsonify({'error': 'Name and phone are required'}), 400
+        if source in {'daily_board_preview', 'daily_dashboard_trial', 'trial_downsell_newsletter'} and not name:
+            return jsonify({'error': 'Name is required'}), 400
+        if source in {'daily_dashboard_trial', 'trial_downsell_newsletter'} and not phone:
+            return jsonify({'error': 'Phone is required'}), 400
 
         brevo_synced = _sync_to_brevo_contact(email, name=name, phone=phone, source=source)
         save_subscriber(email, name=name, phone=phone, source=source)
+        if not brevo_synced:
+            logger.warning(f'[SUBSCRIBE] Brevo did not confirm lead sync for {email}; skipping Meta Lead')
+            return jsonify({
+                'error': 'Could not save contact. Try again.',
+                'external': {'brevo': False},
+            }), 502
 
         event_id = None
         try:
-            from meta_pixel import track_lead, get_event_id
-            event_id = get_event_id()
+            from meta_pixel import track_lead
+            event_id = _lead_event_id(email, source)
             track_lead(request, customer_email=email, event_id=event_id)
             logger.info(f'[META] Dashboard trial Lead fired for {email}')
         except Exception as meta_err:
