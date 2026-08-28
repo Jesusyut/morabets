@@ -449,17 +449,19 @@
       align-items: center;
       justify-content: center;
       margin: 0 auto 18px;
-      border: 0;
-      background: transparent;
+      border: 1px solid rgba(34,197,94,0.22);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.025);
       color: var(--green);
       cursor: pointer;
-      padding: 8px 10px;
+      padding: 9px 14px;
       font: inherit;
       font-size: 14px;
       font-weight: 850;
       line-height: 1.25;
       text-decoration: underline;
       text-underline-offset: 4px;
+      backdrop-filter: blur(12px);
     }
 
     .member-access {
@@ -530,7 +532,10 @@
     .member-access-panel {
       display: none;
       margin-top: 14px;
-      background: rgba(12,28,16,0.82);
+      border-color: rgba(34,197,94,0.22);
+      background: rgba(8,18,11,0.42);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+      backdrop-filter: blur(18px);
     }
 
     .member-access-panel.visible {
@@ -783,12 +788,12 @@
       <div class="container">
         <button class="member-access-toggle" id="memberAccessToggle" type="button">Already subscribed? Enter your email to access your membership.</button>
         <h1>The Gap Finds Itself. <span class="green">You Just Check It.</span></h1>
-        <p class="subhead">Sportsbook odds feed prediction markets. We check both, every morning, automatically.</p>
+        <p class="subhead">Get tomorrow's Best Opportunities — the true no-vig probability behind tomorrow's board — sent free.</p>
         <form class="member-access" data-lead-form aria-label="Board preview signup">
           <div class="member-access-row">
             <input name="name" type="text" placeholder="Full name" autocomplete="name" required>
             <input name="email" type="email" placeholder="your@email.com" autocomplete="email" required>
-            <button type="submit">See today's board</button>
+            <button type="submit">Send me tomorrow's board</button>
           </div>
           <p class="member-access-status" data-lead-status></p>
         </form>
@@ -862,7 +867,7 @@
           </article>
           <article class="card faq-item">
             <h3>Q: What do I get for my email?</h3>
-            <p>Today's board, straight to your inbox. No pricing decision, no card, nothing to cancel. Just the number.</p>
+            <p>Tomorrow's board, straight to your inbox. No pricing decision, no card, nothing to cancel. Just the number.</p>
           </article>
         </div>
       </div>
@@ -870,12 +875,12 @@
 
     <section>
       <div class="container" style="text-align:center;">
-        <h2>Get today's board in your inbox.</h2>
+        <h2>Get tomorrow's board in your inbox.</h2>
         <form class="member-access" data-lead-form aria-label="Board preview signup">
           <div class="member-access-row">
             <input name="name" type="text" placeholder="Full name" autocomplete="name" required>
             <input name="email" type="email" placeholder="your@email.com" autocomplete="email" required>
-            <button type="submit">See today's board</button>
+            <button type="submit">Send me tomorrow's board</button>
           </div>
           <p class="member-access-status" data-lead-status></p>
         </form>
@@ -953,7 +958,7 @@
           fbq('track', 'Lead', {
             value: 0,
             currency: 'USD',
-            content_name: 'Fade the Books Daily Board Preview'
+            content_name: 'Fade the Books Tomorrow Board Preview'
           }, { eventID: data.event_id });
         }
         sessionStorage.setItem(LEAD_SUBMITTED_EMAIL_KEY, email);
@@ -966,7 +971,7 @@
       } finally {
         if (button) {
           button.disabled = false;
-          button.textContent = "See today's board";
+          button.textContent = "Send me tomorrow's board";
         }
       }
     }
