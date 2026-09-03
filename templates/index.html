@@ -27,13 +27,13 @@
   <!-- End Meta Pixel Code -->
   <style>
     :root {
-      --bg: #0a0a0a;
-      --card: #111;
-      --card-soft: #151515;
-      --green: #22c55e;
-      --green-dark: #16a34a;
-      --text: #f5f5f5;
-      --muted: #888;
+      --bg: #050505;
+      --card: #fff;
+      --card-soft: #f5f5f5;
+      --green: #fff;
+      --green-dark: #e5e5e5;
+      --text: #fff;
+      --muted: #aaa;
       --line: #333;
       --red: #ef4444;
       --max: 1120px;
@@ -43,9 +43,7 @@
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(34, 197, 94, 0.12), transparent 34rem),
-        var(--bg);
+      background: var(--bg);
       color: var(--text);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.55;
@@ -72,12 +70,12 @@
     }
 
     .hero {
-      min-height: 88vh;
+      min-height: 100vh;
       display: grid;
       place-items: center;
       text-align: center;
-      padding-top: 96px;
-      padding-bottom: 96px;
+      padding-top: 40px;
+      padding-bottom: 40px;
     }
 
     .eyebrow {
@@ -91,10 +89,10 @@
 
     h1, h2, h3, p { margin-top: 0; }
     h1 {
-      max-width: 980px;
-      margin: 0 auto 22px;
-      font-size: clamp(46px, 8vw, 86px);
-      line-height: 0.95;
+      max-width: 720px;
+      margin: 0 auto 16px;
+      font-size: clamp(42px, 8vw, 76px);
+      line-height: 0.98;
       letter-spacing: -0.045em;
       font-weight: 950;
     }
@@ -115,9 +113,10 @@
     }
 
     .subhead {
-      margin-bottom: 34px;
-      color: #cfcfcf;
-      font-size: clamp(18px, 2.4vw, 24px);
+      max-width: 460px;
+      margin: 0 auto 24px;
+      color: #d7d7d7;
+      font-size: clamp(17px, 2.4vw, 21px);
     }
 
     .muted { color: var(--muted); }
@@ -449,10 +448,10 @@
       align-items: center;
       justify-content: center;
       margin: 0 auto 18px;
-      border: 1px solid rgba(34,197,94,0.22);
+      border: 1px solid rgba(255,255,255,0.2);
       border-radius: 999px;
       background: rgba(255,255,255,0.025);
-      color: var(--green);
+      color: #fff;
       cursor: pointer;
       padding: 9px 14px;
       font: inherit;
@@ -465,13 +464,13 @@
     }
 
     .member-access {
-      width: min(100%, 680px);
-      margin: 26px auto 0;
-      padding: 16px;
-      border: 1px solid rgba(34,197,94,0.3);
-      border-radius: 14px;
-      background: rgba(17,17,17,0.78);
-      box-shadow: 0 18px 50px rgba(0,0,0,0.24);
+      width: min(100%, 460px);
+      margin: 24px auto 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
     }
 
     .member-access-label {
@@ -483,42 +482,42 @@
     }
 
     .member-access-row {
-      display: flex;
-      gap: 10px;
+      display: grid;
+      gap: 12px;
     }
 
     .member-access input {
-      flex: 1;
+      width: 100%;
       min-width: 0;
-      height: 52px;
-      border: 1px solid rgba(34,197,94,0.34);
-      border-radius: 10px;
-      background: rgba(255,255,255,0.055);
-      color: var(--text);
+      height: 56px;
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 0;
+      background: #fff;
+      color: #050505;
       font: inherit;
-      font-size: 15px;
+      font-size: 16px;
       outline: none;
-      padding: 0 15px;
+      padding: 0 16px;
     }
 
     .member-access input:focus {
-      border-color: var(--green);
-      box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+      border-color: #fff;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.22);
     }
 
     .member-access button {
-      height: 52px;
-      border: 1px solid rgba(34,197,94,0.42);
-      border-radius: 10px;
-      background: var(--green);
-      color: #031006;
+      height: 58px;
+      border: 1px solid #fff;
+      border-radius: 0;
+      background: #fff;
+      color: #050505;
       cursor: pointer;
-      padding: 0 20px;
+      padding: 0 22px;
       font: inherit;
-      font-size: 14px;
-      font-weight: 900;
+      font-size: 15px;
+      font-weight: 950;
       white-space: nowrap;
-      box-shadow: 0 12px 32px rgba(34,197,94,0.2);
+      box-shadow: none;
     }
 
     .member-access-status {
@@ -527,6 +526,12 @@
       color: var(--red);
       font-size: 12px;
       text-align: center;
+    }
+
+    .simple-note {
+      margin: 18px auto 0;
+      color: #bdbdbd;
+      font-size: 14px;
     }
 
     .member-access-panel {
@@ -737,8 +742,8 @@
       .member-access {
         width: 100%;
         margin-top: 22px;
-        padding: 14px;
-        border-radius: 16px;
+        padding: 0;
+        border-radius: 0;
       }
       .member-access input {
         width: 100%;
@@ -786,9 +791,8 @@
   <main>
     <section class="hero" id="hero">
       <div class="container">
-        <button class="member-access-toggle" id="memberAccessToggle" type="button">Already a member? Click here &amp; enter email for dashboard access.</button>
-        <h1>The Gap Finds Itself. <span class="green">You Just Check It.</span></h1>
-        <p class="subhead">Get emailed a link to the dashboard. No payment needed. Check your inbox afterward.</p>
+        <h1>Free Dashboard Access</h1>
+        <p class="subhead">Enter your name and email. We'll send the dashboard link to your inbox.</p>
         <form class="member-access" data-lead-form aria-label="Board preview signup">
           <div class="member-access-row">
             <input name="name" type="text" placeholder="Full name" autocomplete="name" required>
@@ -797,101 +801,7 @@
           </div>
           <p class="member-access-status" data-lead-status></p>
         </form>
-        <div class="member-access member-access-panel" id="memberAccessPanel" aria-label="Existing subscriber access">
-          <div class="member-access-row">
-            <input id="memberAccessEmail" type="email" placeholder="subscriber@email.com" autocomplete="email">
-            <button id="memberAccessButton" type="button">ACCESS MEMBERSHIP</button>
-          </div>
-          <p class="member-access-status" id="memberAccessStatus"></p>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <p class="eyebrow">This morning: Spencer Horwitz, 65.9% no-vig, DraftKings had it at -188.</p>
-        <article class="card product-card">
-          <div>
-            <p class="label">Name</p>
-            <h3>Spencer Horwitz</h3>
-          </div>
-          <div class="feature-copy">
-            <p>65.9% No-vig</p>
-            <p>-188 DraftKings</p>
-          </div>
-        </article>
-        <p class="caption" style="text-align:center;">"Most bettors are reading the price. This shows you the probability underneath it."</p>
-      </div>
-    </section>
-
-    <section>
-      <div class="narrow section-copy">
-        <h2>It's not just sportsbook math. It's market math.</h2>
-        <p>The same morning Spencer Horwitz showed 65.9% on our board, a prediction market — Robinhood's — had him priced at 54 cents to get a hit. Same event. Two different numbers.</p>
-        <p>That's an 11-point gap between what a prediction market was charging and what the sportsbook's own pricing actually implied, once the fee's stripped out.</p>
-        <p>This is the part most people never see: true probability isn't a sportsbook trick. It's a market-reading number. It works anywhere a price exists — one sportsbook against another, or a sportsbook against a prediction market. When the real number and the listed price disagree, that gap is the whole game.</p>
-        <p class="muted"><em>(For the record: Horwitz got a hit in his first at-bat. One outcome doesn't prove a model — a 65.9% probability is still supposed to miss about a third of the time. What matters is the gap was real, and the math found it before the game started.)</em></p>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <h2>Real receipts. No embellishment.</h2>
-        <div class="grid-2">
-          <article class="card receipt-card">
-            <img class="landing-image receipt-image" src="../static/landing/draftkings-june-6-brewers-guardians.jpg" alt="DraftKings receipt showing $1,250 wager paid $2,532.93 for MIL Brewers ML and CLE Guardians +1.5">
-          </article>
-          <article class="card receipt-card">
-            <img class="landing-image receipt-image" src="../static/landing/draftkings-june-2-brewers-knights.jpg" alt="DraftKings receipt showing $1,000 wager paid $2,047.13 for MIL Brewers ML and VGK Golden Knights +1.5">
-          </article>
-        </div>
-        <div class="narrow section-copy" style="margin-top: 28px;">
-          <p>$1,250 in. $2,532.93 out. Brewers ML and Guardians +1.5, both showing 60%+ on the no-vig board that day.</p>
-          <p>$1,000 in. $2,047.13 out. Brewers ML and Golden Knights +1.5, same math-first read.</p>
-          <p class="muted">These aren't cherry-picked. They're what happens when the number underneath the price gets checked before the money goes in. Individual results — not typical, not guaranteed.</p>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <h2>Real Questions. Straight Answers.</h2>
-        <div class="faq">
-          <article class="card faq-item">
-            <h3>Q: Is this gambling advice or tips?</h3>
-            <p>No. We don't tell you what to bet. We show you where the math and the price disagree. What you do with that is yours.</p>
-          </article>
-          <article class="card faq-item">
-            <h3>Q: I've seen "guaranteed picks" before. What's different here?</h3>
-            <p>We don't sell picks and we don't promise wins. A 60% true probability doesn't win every time — it wins more often than the book priced. That's the whole product.</p>
-          </article>
-          <article class="card faq-item">
-            <h3>Q: What do I get for my email?</h3>
-            <p>A dashboard link, straight to your inbox. No payment, no card, nothing to cancel. Just the number.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container" style="text-align:center;">
-        <h2>Get the dashboard link in your inbox.</h2>
-        <form class="member-access" data-lead-form aria-label="Board preview signup">
-          <div class="member-access-row">
-            <input name="name" type="text" placeholder="Full name" autocomplete="name" required>
-            <input name="email" type="email" placeholder="your@email.com" autocomplete="email" required>
-            <button type="submit">Email me the dashboard link</button>
-          </div>
-          <p class="member-access-status" data-lead-status></p>
-        </form>
-        <div class="account-section">
-          <h3>Already a member?</h3>
-          <p>Manage your subscription, billing, or cancellation in Stripe.</p>
-          <div class="account-actions">
-            <a class="secondary-action" href="https://billing.stripe.com/p/login/aFa7sK6eh7MF4YZ1Oa0gw00">Manage Membership</a>
-            <a class="secondary-action muted-action" href="https://billing.stripe.com/p/login/aFa7sK6eh7MF4YZ1Oa0gw00">Unsubscribe / Cancel Membership</a>
-          </div>
-        </div>
+        <p class="simple-note">No subscription. No payment. Check your inbox afterward.</p>
       </div>
     </section>
   </main>
@@ -956,7 +866,7 @@
           fbq('track', 'Lead', {
             value: 0,
             currency: 'USD',
-            content_name: 'Fade the Books Tomorrow Board Preview'
+            content_name: 'Fade the Books Dashboard Access'
           }, { eventID: data.event_id });
         }
         sessionStorage.setItem(LEAD_SUBMITTED_EMAIL_KEY, email);
