@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fade the Books | Dashboard Access</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='fade-the-books-icon.svg') }}">
+  <style>
+    :root {
+      --green: #22c55e;
+      --dark: #020603;
+      --panel: #071407;
+      --border: rgba(34, 197, 94, 0.35);
+      --muted: rgba(255, 255, 255, 0.7);
+      --white: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at top, rgba(34, 197, 94, 0.18), transparent 32rem),
+        linear-gradient(180deg, #061006 0%, var(--dark) 100%);
+      color: var(--white);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .gate {
+      width: min(100%, 430px);
+      padding: 34px 24px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: rgba(7, 20, 7, 0.84);
+      box-shadow: 0 24px 90px rgba(0, 0, 0, 0.45);
+      text-align: center;
+    }
+    .brand {
+      margin: 0 0 22px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 8vw, 44px);
+      line-height: 0.98;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      margin: 0 auto 24px;
+      max-width: 31ch;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    .code-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .code-row input {
+      width: 100%;
+      height: 62px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--white);
+      font-size: 30px;
+      font-weight: 900;
+      text-align: center;
+      outline: none;
+    }
+    .code-row input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+    }
+    button {
+      width: 100%;
+      min-height: 56px;
+      border: 0;
+      border-radius: 14px;
+      background: var(--green);
+      color: #031006;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .status {
+      min-height: 22px;
+      margin: 14px 0 0;
+      color: #fca5a5;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .email {
+      margin-top: 18px;
+      color: rgba(255, 255, 255, 0.48);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <main class="gate">
+    <p class="brand">Fade the Books</p>
+    <h1>Enter Dashboard Code</h1>
+    <p class="subtitle">Use the 4-digit code from your access email to open today's board.</p>
+    <form id="codeForm">
+      <div class="code-row" aria-label="Dashboard passcode">
+        <input inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="Digit 1">
+        <input inputmode="numeric" maxlength="1" aria-label="Digit 2">
+        <input inputmode="numeric" maxlength="1" aria-label="Digit 3">
+        <input inputmode="numeric" maxlength="1" aria-label="Digit 4">
+      </div>
+      <button type="submit">Open Dashboard</button>
+      <p class="status" id="status"></p>
+    </form>
+    {% if email %}
+      <p class="email">Access link verified for {{ email }}</p>
+    {% endif %}
+  </main>
+  <script>
+    const form = document.getElementById('codeForm');
+    const inputs = Array.from(document.querySelectorAll('.code-row input'));
+    const status = document.getElementById('status');
+
+    inputs[0].focus();
+    inputs.forEach((input, index) => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(0, 1);
+        if (input.value && inputs[index + 1]) inputs[index + 1].focus();
+      });
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Backspace' && !input.value && inputs[index - 1]) {
+          inputs[index - 1].focus();
+        }
+      });
+      input.addEventListener('paste', (event) => {
+        event.preventDefault();
+        const digits = (event.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 4);
+        digits.split('').forEach((digit, digitIndex) => {
+          if (inputs[digitIndex]) inputs[digitIndex].value = digit;
+        });
+        const next = inputs[Math.min(digits.length, inputs.length - 1)];
+        if (next) next.focus();
+      });
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const code = inputs.map((input) => input.value).join('');
+      status.textContent = '';
+      if (code.length !== 4) {
+        status.textContent = 'Enter the 4-digit code.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/dashboard/passcode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Incorrect code.');
+        window.location.href = data.redirect || '/dashboard';
+      } catch (err) {
+        status.textContent = err.message || 'Incorrect code.';
+        inputs.forEach((input) => { input.value = ''; });
+        inputs[0].focus();
+      }
+    });
+  </script>
+</body>
+</html>

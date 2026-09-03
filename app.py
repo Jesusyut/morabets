@@ -22,6 +22,7 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for, s
 from flask_cors import CORS
 from redis import Redis
 from apscheduler.schedulers.background import BackgroundScheduler
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from odds_api import fetch_player_props, parse_game_data, group_props_by_player, get_quota
@@ -62,6 +63,11 @@ CORS(app)
 SUBSCRIBERS_FILE = 'email_subscribers.json'
 CONTEXT_EDGE_SESSION_EMAIL_KEY = "context_edge_verified_email"
 CONTEXT_EDGE_SESSION_VERIFIED_AT_KEY = "context_edge_verified_at"
+DASHBOARD_LEAD_SESSION_EMAIL_KEY = "dashboard_lead_email"
+DASHBOARD_LEAD_SESSION_VERIFIED_AT_KEY = "dashboard_lead_verified_at"
+DASHBOARD_PASSCODE_UNLOCKED_KEY = "dashboard_passcode_unlocked"
+DASHBOARD_ACCESS_CODE = os.environ.get("DASHBOARD_ACCESS_CODE", "0311").strip() or "0311"
+DASHBOARD_ACCESS_TOKEN_MAX_AGE_SECONDS = int(os.environ.get("DASHBOARD_ACCESS_TOKEN_MAX_AGE_SECONDS", "604800"))
 
 
 def _normalize_context_edge_email(email):
@@ -108,6 +114,59 @@ def _session_has_context_edge_access():
 
 def _session_verified_email():
     return _normalize_context_edge_email(session.get(CONTEXT_EDGE_SESSION_EMAIL_KEY))
+
+
+def _dashboard_access_serializer():
+    return URLSafeTimedSerializer(app.secret_key, salt="fade-the-books-dashboard-access")
+
+
+def _make_dashboard_access_token(email):
+    normalized_email = _normalize_context_edge_email(email)
+    return _dashboard_access_serializer().dumps({"email": normalized_email})
+
+
+def _verify_dashboard_access_token(token):
+    try:
+        payload = _dashboard_access_serializer().loads(
+            token,
+            max_age=DASHBOARD_ACCESS_TOKEN_MAX_AGE_SECONDS,
+        )
+    except SignatureExpired:
+        logger.info("[DASHBOARD ACCESS] Expired dashboard access token")
+        return ""
+    except BadSignature:
+        logger.warning("[DASHBOARD ACCESS] Invalid dashboard access token")
+        return ""
+
+    email = _normalize_context_edge_email(payload.get("email"))
+    if not email or "@" not in email:
+        return ""
+    return email
+
+
+def _set_dashboard_lead_session(email):
+    normalized_email = _normalize_context_edge_email(email)
+    session[DASHBOARD_LEAD_SESSION_EMAIL_KEY] = normalized_email
+    session[DASHBOARD_LEAD_SESSION_VERIFIED_AT_KEY] = datetime.utcnow().isoformat()
+    session[DASHBOARD_PASSCODE_UNLOCKED_KEY] = False
+    session.permanent = True
+
+
+def _session_dashboard_lead_email():
+    return _normalize_context_edge_email(session.get(DASHBOARD_LEAD_SESSION_EMAIL_KEY))
+
+
+def _session_has_dashboard_lead_session():
+    email = _session_dashboard_lead_email()
+    return bool(email and "@" in email)
+
+
+def _session_has_dashboard_passcode_access():
+    return bool(session.get(DASHBOARD_PASSCODE_UNLOCKED_KEY)) and _session_has_dashboard_lead_session()
+
+
+def _session_has_dashboard_access():
+    return _session_has_context_edge_access() or _session_has_dashboard_passcode_access()
 
 
 def _session_has_affiliate_access():
@@ -234,6 +293,62 @@ def _sync_to_brevo_contact(email, name="", phone="", source="daily_dashboard_tri
         logger.warning(f'[LEAD] Brevo sync failed status={resp.status_code} body={resp.text[:200]}')
     except Exception as e:
         logger.error(f'[LEAD] Brevo sync error for {normalized_email}: {e}')
+    return False
+
+
+def _send_dashboard_access_email(email, name="", access_url=""):
+    """Email a signed dashboard access link through Brevo transactional email."""
+    brevo_key = os.environ.get('BREVO_API_KEY', '').strip()
+    if not brevo_key:
+        logger.warning('[DASHBOARD ACCESS] BREVO_API_KEY not set - cannot email access link')
+        return False
+
+    normalized_email = (email or '').strip().lower()
+    sender_email = os.environ.get('EMAIL_FROM', 'noreply@fadethebooks.com').strip()
+    sender_name = os.environ.get('EMAIL_FROM_NAME', 'Fade the Books').strip()
+    recipient_name = (name or '').strip() or normalized_email
+
+    html_content = f"""
+    <div style="font-family:Arial,sans-serif;color:#111;line-height:1.5;">
+      <h2>Your Fade the Books dashboard link</h2>
+      <p>No payment is needed for this access path.</p>
+      <p>Open the dashboard, then enter code <strong>{DASHBOARD_ACCESS_CODE}</strong> when prompted.</p>
+      <p><a href="{access_url}" style="display:inline-block;background:#22c55e;color:#061006;padding:12px 18px;border-radius:8px;font-weight:700;text-decoration:none;">Open dashboard</a></p>
+      <p style="color:#666;font-size:13px;">If the button does not work, copy and paste this link: {access_url}</p>
+    </div>
+    """
+    text_content = (
+        "Your Fade the Books dashboard link\n\n"
+        "No payment is needed for this access path.\n"
+        f"Open the dashboard, then enter code {DASHBOARD_ACCESS_CODE} when prompted.\n\n"
+        f"{access_url}"
+    )
+
+    payload = {
+        'sender': {'name': sender_name, 'email': sender_email},
+        'to': [{'email': normalized_email, 'name': recipient_name}],
+        'subject': 'Your Fade the Books dashboard link',
+        'htmlContent': html_content,
+        'textContent': text_content,
+    }
+
+    try:
+        resp = requests.post(
+            'https://api.brevo.com/v3/smtp/email',
+            headers={
+                'accept': 'application/json',
+                'api-key': brevo_key,
+                'content-type': 'application/json',
+            },
+            json=payload,
+            timeout=8,
+        )
+        if resp.status_code in (200, 201, 202):
+            logger.info(f'[DASHBOARD ACCESS] Emailed dashboard link to {normalized_email}')
+            return True
+        logger.warning(f'[DASHBOARD ACCESS] Email failed status={resp.status_code} body={resp.text[:200]}')
+    except Exception as e:
+        logger.error(f'[DASHBOARD ACCESS] Email error for {normalized_email}: {e}')
     return False
 
 
@@ -746,7 +861,12 @@ def add_cache_headers(response):
 @app.route("/dashboard")
 def dashboard():
     """Main Fade the Books dashboard for verified members."""
-    if not _session_has_context_edge_access():
+    if not _session_has_dashboard_access():
+        if _session_has_dashboard_lead_session():
+            return render_template(
+                "dashboard_gate.html",
+                email=_session_dashboard_lead_email(),
+            )
         return redirect(url_for("home", access="required"))
 
     try:
@@ -755,6 +875,36 @@ def dashboard():
     except Exception as e:
         logger.error(f"Error in dashboard route: {e}")
         return f'<h1>Fade the Books</h1><p>Error: {str(e)}</p><p><a href="/health">Health Check</a></p>'
+
+
+@app.route("/dashboard/access/<token>")
+def dashboard_email_access(token):
+    """Accept a signed email-dashboard token and show the passcode gate."""
+    email = _verify_dashboard_access_token(token)
+    if not email:
+        return redirect(url_for("home", access="expired"))
+
+    _set_dashboard_lead_session(email)
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/api/dashboard/passcode", methods=["POST"])
+def api_dashboard_passcode():
+    """Unlock the dashboard for users who came through an emailed access link."""
+    try:
+        data = request.get_json(force=True) or {}
+        code = ''.join(ch for ch in str(data.get("code", "")) if ch.isdigit())
+        if not _session_has_dashboard_lead_session():
+            return jsonify({"error": "Open the dashboard from your email link first."}), 403
+        if code != DASHBOARD_ACCESS_CODE:
+            return jsonify({"error": "Incorrect dashboard code."}), 403
+
+        session[DASHBOARD_PASSCODE_UNLOCKED_KEY] = True
+        session.permanent = True
+        return jsonify({"status": "ok", "redirect": url_for("dashboard")}), 200
+    except Exception as e:
+        logger.error(f"[DASHBOARD ACCESS] Passcode check failed: {e}")
+        return jsonify({"error": "Could not verify code."}), 500
 
 
 @app.route("/affiliate")
@@ -1289,10 +1439,29 @@ def api_subscribe():
         except Exception as meta_err:
             logger.warning(f'[META] Dashboard trial Lead failed: {meta_err}')
 
+        dashboard_access_url = url_for(
+            "dashboard_email_access",
+            token=_make_dashboard_access_token(email),
+            _external=True,
+        )
+        dashboard_link_sent = _send_dashboard_access_email(
+            email,
+            name=name,
+            access_url=dashboard_access_url,
+        )
+        if not dashboard_link_sent:
+            return jsonify({
+                'error': 'Could not send dashboard link. Try again.',
+                'external': {'brevo': brevo_synced},
+                'dashboard_link_sent': False,
+            }), 502
+        _set_dashboard_lead_session(email)
+
         return jsonify({
             'status': 'ok',
-            'message': 'Subscribed',
+            'message': 'Check your inbox for your dashboard link.',
             'event_id': event_id,
+            'dashboard_link_sent': dashboard_link_sent,
             'external': {'brevo': brevo_synced},
         }), 200
     except Exception as e:

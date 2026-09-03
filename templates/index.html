@@ -788,12 +788,12 @@
       <div class="container">
         <button class="member-access-toggle" id="memberAccessToggle" type="button">Already a member? Click here &amp; enter email for dashboard access.</button>
         <h1>The Gap Finds Itself. <span class="green">You Just Check It.</span></h1>
-        <p class="subhead">Get tomorrow's Best Opportunities — the true no-vig probability behind tomorrow's board — sent free.</p>
+        <p class="subhead">Get emailed a link to the dashboard. No payment needed. Check your inbox afterward.</p>
         <form class="member-access" data-lead-form aria-label="Board preview signup">
           <div class="member-access-row">
             <input name="name" type="text" placeholder="Full name" autocomplete="name" required>
             <input name="email" type="email" placeholder="your@email.com" autocomplete="email" required>
-            <button type="submit">Send me tomorrow's board</button>
+            <button type="submit">Email me the dashboard link</button>
           </div>
           <p class="member-access-status" data-lead-status></p>
         </form>
@@ -867,7 +867,7 @@
           </article>
           <article class="card faq-item">
             <h3>Q: What do I get for my email?</h3>
-            <p>Tomorrow's board, straight to your inbox. No pricing decision, no card, nothing to cancel. Just the number.</p>
+            <p>A dashboard link, straight to your inbox. No payment, no card, nothing to cancel. Just the number.</p>
           </article>
         </div>
       </div>
@@ -875,12 +875,12 @@
 
     <section>
       <div class="container" style="text-align:center;">
-        <h2>Get tomorrow's board in your inbox.</h2>
+        <h2>Get the dashboard link in your inbox.</h2>
         <form class="member-access" data-lead-form aria-label="Board preview signup">
           <div class="member-access-row">
             <input name="name" type="text" placeholder="Full name" autocomplete="name" required>
             <input name="email" type="email" placeholder="your@email.com" autocomplete="email" required>
-            <button type="submit">Send me tomorrow's board</button>
+            <button type="submit">Email me the dashboard link</button>
           </div>
           <p class="member-access-status" data-lead-status></p>
         </form>
@@ -911,7 +911,6 @@
     const memberAccessStatus = document.getElementById('memberAccessStatus');
     const MEMBER_CONFIRMED_KEY = 'fade_books_member_confirmed';
     const LEAD_SUBMITTED_EMAIL_KEY = 'fade_books_lead_submitted_email';
-    const TRIAL_PAYMENT_LINK = 'https://buy.stripe.com/aFa7sK6eh7MF4YZ1Oa0gw00';
 
     function setLeadStatus(form, message, color) {
       const status = form.querySelector('[data-lead-status]');
@@ -936,8 +935,7 @@
         return;
       }
       if (sessionStorage.getItem(LEAD_SUBMITTED_EMAIL_KEY) === email) {
-        setLeadStatus(form, 'Opening your trial...', 'var(--green)');
-        window.location.href = TRIAL_PAYMENT_LINK;
+        setLeadStatus(form, 'Check your inbox for the dashboard link. No payment needed.', 'var(--green)');
         return;
       }
 
@@ -962,16 +960,13 @@
           }, { eventID: data.event_id });
         }
         sessionStorage.setItem(LEAD_SUBMITTED_EMAIL_KEY, email);
-        setLeadStatus(form, 'Opening your trial...', 'var(--green)');
-        window.setTimeout(() => {
-          window.location.href = TRIAL_PAYMENT_LINK;
-        }, 250);
+        setLeadStatus(form, 'Check your inbox for the dashboard link. No payment needed.', 'var(--green)');
       } catch (err) {
         setLeadStatus(form, 'Could not submit. Try again.');
       } finally {
         if (button) {
           button.disabled = false;
-          button.textContent = "Send me tomorrow's board";
+          button.textContent = "Email me the dashboard link";
         }
       }
     }
